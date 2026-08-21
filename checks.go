@@ -116,13 +116,16 @@ func (o CheckListOptions) query() url.Values {
 // NewCheck is Forward's NewNetworkCheck payload. Definition stays structurally
 // open because flow, isolation, NQE, and intent checks have different schemas.
 type NewCheck struct {
-	Definition            map[string]any `json:"definition"`
-	Name                  string         `json:"name"`
-	Note                  string         `json:"note,omitempty"`
-	Tags                  []string       `json:"tags,omitempty"`
-	Enabled               *bool          `json:"enabled,omitempty"`
-	Priority              string         `json:"priority,omitempty"`
-	PerfMonitoringEnabled *bool          `json:"perfMonitoringEnabled,omitempty"`
+	Definition map[string]any `json:"definition"`
+	// Name is omitted when empty. An NQE check takes its name from the query
+	// and Forward rejects the field outright -- including an empty one -- so
+	// sending it unconditionally makes every NQE check fail to create.
+	Name                  string   `json:"name,omitempty"`
+	Note                  string   `json:"note,omitempty"`
+	Tags                  []string `json:"tags,omitempty"`
+	Enabled               *bool    `json:"enabled,omitempty"`
+	Priority              string   `json:"priority,omitempty"`
+	PerfMonitoringEnabled *bool    `json:"perfMonitoringEnabled,omitempty"`
 }
 
 var (
@@ -277,8 +280,8 @@ func (s *ChecksService) CreatePersistent(ctx context.Context, snapshotID string,
 	if err != nil {
 		return "", nil, err
 	}
-	if strings.TrimSpace(check.Name) == "" || check.Definition == nil {
-		return "", nil, errors.New("forward: check name and definition are required")
+	if check.Definition == nil {
+		return "", nil, errors.New("forward: check definition is required")
 	}
 	path += "?persistent=true"
 	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, check)
