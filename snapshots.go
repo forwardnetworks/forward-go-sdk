@@ -532,8 +532,13 @@ func (s *SnapshotsService) ResolveID(ctx context.Context, networkID, which strin
 	return "", response, ErrNoSnapshots
 }
 
+// predicted reports whether a snapshot came from Predict rather than a
+// collection. ProcessingTrigger is the field Forward actually sets -- a
+// prediction reads PREDICT where a collection reads COLLECTION -- and the rest
+// are corroborating signals that older builds and other routes supply instead.
 func (s Snapshot) predicted() bool {
-	return s.IsPredicted || s.ParentSnapshotID != "" || s.ChangeSetID != ""
+	return strings.EqualFold(s.ProcessingTrigger, "PREDICT") ||
+		s.IsPredicted || s.ParentSnapshotID != "" || s.ChangeSetID != ""
 }
 
 // Download writes an exported snapshot ZIP to dst.

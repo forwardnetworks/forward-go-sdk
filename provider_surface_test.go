@@ -195,11 +195,13 @@ func TestSnapshotsCreateAndLatestCollected(t *testing.T) {
 			_, _ = io.WriteString(w, `{"id":"snap-9","state":"IN_PROGRESS"}`)
 		case r.Method == http.MethodGet && r.URL.Path == "/api/networks/net-1/snapshots":
 			// Newest first, and the newest two are predictions.
+			// processingTrigger is what a current appserver actually sets;
+			// the other markers cover the routes and builds that do not.
 			_, _ = io.WriteString(w, `{"snapshots":[
-			  {"id":"snap-9","state":"PROCESSED","isPredicted":true},
+			  {"id":"snap-9","state":"PROCESSED","processingTrigger":"PREDICT"},
 			  {"id":"snap-8","state":"PROCESSED","changeSetId":"CHG-1"},
 			  {"id":"snap-7","state":"IN_PROGRESS"},
-			  {"id":"snap-6","state":"PROCESSED"}]}`)
+			  {"id":"snap-6","state":"PROCESSED","processingTrigger":"COLLECTION"}]}`)
 		default:
 			t.Errorf("unexpected request %s %s", r.Method, r.URL.RequestURI())
 		}
@@ -232,7 +234,7 @@ func TestSnapshotsLatestCollectedWithoutOne(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, `{"snapshots":[{"id":"snap-9","state":"PROCESSED","isPredicted":true}]}`)
+		_, _ = io.WriteString(w, `{"snapshots":[{"id":"snap-9","state":"PROCESSED","processingTrigger":"PREDICT"}]}`)
 	}))
 	defer server.Close()
 
