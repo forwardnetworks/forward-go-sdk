@@ -53,6 +53,9 @@ type Config struct {
 	// Capabilities declares what is known about the target appliance build.
 	// Unlisted capabilities remain unknown and are attempted normally.
 	Capabilities CapabilityProfile
+
+	// Retry rides out transient failures. The zero value retries nothing.
+	Retry RetryPolicy
 }
 
 // Client is a Forward Networks REST API client.
@@ -67,6 +70,7 @@ type Client struct {
 	networkID      string
 	unavailableErr error
 	capabilities   *capabilityRegistry
+	retry          RetryPolicy
 
 	Version        *VersionService
 	Networks       *NetworksService
@@ -162,6 +166,7 @@ func NewClient(cfg Config) (*Client, error) {
 		hooks:        append([]Hook(nil), cfg.Hooks...),
 		networkID:    strings.TrimSpace(cfg.NetworkID),
 		capabilities: newCapabilityRegistry(cfg.Capabilities),
+		retry:        cfg.Retry,
 	}
 	c.bindServices()
 
@@ -336,7 +341,7 @@ func (c *Client) do(req *http.Request, dst any, allowEmpty bool, accepted func(i
 	started := time.Now()
 	metadata := MetadataFromRequest(req)
 	c.emit(req.Context(), Event{Type: EventRequest, Method: req.Method, Path: req.URL.Path, Operation: metadata.Operation, AuthMode: metadata.AuthMode})
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.send(req)
 	if err != nil {
 		err = fmt.Errorf("forward: send request: %w", err)
 		c.emit(req.Context(), Event{Type: EventResponse, Method: req.Method, Path: req.URL.Path, Duration: time.Since(started), Err: errors.New("forward: transport error"), Operation: metadata.Operation, AuthMode: metadata.AuthMode})
