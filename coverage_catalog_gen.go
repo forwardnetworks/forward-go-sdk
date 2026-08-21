@@ -98,6 +98,7 @@ var sdkCoverageCatalog = map[string]CoverageOperation{
 	"Proxies.Update":                             {Method: "PATCH", Route: "/api/networks/{networkId}/proxies/{proxyId}"},
 	"Integrations.UpdateRapid7":                  {Method: "PATCH", Route: "/api/networks/{networkId}/rapid7-sources/{sourceName}"},
 	"Snapshots.Favorite":                         {Method: "PATCH", Route: "/api/snapshots/{snapshotId}"},
+	"Snapshots.SetNote":                          {Method: "PATCH", Route: "/api/snapshots/{snapshotId}"},
 	"Admin.PatchUser":                            {Method: "PATCH", Route: "/api/users/{userId}"},
 	"Webhooks.Update":                            {Method: "PATCH", Route: "/api/webhooks/{name}"},
 	"Backups.UpdateSettings":                     {Method: "PATCH", Route: "/backup-settings"},

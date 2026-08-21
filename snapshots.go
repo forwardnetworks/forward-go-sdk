@@ -765,3 +765,23 @@ func (s *SnapshotsService) Operation(
 	}, snapshotProcessingDone)
 	return poller, resp, err
 }
+
+// SetNote records a note against a snapshot.
+//
+// Collection takes no note, so a caller that wants one sets it afterwards.
+// The updated snapshot is returned.
+func (s *SnapshotsService) SetNote(ctx context.Context, snapshotID, note string) (*Snapshot, *Response, error) {
+	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
+		return nil, nil, errors.New("forward: snapshot ID is required")
+	}
+	path := "/api/snapshots/" + url.PathEscape(snapshotID)
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, struct {
+		Note string `json:"note"`
+	}{Note: note})
+	if err != nil {
+		return nil, nil, err
+	}
+	snapshot := new(Snapshot)
+	resp, err := s.client.Do(req, snapshot)
+	return snapshot, resp, err
+}

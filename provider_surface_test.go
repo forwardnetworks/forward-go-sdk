@@ -441,3 +441,31 @@ func TestSnapshotsGetPrefersTheMetadataRoute(t *testing.T) {
 		t.Fatalf("Get() = %#v, %v after %d calls", snapshot, err, calls)
 	}
 }
+
+// Collection takes no note, so the note is a second call. Losing it would be
+// silent: the snapshot exists either way, just unlabelled.
+func TestSnapshotsSetNote(t *testing.T) {
+	t.Parallel()
+
+	var body struct {
+		Note string `json:"note"`
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch || r.URL.Path != "/api/snapshots/558" {
+			t.Errorf("request = %s %s", r.Method, r.URL.RequestURI())
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		_, _ = io.WriteString(w, `{"id":"558","note":"after change","state":"PROCESSED"}`)
+	}))
+	defer server.Close()
+
+	snapshot, _, err := newTestClient(t, server.URL).Snapshots.SetNote(context.Background(), "558", "after change")
+	if err != nil {
+		t.Fatalf("Snapshots.SetNote() error = %v", err)
+	}
+	if body.Note != "after change" || snapshot.Note != "after change" {
+		t.Fatalf("note sent %q, read back %q", body.Note, snapshot.Note)
+	}
+}

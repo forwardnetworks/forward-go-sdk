@@ -85,7 +85,7 @@
     {"method":"PATCH","route":"/api/networks/{networkId}/performance/settings","symbols":["Collectors.SetPerformanceCollection"],"coverage":"COVERED"},
     {"method":"PATCH","route":"/api/networks/{networkId}/proxies/{proxyId}","symbols":["Proxies.Update"],"coverage":"COVERED"},
     {"method":"PATCH","route":"/api/networks/{networkId}/rapid7-sources/{sourceName}","symbols":["Integrations.UpdateRapid7"],"coverage":"COVERED"},
-    {"method":"PATCH","route":"/api/snapshots/{snapshotId}","symbols":["Snapshots.Favorite"],"coverage":"COVERED"},
+    {"method":"PATCH","route":"/api/snapshots/{snapshotId}","symbols":["Snapshots.Favorite","Snapshots.SetNote"],"coverage":"COVERED"},
     {"method":"PATCH","route":"/api/users/{userId}","symbols":["Admin.PatchUser"],"coverage":"COVERED"},
     {"method":"PATCH","route":"/api/webhooks/{name}","symbols":["Webhooks.Update"],"coverage":"COVERED"},
     {"method":"PATCH","route":"/backup-settings","symbols":["Backups.UpdateSettings"],"coverage":"COVERED"},

@@ -87,7 +87,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | PATCH | `/api/networks/{networkId}/performance/settings` | `Collectors.SetPerformanceCollection` | COVERED |
 | PATCH | `/api/networks/{networkId}/proxies/{proxyId}` | `Proxies.Update` | COVERED |
 | PATCH | `/api/networks/{networkId}/rapid7-sources/{sourceName}` | `Integrations.UpdateRapid7` | COVERED |
-| PATCH | `/api/snapshots/{snapshotId}` | `Snapshots.Favorite` | COVERED |
+| PATCH | `/api/snapshots/{snapshotId}` | `Snapshots.Favorite`, `Snapshots.SetNote` | COVERED |
 | PATCH | `/api/users/{userId}` | `Admin.PatchUser` | COVERED |
 | PATCH | `/api/webhooks/{name}` | `Webhooks.Update` | COVERED |
 | PATCH | `/backup-settings` | `Backups.UpdateSettings` | COVERED |
