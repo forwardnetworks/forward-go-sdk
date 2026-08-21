@@ -337,3 +337,76 @@ func TestChecksDecodeCollectedShape(t *testing.T) {
 		t.Fatalf("numViolations = %v, want nil", *got.NumViolations)
 	}
 }
+
+// Some appserver builds have no per-snapshot metadata route and answer "No
+// endpoint GET ..." with a 404. Get has to survive that, because the bare
+// /api/snapshots/{id} route is not an alternative -- it serves the exported
+// ZIP, not metadata.
+func TestSnapshotsGetFallsBackToListing(t *testing.T) {
+	t.Parallel()
+
+	var listed bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/networks/net-1/snapshots/555":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = io.WriteString(w, `{"message":"No endpoint GET /api/networks/net-1/snapshots/555."}`)
+		case "/api/networks/net-1/snapshots":
+			listed = true
+			if r.URL.Query().Get("includeArchived") != "true" {
+				t.Errorf("fallback listing did not include archived: %s", r.URL.RawQuery)
+			}
+			_, _ = io.WriteString(w, `{"snapshots":[
+			  {"id":"556","state":"PROCESSED"},{"id":"555","state":"IN_PROGRESS"}]}`)
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.RequestURI())
+		}
+	}))
+	defer server.Close()
+
+	snapshot, _, err := newTestClient(t, server.URL).Snapshots.Get(context.Background(), "net-1", "555")
+	if err != nil {
+		t.Fatalf("Snapshots.Get() error = %v", err)
+	}
+	if !listed || snapshot.ID != "555" || snapshot.State != "IN_PROGRESS" {
+		t.Fatalf("snapshot = %#v (listed=%v)", snapshot, listed)
+	}
+}
+
+func TestSnapshotsGetReportsAbsence(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/networks/net-1/snapshots" {
+			_, _ = io.WriteString(w, `{"snapshots":[{"id":"556","state":"PROCESSED"}]}`)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	_, _, err := newTestClient(t, server.URL).Snapshots.Get(context.Background(), "net-1", "555")
+	if !errors.Is(err, ErrSnapshotNotFound) {
+		t.Fatalf("Get(absent) error = %v, want ErrSnapshotNotFound", err)
+	}
+}
+
+// Where the metadata route exists it is used, without a second request.
+func TestSnapshotsGetPrefersTheMetadataRoute(t *testing.T) {
+	t.Parallel()
+
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.URL.Path != "/api/networks/net-1/snapshots/555" {
+			t.Errorf("unexpected request %s", r.URL.RequestURI())
+		}
+		_, _ = io.WriteString(w, `{"id":"555","state":"PROCESSED"}`)
+	}))
+	defer server.Close()
+
+	snapshot, _, err := newTestClient(t, server.URL).Snapshots.Get(context.Background(), "net-1", "555")
+	if err != nil || snapshot.ID != "555" || calls != 1 {
+		t.Fatalf("Get() = %#v, %v after %d calls", snapshot, err, calls)
+	}
+}

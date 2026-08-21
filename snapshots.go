@@ -144,30 +144,66 @@ func (s *SnapshotsService) List(
 	return result.Items, resp, nil
 }
 
-// Get returns snapshot metadata using the preview network-scoped route used by
-// current Terraform and orchestration clients.
+// ErrSnapshotNotFound reports that a network holds no snapshot of that ID.
+var ErrSnapshotNotFound = errors.New("forward: snapshot not found")
+
+// snapshotSearchLimit bounds the fallback listing in Get. Large enough to cover
+// any recent snapshot, bounded so a network with a long history cannot make one
+// lookup unbounded.
+const snapshotSearchLimit = 1000
+
+// Get returns snapshot metadata.
 //
-// Preview: this metadata route is not in the published OpenAPI description.
+// It tries the network-scoped metadata route first and falls back to searching
+// the listing, because that route is absent from some appserver builds -- it
+// answers "No endpoint GET ..." rather than serving the snapshot. The bare
+// /api/snapshots/{id} route is not an alternative: it returns the snapshot's
+// exported ZIP, not its metadata.
+//
+// Preview: the metadata route is not in the published OpenAPI description.
 func (s *SnapshotsService) Get(ctx context.Context, networkID, snapshotID string) (*Snapshot, *Response, error) {
 	networkID, err := s.client.resolveNetworkID(networkID)
-	if err != nil {
-		return nil, nil, err
-	}
-	path, err := snapshotsPath(networkID)
 	if err != nil {
 		return nil, nil, err
 	}
 	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
 		return nil, nil, errors.New("forward: snapshot ID is required")
 	}
-	path += "/" + url.PathEscape(snapshotID)
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	path, err := snapshotsPath(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/"+url.PathEscape(snapshotID), nil)
 	if err != nil {
 		return nil, nil, err
 	}
 	snapshot := new(Snapshot)
 	resp, err := s.client.Do(req, snapshot)
-	return snapshot, resp, err
+	if err == nil {
+		return snapshot, resp, nil
+	}
+	if !IsStatus(err, http.StatusNotFound) {
+		return nil, resp, err
+	}
+	return s.findInListing(ctx, networkID, snapshotID)
+}
+
+func (s *SnapshotsService) findInListing(ctx context.Context, networkID, snapshotID string) (*Snapshot, *Response, error) {
+	limit := int32(snapshotSearchLimit)
+	includeArchived := true
+	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{
+		Limit:           &limit,
+		IncludeArchived: &includeArchived,
+	})
+	if err != nil {
+		return nil, resp, err
+	}
+	for i := range snapshots {
+		if string(snapshots[i].ID) == snapshotID {
+			return &snapshots[i], resp, nil
+		}
+	}
+	return nil, resp, fmt.Errorf("%w: %s", ErrSnapshotNotFound, snapshotID)
 }
 
 // LatestProcessed returns the most recent processed snapshot for a network.
