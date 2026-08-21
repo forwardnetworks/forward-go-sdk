@@ -96,14 +96,15 @@ type CloudAccountRequest struct {
 	AssumeRoleInfos               []AWSAssumeRoleInfo `json:"assumeRoleInfos,omitempty"`
 	UseForwardAccountToAssumeRole *bool               `json:"useForwardAccountToAssumeRole,omitempty"`
 
-	// Azure service principal.
+	// Azure service principal. The secret goes in Password, like every other
+	// provider's: Forward's Azure create has no clientSecret field and refuses
+	// a request carrying one.
 	//
 	// TestInstants is Azure's analogue of Regions: subscription id to a
 	// last-test timestamp. Forward requires it on a create, so a request that
 	// names subscriptions and omits this is refused outright.
 	TestInstants    map[string]int64 `json:"testInstants,omitempty"`
 	ClientID        string           `json:"clientId,omitempty"`
-	ClientSecret    string           `json:"clientSecret,omitempty"`
 	Tenant          string           `json:"tenant,omitempty"`
 	Environment     string           `json:"environment,omitempty"`
 	SubscriptionIDs []string         `json:"subscriptionIds,omitempty"`
