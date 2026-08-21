@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -236,4 +237,31 @@ func cloudAccountPath(networkID, name string) (string, error) {
 		return "", errors.New("forward: cloud account name is required")
 	}
 	return path + "/" + url.PathEscape(name), nil
+}
+
+// ErrCloudAccountNotFound is returned by Get when the network has no setup of
+// that name. A Terraform read distinguishes this from a transport failure --
+// the first means the resource is gone and should be removed from state, the
+// second means try again -- so it has to be matchable rather than a string.
+var ErrCloudAccountNotFound = errors.New("forward: cloud account not found")
+
+// Get returns one cloud setup by name.
+//
+// Forward exposes no per-name read, so this filters the list. The name is the
+// setup's identity for every other call -- update, credential rotation,
+// delete -- so a caller holding only a name can still read it back.
+func (s *CloudAccountsService) Get(ctx context.Context, networkID, name string) (*CloudAccount, *Response, error) {
+	if name = strings.TrimSpace(name); name == "" {
+		return nil, nil, errors.New("forward: cloud account name is required")
+	}
+	accounts, resp, err := s.List(ctx, networkID)
+	if err != nil {
+		return nil, resp, err
+	}
+	for i := range accounts {
+		if accounts[i].Name == name {
+			return &accounts[i], resp, nil
+		}
+	}
+	return nil, resp, fmt.Errorf("%w: %s", ErrCloudAccountNotFound, name)
 }

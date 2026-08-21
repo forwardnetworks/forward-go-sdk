@@ -633,3 +633,76 @@ func nonEmptyStrings(values []string) []string {
 	}
 	return result
 }
+
+// SnapshotCreateRequest carries the optional note recorded against a
+// collection.
+type SnapshotCreateRequest struct {
+	Note string `json:"note,omitempty"`
+}
+
+// Create triggers a collection and returns the snapshot it opened.
+//
+// Distinct from CollectorTasks.Start, which starts the same work through the
+// task queue and returns a task id. Use this when the caller's unit of work is
+// the snapshot -- it can be polled, read, and deleted straight away, whereas a
+// task id has to be resolved to a snapshot first.
+//
+// The returned snapshot is not processed yet. Operation waits for that.
+func (s *SnapshotsService) Create(
+	ctx context.Context,
+	networkID string,
+	request SnapshotCreateRequest,
+) (*Snapshot, *Response, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	path, err := snapshotsPath(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, request)
+	if err != nil {
+		return nil, nil, err
+	}
+	snapshot := new(Snapshot)
+	resp, err := s.client.Do(req, snapshot)
+	return snapshot, resp, err
+}
+
+// LatestCollected returns the most recent processed snapshot that came from a
+// collection rather than a prediction.
+//
+// Predict refuses to run against predicted input, and every prediction leaves
+// a snapshot behind, so "the newest snapshot" is usually the wrong baseline
+// for a change set. This is the right one.
+func (s *SnapshotsService) LatestCollected(ctx context.Context, networkID string) (*Snapshot, *Response, error) {
+	limit := int32(50)
+	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{Limit: &limit})
+	if err != nil {
+		return nil, resp, err
+	}
+	for i := range snapshots {
+		if strings.EqualFold(snapshots[i].State, "PROCESSED") && !snapshots[i].predicted() {
+			return &snapshots[i], resp, nil
+		}
+	}
+	return nil, resp, ErrNoSnapshots
+}
+
+// Operation returns a handle that polls a snapshot until processing reaches a
+// terminal state, resolving to an error for any terminal state but PROCESSED.
+func (s *SnapshotsService) Operation(
+	ctx context.Context,
+	networkID string,
+	snapshotID string,
+) (*Poller[Snapshot], *Response, error) {
+	snapshot, resp, err := s.Get(ctx, networkID, snapshotID)
+	if err != nil {
+		return nil, resp, err
+	}
+	poller, err := NewPoller(snapshot, func(ctx context.Context) (*Snapshot, *Response, error) {
+		return s.Get(ctx, networkID, snapshotID)
+	}, snapshotProcessingDone)
+	return poller, resp, err
+}

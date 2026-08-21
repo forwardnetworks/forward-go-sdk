@@ -1,8 +1,8 @@
 # Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from the consumer's API audit plus the corrections appended there on 2026-08-05.
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from consumer API audit plus the corrections appended there on 2026-08-05; extended 2026-08-21 with the routes the Terraform provider uses.
 
-Current inventory: **210 semantic call sites**, **142 distinct normalized method+route pairs**, **142 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **210 semantic call sites**, **145 distinct normalized method+route pairs**, **145 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when the consumer adds, removes, or changes a Forward wire call. Run `go run ./cmd/coverage-audit -audit /path/to/consumer/api-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -13,6 +13,8 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | DELETE | `/api/integrations/servicenow` | `Integrations.DeleteServiceNow` | COVERED |
 | DELETE | `/api/networks/{networkId}` | `Networks.Delete` | COVERED |
 | DELETE | `/api/orgs/{orgId}/config/software_central` | `Properties.ClearOrganization` | COVERED |
+| DELETE | `/api/snapshots/{snapshotId}/checks` | `Checks.DeactivateAll` | COVERED |
+| DELETE | `/api/snapshots/{snapshotId}/checks/{checkId}` | `Checks.Deactivate` | COVERED |
 | DELETE | `/api/users/current/tokens/{tokenName}` | `Users.DeleteToken` | COVERED |
 | DELETE | `/api/users/{userId}` | `Admin.DeleteUser` | COVERED |
 | GET | `/api/admin/impersonate` | `Browser.Impersonate`, `Browser.ImpersonateWithServiceCredential` | COVERED |
@@ -35,7 +37,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/networks` | `Networks.List`, `Networks.CheckAccess` | COVERED |
 | GET | `/api/networks/{networkId}/change-sets/{changeSetId}/predicted-snapshots` | `Predict.ListPredictedSnapshots` | COVERED |
 | GET | `/api/networks/{networkId}/classic-devices` | `ClassicDevices.List`, `ClassicDevices.ListTestStatuses` | COVERED |
-| GET | `/api/networks/{networkId}/cloudAccounts` | `CloudAccounts.List` | COVERED |
+| GET | `/api/networks/{networkId}/cloudAccounts` | `CloudAccounts.List`, `CloudAccounts.Get` | COVERED |
 | GET | `/api/networks/{networkId}/collectionProgress` | `Collections.Progress` | COVERED |
 | GET | `/api/networks/{networkId}/collections` | `Collections.List` | COVERED |
 | GET | `/api/networks/{networkId}/collector/status` | `Collectors.Attachment` | COVERED |
@@ -51,7 +53,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/networks/{networkId}/locations/{locationId}/clusters` | `Locations.ListClusters` | COVERED |
 | GET | `/api/networks/{networkId}/paths` | `Networks.Paths` | COVERED |
 | GET | `/api/networks/{networkId}/proxies` | `Proxies.List` | COVERED |
-| GET | `/api/networks/{networkId}/snapshots` | `Snapshots.List`, `Snapshots.ListDocument`, `Compatibility.ListSnapshots` | COVERED |
+| GET | `/api/networks/{networkId}/snapshots` | `Snapshots.List`, `Snapshots.ListDocument`, `Compatibility.ListSnapshots`, `Snapshots.LatestCollected` | COVERED |
 | GET | `/api/networks/{networkId}/snmpCredentials` | `Credentials.ListSNMP` | COVERED |
 | GET | `/api/networks/{networkId}/unhealthy-devices` | `Performance.UnhealthyDevices` | COVERED |
 | GET | `/api/nqe/repos/fwd/commits/head/queries` | `NQE.ListQueries` | COVERED |
@@ -62,6 +64,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/public/csrf` | `Browser.PublicCSRFAPI` | COVERED |
 | GET | `/api/snapshots/{snapshotId}` | `Snapshots.Download` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/checks` | `Checks.List`, `Compatibility.Checks` | COVERED |
+| GET | `/api/snapshots/{snapshotId}/checks/{checkId}` | `Checks.Get` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/topology` | `Topology.List` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.Overrides` | COVERED |
 | GET | `/api/users/current` | `Users.Current`, `Browser.CurrentUser` | COVERED |
@@ -123,7 +126,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/networks/{networkId}/performance` | `Performance.UploadWithIdentity` | COVERED |
 | POST | `/api/networks/{networkId}/proxies` | `Proxies.Create` | COVERED |
 | POST | `/api/networks/{networkId}/rapid7-sources` | `Integrations.CreateRapid7` | COVERED |
-| POST | `/api/networks/{networkId}/snapshots` | `Snapshots.Upload`, `Snapshots.UploadMergeCompatibility` | COVERED |
+| POST | `/api/networks/{networkId}/snapshots` | `Snapshots.Upload`, `Snapshots.UploadMergeCompatibility`, `Snapshots.Create` | COVERED |
 | POST | `/api/networks/{networkId}/snmpCredentials` | `Credentials.CreateSNMP` | COVERED |
 | POST | `/api/networks/{networkId}/startcollection` | `Collectors.StartLegacy` | COVERED |
 | POST | `/api/networks/{networkId}/unhealthy-interfaces` | `Performance.UnhealthyInterfaces` | COVERED |
@@ -132,7 +135,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/nqe/repos/org/commits` | `NQERepository.Commit` | COVERED |
 | POST | `/api/orgs/{orgId}/users` | `Admin.CreateOrganizationUser` | COVERED |
 | POST | `/api/snapshots/{snapshotId}` | `Snapshots.Reprocess`, `Snapshots.Invalidate`, `Snapshots.ExportSubset`, `Snapshots.ExportSubsetCompatibility` | COVERED |
-| POST | `/api/snapshots/{snapshotId}/checks` | `Checks.CreatePersistent` | COVERED |
+| POST | `/api/snapshots/{snapshotId}/checks` | `Checks.CreatePersistent`, `Checks.Create` | COVERED |
 | POST | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.EditOverrides` | COVERED |
 | POST | `/api/users/current/nqe/changes` | `NQERepository.DeleteDirectory`, `NQERepository.AddDirectory`, `NQERepository.AddQuery` | COVERED |
 | POST | `/api/users/current/password` | `Users.ResetPassword` | COVERED |
