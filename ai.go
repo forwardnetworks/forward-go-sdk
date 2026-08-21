@@ -36,10 +36,12 @@ type AIChat struct {
 
 // AIFinalAnswer is the structured answer produced after the tool loop.
 type AIFinalAnswer struct {
-	Summary     string                     `json:"summary"`
-	KeyInsights []string                   `json:"keyInsights,omitempty"`
-	Text        string                     `json:"-"`
-	Raw         map[string]json.RawMessage `json:"-"`
+	Summary     string   `json:"summary"`
+	KeyInsights []string `json:"keyInsights,omitempty"`
+	Text        string   `json:"-"`
+	// Raw carries fields this SDK version does not model, so an object read
+	// from a newer appserver and written back does not silently lose them.
+	Raw map[string]json.RawMessage `json:"-"`
 }
 
 func (a *AIFinalAnswer) UnmarshalJSON(data []byte) error {

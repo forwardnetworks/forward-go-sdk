@@ -37,11 +37,13 @@ type WebhookRequest struct {
 
 // Webhook retains the complete response to tolerate schema drift.
 type Webhook struct {
-	Name        string                     `json:"name"`
-	Description string                     `json:"description,omitempty"`
-	URL         string                     `json:"url"`
-	Enabled     bool                       `json:"enabled"`
-	Raw         map[string]json.RawMessage `json:"-"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	URL         string `json:"url"`
+	Enabled     bool   `json:"enabled"`
+	// Raw carries fields this SDK version does not model, so an object read
+	// from a newer appserver and written back does not silently lose them.
+	Raw map[string]json.RawMessage `json:"-"`
 }
 
 func (w *Webhook) UnmarshalJSON(data []byte) error {
@@ -59,12 +61,20 @@ func (w *Webhook) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// List returns configured webhooks. TestResults retains the version-specific
-// test status object keyed by webhook name.
-func (s *WebhooksService) List(ctx context.Context) ([]Webhook, map[string]json.RawMessage, *Response, error) {
+// WebhookTestResult is the outcome of the last delivery test for one webhook.
+type WebhookTestResult struct {
+	Success    bool   `json:"success"`
+	StatusCode *int   `json:"statusCode,omitempty"`
+	Message    string `json:"message,omitempty"`
+	TestedAt   string `json:"testedAt,omitempty"`
+}
+
+// List returns configured webhooks and the last test result for each, keyed by
+// webhook name.
+func (s *WebhooksService) List(ctx context.Context) ([]Webhook, map[string]WebhookTestResult, *Response, error) {
 	var envelope struct {
-		Webhooks    []Webhook                  `json:"webhooks"`
-		TestResults map[string]json.RawMessage `json:"testResults"`
+		Webhooks    []Webhook                    `json:"webhooks"`
+		TestResults map[string]WebhookTestResult `json:"testResults"`
 	}
 	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/webhooks", nil)
 	if err != nil {
@@ -85,8 +95,17 @@ func (s *WebhooksService) Create(ctx context.Context, request WebhookRequest) (*
 	return s.client.Do(req, nil)
 }
 
-// Update patches an existing webhook. patch may include explicit JSON nulls.
-func (s *WebhooksService) Update(ctx context.Context, name string, patch map[string]any) (*Response, error) {
+// Update patches an existing webhook.
+// WebhookPatch changes part of a webhook. Pointer fields keep "not stated"
+// distinct from "stated as empty" -- disabling a webhook and leaving its state
+// alone are different requests.
+type WebhookPatch struct {
+	Description *string `json:"description,omitempty"`
+	URL         *string `json:"url,omitempty"`
+	Enabled     *bool   `json:"enabled,omitempty"`
+}
+
+func (s *WebhooksService) Update(ctx context.Context, name string, patch WebhookPatch) (*Response, error) {
 	path, err := webhookPath(name)
 	if err != nil {
 		return nil, err

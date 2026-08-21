@@ -16,18 +16,20 @@ import (
 type CloudAccountsService service
 
 type CloudAccount struct {
-	Type                          string                     `json:"type"`
-	Name                          string                     `json:"name"`
-	Collect                       bool                       `json:"collect"`
-	ProxyServerID                 string                     `json:"proxyServerId,omitempty"`
-	Regions                       map[string]Region          `json:"regions,omitempty"`
-	RegionToProxyServerID         map[string]string          `json:"regionToProxyServerId,omitempty"`
-	AssumeRoleInfos               []AWSAssumeRoleInfo        `json:"assumeRoleInfos,omitempty"`
-	UseForwardAccountToAssumeRole *bool                      `json:"useForwardAccountToAssumeRole,omitempty"`
-	Concurrency                   *int64                     `json:"concurrency,omitempty"`
-	ConnectionTimeoutSeconds      *int64                     `json:"connectionTimeoutSeconds,omitempty"`
-	RequestTimeoutSeconds         *int64                     `json:"requestTimeoutSeconds,omitempty"`
-	Raw                           map[string]json.RawMessage `json:"-"`
+	Type                          string              `json:"type"`
+	Name                          string              `json:"name"`
+	Collect                       bool                `json:"collect"`
+	ProxyServerID                 string              `json:"proxyServerId,omitempty"`
+	Regions                       map[string]Region   `json:"regions,omitempty"`
+	RegionToProxyServerID         map[string]string   `json:"regionToProxyServerId,omitempty"`
+	AssumeRoleInfos               []AWSAssumeRoleInfo `json:"assumeRoleInfos,omitempty"`
+	UseForwardAccountToAssumeRole *bool               `json:"useForwardAccountToAssumeRole,omitempty"`
+	Concurrency                   *int64              `json:"concurrency,omitempty"`
+	ConnectionTimeoutSeconds      *int64              `json:"connectionTimeoutSeconds,omitempty"`
+	RequestTimeoutSeconds         *int64              `json:"requestTimeoutSeconds,omitempty"`
+	// Raw carries fields this SDK version does not model, so an object read
+	// from a newer appserver and written back does not silently lose them.
+	Raw map[string]json.RawMessage `json:"-"`
 }
 
 func (a *CloudAccount) UnmarshalJSON(data []byte) error {
@@ -58,9 +60,64 @@ type AWSAssumeRoleInfo struct {
 	ErrorMsg    string `json:"errorMsg,omitempty"`
 }
 
-// CloudAccountRequest contains the common AWS fields. Fields carries
-// provider- and version-specific properties for Azure, GCP, and newer sources.
-type CloudAccountRequest map[string]any
+// CloudAccountRequest is the create/update payload for a cloud setup.
+//
+// One struct spans the providers because one endpoint does: Forward
+// discriminates on Type and reads the fields that apply to it. Splitting this
+// per provider would model a distinction the API does not make, and would put
+// the burden of picking the right type on a caller that already states it.
+//
+// Pointer fields distinguish "not stated" from "stated as zero". An update
+// that sets Collect to false and one that leaves collection alone are
+// different requests, and a plain bool cannot say which was meant.
+type CloudAccountRequest struct {
+	// Type is the discriminator: AWS, AZURE, GCP, IBM_CLOUD, ALKIRA.
+	Type string `json:"type"`
+	Name string `json:"name,omitempty"`
+
+	Collect                  *bool             `json:"collect,omitempty"`
+	ProxyServerID            *string           `json:"proxyServerId,omitempty"`
+	RegionToProxyServerID    map[string]string `json:"regionToProxyServerId,omitempty"`
+	Concurrency              *int64            `json:"concurrency,omitempty"`
+	ConnectionTimeoutSeconds *int64            `json:"connectionTimeoutSeconds,omitempty"`
+	RequestTimeoutSeconds    *int64            `json:"requestTimeoutSeconds,omitempty"`
+
+	// Regions maps a region name to a last-test timestamp. A create states the
+	// regions with zero timestamps; Forward fills them in.
+	Regions map[string]int64 `json:"regions,omitempty"`
+
+	// Username and Password are the AWS access key and secret, or the
+	// equivalent pair for a provider that authenticates that way.
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+
+	// AWS assume-role onboarding.
+	AssumeRoleInfos               []AWSAssumeRoleInfo `json:"assumeRoleInfos,omitempty"`
+	UseForwardAccountToAssumeRole *bool               `json:"useForwardAccountToAssumeRole,omitempty"`
+
+	// Azure service principal.
+	ClientID        string   `json:"clientId,omitempty"`
+	ClientSecret    string   `json:"clientSecret,omitempty"`
+	Tenant          string   `json:"tenant,omitempty"`
+	Environment     string   `json:"environment,omitempty"`
+	SubscriptionIDs []string `json:"subscriptionIds,omitempty"`
+}
+
+// CloudAccountCredentialRequest replaces the stored credential of a setup
+// without restating the rest of it.
+type CloudAccountCredentialRequest struct {
+	Type     string `json:"type"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	// Azure rotates a secret rather than a password.
+	ClientSecret string `json:"clientSecret,omitempty"`
+}
+
+// AWSAssumeRoleExternalID is the external id Forward expects a customer role to
+// require, which is what makes the trust policy specific to this instance.
+type AWSAssumeRoleExternalIDResponse struct {
+	ExternalID string `json:"externalId"`
+}
 
 func (s *CloudAccountsService) List(ctx context.Context, networkID string) ([]CloudAccount, *Response, error) {
 	path, err := cloudAccountsPath(networkID)
@@ -104,7 +161,7 @@ func (s *CloudAccountsService) Update(ctx context.Context, networkID, name strin
 	return account, resp, err
 }
 
-func (s *CloudAccountsService) UpdateCredential(ctx context.Context, networkID, name string, request map[string]any) (*Response, error) {
+func (s *CloudAccountsService) UpdateCredential(ctx context.Context, networkID, name string, request CloudAccountCredentialRequest) (*Response, error) {
 	path, err := cloudAccountPath(networkID, name)
 	if err != nil {
 		return nil, err
