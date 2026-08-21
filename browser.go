@@ -163,7 +163,7 @@ func (s *BrowserService) LoginLegacy(ctx context.Context, input BrowserLoginRequ
 	return s.finishLogin(req)
 }
 
-// Login performs the measured Skyforge fallback order: public API CSRF,
+// Login performs the measured fallback order: public API CSRF,
 // legacy public CSRF, login-page CSRF, JSON login, then legacy form login only
 // when the JSON route is unsupported or unauthorized.
 func (s *BrowserService) Login(ctx context.Context) (*BrowserLoginResult, error) {

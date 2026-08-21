@@ -123,7 +123,7 @@ func (s *CollectorTasksService) Start(ctx context.Context, networkID string) (st
 }
 
 // Progress reports active network collection work using the network-filtered
-// collector-task route present on the appserver builds used by Skyforge.
+// collector-task route present on some appserver builds.
 func (s *CollectorTasksService) Progress(ctx context.Context, networkID string) (*CollectionProgress, *Response, error) {
 	if err := s.client.requireCapability(CapabilityCollectorProgress); err != nil {
 		return nil, nil, err

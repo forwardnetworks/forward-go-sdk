@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "consumer": "skyforge/components/server",
+  "consumer": "internal consumer",
   "consumer_go_sha256": "634a7187549987f6298be20fe0549923dfc46e4182ed7d1a3b66266878820fd6",
-  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05",
+  "derived_from": "consumer API audit plus the corrections appended there on 2026-08-05",
   "semantic_call_sites": 210,
   "distinct_method_routes": 142,
   "endpoints": [

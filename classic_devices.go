@@ -74,7 +74,7 @@ type ClassicDevice struct {
 	Raw              map[string]json.RawMessage `json:"-"`
 }
 
-// ClassicDeviceBatchItem is the putBatch wire shape used by Skyforge.
+// ClassicDeviceBatchItem is the putBatch wire shape.
 type ClassicDeviceBatchItem struct {
 	Name                     string `json:"name"`
 	Type                     string `json:"type,omitempty"`

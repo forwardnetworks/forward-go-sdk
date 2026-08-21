@@ -1,10 +1,10 @@
-# Skyforge Forward API typed coverage
+# Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05.
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from the consumer's API audit plus the corrections appended there on 2026-08-05.
 
 Current inventory: **210 semantic call sites**, **142 distinct normalized method+route pairs**, **142 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
-The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.
+The inventory becomes stale when the consumer adds, removes, or changes a Forward wire call. Run `go run ./cmd/coverage-audit -audit /path/to/consumer/api-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
 | Method | Normalized route | Typed SDK symbol(s) | Class |
 |---|---|---|---|
