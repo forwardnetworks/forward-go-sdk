@@ -182,44 +182,75 @@ func TestCloudAccountsGet(t *testing.T) {
 	}
 }
 
-func TestSnapshotsCreateAndLatestCollected(t *testing.T) {
+// Collect goes through the collector-task queue, and the snapshot it produced
+// is found by the task id Forward records without its prefix.
+func TestSnapshotsCollect(t *testing.T) {
 	t.Parallel()
 
-	var note SnapshotCreateRequest
+	var started bool
+	taskStatus := "RUNNING"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/api/networks/net-1/snapshots":
-			if err := json.NewDecoder(r.Body).Decode(&note); err != nil {
-				t.Errorf("decode create: %v", err)
+		case r.Method == http.MethodPost && r.URL.Path == "/api/collector-tasks":
+			started = true
+			if got := r.URL.Query().Get("type"); got != "NETWORK_COLLECTION" {
+				t.Errorf("task type = %q", got)
 			}
-			_, _ = io.WriteString(w, `{"id":"snap-9","state":"IN_PROGRESS"}`)
+			_, _ = io.WriteString(w, `{"taskId":"P1021"}`)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/collector-tasks/P1021":
+			state := taskStatus
+			taskStatus = "SUCCEEDED"
+			_, _ = io.WriteString(w, `{"id":"P1021","type":"NETWORK_COLLECTION","status":"`+state+`"}`)
 		case r.Method == http.MethodGet && r.URL.Path == "/api/networks/net-1/snapshots":
-			// Newest first, and the newest two are predictions.
-			// processingTrigger is what a current appserver actually sets;
-			// the other markers cover the routes and builds that do not.
 			_, _ = io.WriteString(w, `{"snapshots":[
-			  {"id":"snap-9","state":"PROCESSED","processingTrigger":"PREDICT"},
-			  {"id":"snap-8","state":"PROCESSED","changeSetId":"CHG-1"},
-			  {"id":"snap-7","state":"IN_PROGRESS"},
-			  {"id":"snap-6","state":"PROCESSED","processingTrigger":"COLLECTION"}]}`)
+			  {"id":"558","state":"IN_PROGRESS","processingTrigger":"COLLECTION","collectionTaskId":"1021"},
+			  {"id":"557","state":"PROCESSED","processingTrigger":"PREDICT"}]}`)
 		default:
 			t.Errorf("unexpected request %s %s", r.Method, r.URL.RequestURI())
 		}
 	}))
 	defer server.Close()
 
-	client := newTestClient(t, server.URL)
-	ctx := context.Background()
-
-	created, _, err := client.Snapshots.Create(ctx, "net-1", SnapshotCreateRequest{Note: "nightly"})
+	snapshot, _, err := newTestClient(t, server.URL).Snapshots.Collect(context.Background(), "net-1")
 	if err != nil {
-		t.Fatalf("Snapshots.Create() error = %v", err)
+		t.Fatalf("Snapshots.Collect() error = %v", err)
 	}
-	if note.Note != "nightly" || created.ID != "snap-9" {
-		t.Fatalf("created = %#v, note = %#v", created, note)
+	// "P1021" against a recorded "1021": the prefix has to be tolerated, or the
+	// snapshot the caller just produced is never found.
+	if !started || snapshot.ID != "558" {
+		t.Fatalf("snapshot = %#v (started=%v)", snapshot, started)
 	}
+}
 
-	latest, _, err := client.Snapshots.LatestCollected(ctx, "net-1")
+func TestSnapshotsForCollectionTaskReportsAbsence(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `{"snapshots":[{"id":"557","processingTrigger":"PREDICT"}]}`)
+	}))
+	defer server.Close()
+
+	_, _, err := newTestClient(t, server.URL).Snapshots.ForCollectionTask(context.Background(), "net-1", "P1021")
+	if !errors.Is(err, ErrSnapshotNotFound) {
+		t.Fatalf("ForCollectionTask() error = %v, want ErrSnapshotNotFound", err)
+	}
+}
+
+func TestSnapshotsLatestCollected(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// processingTrigger is what a current appserver actually sets;
+		// the other markers cover the routes and builds that do not.
+		_, _ = io.WriteString(w, `{"snapshots":[
+		  {"id":"snap-9","state":"PROCESSED","processingTrigger":"PREDICT"},
+		  {"id":"snap-8","state":"PROCESSED","changeSetId":"CHG-1"},
+		  {"id":"snap-7","state":"IN_PROGRESS"},
+		  {"id":"snap-6","state":"PROCESSED","processingTrigger":"COLLECTION"}]}`)
+	}))
+	defer server.Close()
+
+	latest, _, err := newTestClient(t, server.URL).Snapshots.LatestCollected(context.Background(), "net-1")
 	if err != nil {
 		t.Fatalf("Snapshots.LatestCollected() error = %v", err)
 	}

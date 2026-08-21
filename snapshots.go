@@ -32,11 +32,15 @@ type Snapshot struct {
 	ParentSnapshotID          Identifier `json:"parentSnapshotId,omitempty"`
 	ChangeSetID               Identifier `json:"changeSetId,omitempty"`
 	ProcessingTrigger         string     `json:"processingTrigger,omitempty"`
-	Note                      string     `json:"note,omitempty"`
-	IsDraft                   bool       `json:"isDraft,omitempty"`
-	IsPredicted               bool       `json:"isPredicted,omitempty"`
-	TotalDevices              int        `json:"totalDevices,omitempty"`
-	Message                   string     `json:"message,omitempty"`
+	// CollectionTaskID ties a collected snapshot back to the collector task
+	// that produced it. Forward records it without the task id's prefix, so
+	// task "P1021" appears here as "1021".
+	CollectionTaskID Identifier `json:"collectionTaskId,omitempty"`
+	Note             string     `json:"note,omitempty"`
+	IsDraft          bool       `json:"isDraft,omitempty"`
+	IsPredicted      bool       `json:"isPredicted,omitempty"`
+	TotalDevices     int        `json:"totalDevices,omitempty"`
+	Message          string     `json:"message,omitempty"`
 }
 
 // SnapshotStateTransition is returned by snapshot invalidation/reprocessing.
@@ -675,40 +679,54 @@ func nonEmptyStrings(values []string) []string {
 	return result
 }
 
-// SnapshotCreateRequest carries the optional note recorded against a
-// collection.
-type SnapshotCreateRequest struct {
-	Note string `json:"note,omitempty"`
-}
-
-// Create triggers a collection and returns the snapshot it opened.
+// Collect starts a network collection and returns the snapshot it produced.
 //
-// Distinct from CollectorTasks.Start, which starts the same work through the
-// task queue and returns a task id. Use this when the caller's unit of work is
-// the snapshot -- it can be polled, read, and deleted straight away, whereas a
-// task id has to be resolved to a snapshot first.
+// Collection is started through the collector-task queue, not by posting to
+// the snapshots route -- that route takes a multipart upload, and answers 415
+// to anything else. See Upload.
 //
-// The returned snapshot is not processed yet. Operation waits for that.
-func (s *SnapshotsService) Create(
-	ctx context.Context,
-	networkID string,
-	request SnapshotCreateRequest,
-) (*Snapshot, *Response, error) {
+// The snapshot does not exist until the task finishes, so this waits for the
+// task and then resolves it. The snapshot returned is not processed yet;
+// Operation waits for that.
+func (s *SnapshotsService) Collect(ctx context.Context, networkID string) (*Snapshot, *Response, error) {
 	networkID, err := s.client.resolveNetworkID(networkID)
 	if err != nil {
 		return nil, nil, err
 	}
-	path, err := snapshotsPath(networkID)
+	poller, resp, err := s.client.CollectorTasks.StartOperation(ctx, networkID)
 	if err != nil {
-		return nil, nil, err
+		return nil, resp, err
 	}
-	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, request)
+	task, resp, err := poller.Wait(ctx, PollOptions[CollectorTask]{Interval: 2 * time.Second})
 	if err != nil {
-		return nil, nil, err
+		return nil, resp, err
 	}
-	snapshot := new(Snapshot)
-	resp, err := s.client.Do(req, snapshot)
+	snapshot, resp, err := s.ForCollectionTask(ctx, networkID, string(task.ID))
 	return snapshot, resp, err
+}
+
+// ForCollectionTask returns the snapshot a collector task produced.
+func (s *SnapshotsService) ForCollectionTask(
+	ctx context.Context,
+	networkID string,
+	taskID string,
+) (*Snapshot, *Response, error) {
+	if taskID = strings.TrimSpace(taskID); taskID == "" {
+		return nil, nil, errors.New("forward: collector task ID is required")
+	}
+	limit := int32(snapshotSearchLimit)
+	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{Limit: &limit})
+	if err != nil {
+		return nil, resp, err
+	}
+	want := strings.TrimLeft(taskID, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+	for i := range snapshots {
+		recorded := string(snapshots[i].CollectionTaskID)
+		if recorded != "" && (recorded == taskID || recorded == want) {
+			return &snapshots[i], resp, nil
+		}
+	}
+	return nil, resp, fmt.Errorf("%w: no snapshot for collector task %s", ErrSnapshotNotFound, taskID)
 }
 
 // LatestCollected returns the most recent processed snapshot that came from a

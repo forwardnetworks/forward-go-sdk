@@ -66,7 +66,7 @@ func TestRetryStopsAtMaxAttempts(t *testing.T) {
 }
 
 // A POST that may already have been applied must not be replayed: repeating it
-// could create a second snapshot for a request that in fact succeeded.
+// could start a second collection for a request that in fact succeeded.
 func TestRetryDoesNotReplayPostOnServerError(t *testing.T) {
 	t.Parallel()
 
@@ -77,9 +77,9 @@ func TestRetryDoesNotReplayPostOnServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := retryClient(t, server.URL).Snapshots.Create(context.Background(), "net-1", SnapshotCreateRequest{})
+	_, _, err := retryClient(t, server.URL).CollectorTasks.Start(context.Background(), "net-1")
 	if err == nil {
-		t.Fatal("Snapshots.Create() succeeded against a server that only fails")
+		t.Fatal("CollectorTasks.Start() succeeded against a server that only fails")
 	}
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("calls = %d, want 1 -- a 500 leaves the outcome unknown", got)
@@ -100,21 +100,21 @@ func TestRetryReplaysPostOnGatewayStatus(t *testing.T) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-		_, _ = io.WriteString(w, `{"id":"snap-9","state":"IN_PROGRESS"}`)
+		_, _ = io.WriteString(w, `{"id":"chg-9","name":"nightly","networkId":"net-1","snapshotId":"539"}`)
 	}))
 	defer server.Close()
 
-	created, _, err := retryClient(t, server.URL).Snapshots.Create(
-		context.Background(), "net-1", SnapshotCreateRequest{Note: "nightly"},
+	created, _, err := retryClient(t, server.URL).Predict.CreateChangeSet(
+		context.Background(), "net-1", ChangeSetCreateRequest{Name: "nightly", SnapshotID: "539"},
 	)
 	if err != nil {
-		t.Fatalf("Snapshots.Create() error = %v", err)
+		t.Fatalf("Predict.CreateChangeSet() error = %v", err)
 	}
-	if created.ID != "snap-9" || calls.Load() != 2 {
+	if created.ID != "chg-9" || calls.Load() != 2 {
 		t.Fatalf("created = %#v after %d calls", created, calls.Load())
 	}
 	// The body has to be rewound, or the retry sends an empty request.
-	if lastBody != `{"note":"nightly"}` {
+	if lastBody != `{"name":"nightly","snapshotId":"539"}` {
 		t.Fatalf("replayed body = %q", lastBody)
 	}
 }
@@ -158,7 +158,9 @@ func TestRetryHonorsContextCancel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	// Long enough that the first request always lands, far shorter than the
+	// hour-long backoff the policy would otherwise wait out.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	if _, _, err := client.Networks.List(ctx); err == nil {
 		t.Fatal("Networks.List() succeeded despite a canceled context")

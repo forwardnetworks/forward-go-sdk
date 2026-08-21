@@ -53,7 +53,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/networks/{networkId}/locations/{locationId}/clusters` | `Locations.ListClusters` | COVERED |
 | GET | `/api/networks/{networkId}/paths` | `Networks.Paths` | COVERED |
 | GET | `/api/networks/{networkId}/proxies` | `Proxies.List` | COVERED |
-| GET | `/api/networks/{networkId}/snapshots` | `Snapshots.List`, `Snapshots.ListDocument`, `Compatibility.ListSnapshots`, `Snapshots.LatestCollected` | COVERED |
+| GET | `/api/networks/{networkId}/snapshots` | `Snapshots.List`, `Snapshots.ListDocument`, `Compatibility.ListSnapshots`, `Snapshots.LatestCollected`, `Snapshots.ForCollectionTask` | COVERED |
 | GET | `/api/networks/{networkId}/snmpCredentials` | `Credentials.ListSNMP` | COVERED |
 | GET | `/api/networks/{networkId}/unhealthy-devices` | `Performance.UnhealthyDevices` | COVERED |
 | GET | `/api/nqe/repos/fwd/commits/head/queries` | `NQE.ListQueries` | COVERED |
@@ -96,7 +96,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/ai-chats` | `AI.StartChat` | COVERED |
 | POST | `/api/ai-chats/{chatId}/messages` | `AI.AddMessage` | COVERED |
 | POST | `/api/auth/login` | `Browser.LoginAPI` | COVERED |
-| POST | `/api/collector-tasks` | `CollectorTasks.Start`, `Compatibility.StartCollectorTask` | COVERED |
+| POST | `/api/collector-tasks` | `CollectorTasks.Start`, `Compatibility.StartCollectorTask`, `Snapshots.Collect` | COVERED |
 | POST | `/api/collectors` | `Collectors.Register` | COVERED |
 | POST | `/api/custom-banners` | `Banners.Create` | COVERED |
 | POST | `/api/endpoint-profiles` | `Endpoints.CreateProfile` | COVERED |
@@ -126,7 +126,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/networks/{networkId}/performance` | `Performance.UploadWithIdentity` | COVERED |
 | POST | `/api/networks/{networkId}/proxies` | `Proxies.Create` | COVERED |
 | POST | `/api/networks/{networkId}/rapid7-sources` | `Integrations.CreateRapid7` | COVERED |
-| POST | `/api/networks/{networkId}/snapshots` | `Snapshots.Upload`, `Snapshots.UploadMergeCompatibility`, `Snapshots.Create` | COVERED |
+| POST | `/api/networks/{networkId}/snapshots` | `Snapshots.Upload`, `Snapshots.UploadMergeCompatibility` | COVERED |
 | POST | `/api/networks/{networkId}/snmpCredentials` | `Credentials.CreateSNMP` | COVERED |
 | POST | `/api/networks/{networkId}/startcollection` | `Collectors.StartLegacy` | COVERED |
 | POST | `/api/networks/{networkId}/unhealthy-interfaces` | `Performance.UnhealthyInterfaces` | COVERED |
