@@ -97,11 +97,16 @@ type CloudAccountRequest struct {
 	UseForwardAccountToAssumeRole *bool               `json:"useForwardAccountToAssumeRole,omitempty"`
 
 	// Azure service principal.
-	ClientID        string   `json:"clientId,omitempty"`
-	ClientSecret    string   `json:"clientSecret,omitempty"`
-	Tenant          string   `json:"tenant,omitempty"`
-	Environment     string   `json:"environment,omitempty"`
-	SubscriptionIDs []string `json:"subscriptionIds,omitempty"`
+	//
+	// TestInstants is Azure's analogue of Regions: subscription id to a
+	// last-test timestamp. Forward requires it on a create, so a request that
+	// names subscriptions and omits this is refused outright.
+	TestInstants    map[string]int64 `json:"testInstants,omitempty"`
+	ClientID        string           `json:"clientId,omitempty"`
+	ClientSecret    string           `json:"clientSecret,omitempty"`
+	Tenant          string           `json:"tenant,omitempty"`
+	Environment     string           `json:"environment,omitempty"`
+	SubscriptionIDs []string         `json:"subscriptionIds,omitempty"`
 }
 
 // CloudAccountCredentialRequest replaces the stored credential of a setup
