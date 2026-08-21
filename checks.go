@@ -18,12 +18,18 @@ import (
 type ChecksService service
 
 // Check is one evaluated check on a particular snapshot.
+//
+// Enabled is a pointer because a check that never stated it and one that
+// stated it false are different: a caller reconciling declared configuration
+// has to leave the first alone. The same holds for NewCheck.Enabled, where
+// omitting the field defers to the appserver's default rather than asserting
+// one here.
 type Check struct {
 	ID            Identifier `json:"id,omitempty"`
 	Name          string     `json:"name"`
 	Status        string     `json:"status"`
 	NumViolations int        `json:"numViolations"`
-	Enabled       bool       `json:"enabled,omitempty"`
+	Enabled       *bool      `json:"enabled,omitempty"`
 	Priority      string     `json:"priority,omitempty"`
 	Tags          []string   `json:"tags,omitempty"`
 }
@@ -35,7 +41,7 @@ type NewCheck struct {
 	Name                  string         `json:"name"`
 	Note                  string         `json:"note,omitempty"`
 	Tags                  []string       `json:"tags,omitempty"`
-	Enabled               bool           `json:"enabled"`
+	Enabled               *bool          `json:"enabled,omitempty"`
 	Priority              string         `json:"priority,omitempty"`
 	PerfMonitoringEnabled *bool          `json:"perfMonitoringEnabled,omitempty"`
 }
