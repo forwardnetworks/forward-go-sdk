@@ -137,7 +137,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/snapshots/{snapshotId}` | `Snapshots.Reprocess`, `Snapshots.Invalidate`, `Snapshots.ExportSubset`, `Snapshots.ExportSubsetCompatibility` | COVERED |
 | POST | `/api/snapshots/{snapshotId}/checks` | `Checks.CreatePersistent`, `Checks.Create` | COVERED |
 | POST | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.EditOverrides` | COVERED |
-| POST | `/api/users/current/nqe/changes` | `NQERepository.DeleteDirectory`, `NQERepository.AddDirectory`, `NQERepository.AddQuery` | COVERED |
+| POST | `/api/users/current/nqe/changes` | `NQERepository.DeleteDirectory`, `NQERepository.AddDirectory`, `NQERepository.AddQuery`, `NQERepository.DeleteQuery` | COVERED |
 | POST | `/api/users/current/password` | `Users.ResetPassword` | COVERED |
 | POST | `/api/users/current/tokens` | `Users.CreateToken` | COVERED |
 | POST | `/api/users/{userId}/roles/org/ADMIN` | `Admin.GrantOrganizationAdmin` | COVERED |

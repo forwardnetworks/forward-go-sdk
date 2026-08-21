@@ -162,6 +162,7 @@ var sdkCoverageCatalog = map[string]CoverageOperation{
 	"NQERepository.DeleteDirectory":              {Method: "POST", Route: "/api/users/current/nqe/changes"},
 	"NQERepository.AddDirectory":                 {Method: "POST", Route: "/api/users/current/nqe/changes"},
 	"NQERepository.AddQuery":                     {Method: "POST", Route: "/api/users/current/nqe/changes"},
+	"NQERepository.DeleteQuery":                  {Method: "POST", Route: "/api/users/current/nqe/changes"},
 	"Users.ResetPassword":                        {Method: "POST", Route: "/api/users/current/password"},
 	"Users.CreateToken":                          {Method: "POST", Route: "/api/users/current/tokens"},
 	"Admin.GrantOrganizationAdmin":               {Method: "POST", Route: "/api/users/{userId}/roles/org/ADMIN"},

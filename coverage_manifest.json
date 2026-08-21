@@ -135,7 +135,7 @@
     {"method":"POST","route":"/api/snapshots/{snapshotId}","symbols":["Snapshots.Reprocess","Snapshots.Invalidate","Snapshots.ExportSubset","Snapshots.ExportSubsetCompatibility"],"coverage":"COVERED"},
     {"method":"POST","route":"/api/snapshots/{snapshotId}/checks","symbols":["Checks.CreatePersistent","Checks.Create"],"coverage":"COVERED"},
     {"method":"POST","route":"/api/snapshots/{snapshotId}/topology/overrides","symbols":["Topology.EditOverrides"],"coverage":"COVERED"},
-    {"method":"POST","route":"/api/users/current/nqe/changes","symbols":["NQERepository.DeleteDirectory","NQERepository.AddDirectory","NQERepository.AddQuery"],"coverage":"COVERED"},
+    {"method":"POST","route":"/api/users/current/nqe/changes","symbols":["NQERepository.DeleteDirectory","NQERepository.AddDirectory","NQERepository.AddQuery","NQERepository.DeleteQuery"],"coverage":"COVERED"},
     {"method":"POST","route":"/api/users/current/password","symbols":["Users.ResetPassword"],"coverage":"COVERED"},
     {"method":"POST","route":"/api/users/current/tokens","symbols":["Users.CreateToken"],"coverage":"COVERED"},
     {"method":"POST","route":"/api/users/{userId}/roles/org/ADMIN","symbols":["Admin.GrantOrganizationAdmin"],"coverage":"COVERED"},

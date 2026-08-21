@@ -96,6 +96,14 @@ func (s *NQERepositoryService) AddQuery(ctx context.Context, path, source string
 	return s.change(ctx, "addQuery", path, NQEQuerySource{SourceCode: source})
 }
 
+// DeleteQuery removes a query in the caller's workspace. Like every other
+// change here it is a draft: Commit on the same path is what removes it from
+// the org library. A 404 is tolerated so deleting what is already gone
+// succeeds.
+func (s *NQERepositoryService) DeleteQuery(ctx context.Context, path string) (*Response, error) {
+	return s.change(ctx, "deleteQuery", path, nil, http.StatusNotFound)
+}
+
 func (s *NQERepositoryService) change(ctx context.Context, action, path string, payload any, accepted ...int) (*Response, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {
