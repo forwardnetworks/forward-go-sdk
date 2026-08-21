@@ -24,25 +24,34 @@ type Check struct {
 	ID                    Identifier `json:"id,omitempty"`
 	Name                  string     `json:"name"`
 	Status                string     `json:"status"`
-	NumViolations         int        `json:"numViolations"`
-	Enabled               *bool      `json:"enabled,omitempty"`
-	Priority              string     `json:"priority,omitempty"`
-	Tags                  []string   `json:"tags,omitempty"`
 	Description           string     `json:"description,omitempty"`
 	Note                  string     `json:"note,omitempty"`
+	Priority              string     `json:"priority,omitempty"`
+	Tags                  []string   `json:"tags,omitempty"`
+	Enabled               *bool      `json:"enabled,omitempty"`
+	PerfMonitoringEnabled *bool      `json:"perfMonitoringEnabled,omitempty"`
 	Creator               string     `json:"creator,omitempty"`
 	CreatorID             Identifier `json:"creatorId,omitempty"`
 	Editor                string     `json:"editor,omitempty"`
 	EditorID              Identifier `json:"editorId,omitempty"`
-	PerfMonitoringEnabled *bool      `json:"perfMonitoringEnabled,omitempty"`
-	CreationDateMillis    *int64     `json:"creationDateMillis,omitempty"`
-	DefinitionDateMillis  *int64     `json:"definitionDateMillis,omitempty"`
-	EditDateMillis        *int64     `json:"editDateMillis,omitempty"`
-	ExecutionDateMillis   *int64     `json:"executionDateMillis,omitempty"`
+	CreatedAt             string     `json:"createdAt,omitempty"`
+	DefinedAt             string     `json:"definedAt,omitempty"`
+	EditedAt              string     `json:"editedAt,omitempty"`
+	ExecutedAt            string     `json:"executedAt,omitempty"`
 	ExecutionDurationMS   *int64     `json:"executionDurationMillis,omitempty"`
-	// Definition stays raw for the same reason NewCheck.Definition is open:
-	// flow, isolation, NQE, and intent checks have different schemas.
+	// Outdated marks a result computed against a definition that has since
+	// changed, so the status describes a check that no longer exists as
+	// stated.
+	Outdated *bool `json:"outdated,omitempty"`
+	// NumViolations is only sent for a failing check, so nil means the check
+	// did not fail rather than "failed zero times".
+	NumViolations *int64 `json:"numViolations,omitempty"`
+	// Definition stays raw for the reason NewCheck.Definition is open: flow,
+	// isolation, NQE, and predefined checks have different schemas.
 	Definition json.RawMessage `json:"definition,omitempty"`
+	// NQE checks carry the keys that locate their query results.
+	NQEResultKey   string `json:"nqeResultKey,omitempty"`
+	NQESourceSetID string `json:"nqeSourceSetId,omitempty"`
 }
 
 // CheckDetail is a single check read back with its diagnosis. The diagnosis is

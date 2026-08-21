@@ -290,3 +290,50 @@ func TestSnapshotsOperationFailsOnTerminalFailure(t *testing.T) {
 		t.Fatal("Wait() returned no error for a FAILED snapshot")
 	}
 }
+
+// Pinned to a response captured from a running appserver. The fields a check
+// actually carries are easy to get wrong from the payload that creates one:
+// timestamps are RFC 3339 instants under createdAt/definedAt/executedAt, not
+// the millisecond fields the create side suggests, and numViolations is absent
+// entirely for a check that passed.
+func TestChecksDecodeCollectedShape(t *testing.T) {
+	t.Parallel()
+
+	const captured = `[{"id":"140",
+	  "definition":{"predefinedCheckType":"VLAN_CONSISTENCY","checkType":"Predefined"},
+	  "enabled":true,"priority":"NOT_SET","name":"VLAN Consistency",
+	  "createdAt":"2026-08-18T13:07:33.391Z","creatorId":"101","creator":"dev",
+	  "definedAt":"2026-08-18T13:07:33.391Z","outdated":false,"status":"PASS",
+	  "description":"VLANs should be consistently defined.",
+	  "executedAt":"2026-08-21T13:43:16.197120957Z","executionDurationMillis":14}]`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, captured)
+	}))
+	defer server.Close()
+
+	checks, _, err := newTestClient(t, server.URL).Checks.List(context.Background(), "539")
+	if err != nil {
+		t.Fatalf("Checks.List() error = %v", err)
+	}
+	if len(checks) != 1 {
+		t.Fatalf("checks = %#v", checks)
+	}
+	got := checks[0]
+	if got.CreatedAt != "2026-08-18T13:07:33.391Z" || got.DefinedAt == "" || got.ExecutedAt == "" {
+		t.Fatalf("timestamps dropped: %#v", got)
+	}
+	if got.ExecutionDurationMS == nil || *got.ExecutionDurationMS != 14 {
+		t.Fatalf("executionDurationMillis = %v", got.ExecutionDurationMS)
+	}
+	if got.Creator != "dev" || got.CreatorID != "101" || got.Description == "" {
+		t.Fatalf("authorship dropped: %#v", got)
+	}
+	if got.Outdated == nil || *got.Outdated {
+		t.Fatalf("outdated = %v", got.Outdated)
+	}
+	// Absent, not zero: a passing check reports no violation count at all.
+	if got.NumViolations != nil {
+		t.Fatalf("numViolations = %v, want nil", *got.NumViolations)
+	}
+}
