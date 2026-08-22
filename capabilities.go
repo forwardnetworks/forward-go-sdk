@@ -19,7 +19,6 @@ const (
 	CapabilityPredict                     Capability = "predict"
 	CapabilityStructuredBGPAdvertisements Capability = "structured-bgp-advertisements"
 	CapabilityCollectorProgress           Capability = "collector-progress"
-	CapabilityCloudPredict                Capability = "cloud-predict"
 )
 
 // CapabilitySupport is deliberately tri-state. Unknown means the SDK has not
