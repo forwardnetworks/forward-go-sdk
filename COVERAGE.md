@@ -2,7 +2,7 @@
 
 This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest.
 
-Current inventory: **223 semantic call sites**, **157 distinct normalized method+route pairs**, **157 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **223 semantic call sites**, **167 distinct normalized method+route pairs**, **167 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -16,6 +16,8 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | DELETE | `/api/networks/{networkId}` | `Networks.Delete` | COVERED |
 | DELETE | `/api/networks/{networkId}/controller-managed-setups/{setupName}` | `ControllerManagedSetups.Delete` | COVERED |
 | DELETE | `/api/networks/{networkId}/endpoints/{name}` | `Endpoints.Delete` | COVERED |
+| DELETE | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.DeleteIntranetNode` | COVERED |
+| DELETE | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.DeleteL3VPN` | COVERED |
 | DELETE | `/api/orgs/{orgId}/config/software_central` | `Properties.ClearOrganization` | COVERED |
 | DELETE | `/api/users/current/tokens/{tokenName}` | `Users.DeleteToken` | COVERED |
 | DELETE | `/api/users/{userId}` | `Admin.DeleteUser` | COVERED |
@@ -55,6 +57,11 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | GET | `/api/networks/{networkId}/endpoints` | `Endpoints.List`, `Endpoints.ListTestStatuses` | COVERED |
 | GET | `/api/networks/{networkId}/http-credentials` | `Credentials.ListHTTP` | COVERED |
 | GET | `/api/networks/{networkId}/interface-metrics` | `Performance.InterfaceMetrics`, `Performance.InterfaceMetricsDocument` | COVERED |
+| GET | `/api/networks/{networkId}/internet-node` | `SyntheticNodes.GetInternetNode` | COVERED |
+| GET | `/api/networks/{networkId}/intranet-nodes` | `SyntheticNodes.ListIntranetNodes` | COVERED |
+| GET | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.GetIntranetNode` | COVERED |
+| GET | `/api/networks/{networkId}/l3-vpns` | `SyntheticNodes.ListL3VPNs` | COVERED |
+| GET | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.GetL3VPN` | COVERED |
 | GET | `/api/networks/{networkId}/locations` | `Locations.List` | COVERED |
 | GET | `/api/networks/{networkId}/locations/{locationId}/clusters` | `Locations.ListClusters` | COVERED |
 | GET | `/api/networks/{networkId}/paths` | `Networks.Paths` | COVERED |
@@ -163,5 +170,8 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | PUT | `/api/integrations/servicenow` | `Integrations.PutServiceNow` | COVERED |
 | PUT | `/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands` | `Predict.StageCommands` | COVERED |
 | PUT | `/api/networks/{networkId}/collector` | `Collectors.Attach` | COVERED |
+| PUT | `/api/networks/{networkId}/internet-node` | `SyntheticNodes.PutInternetNode` | COVERED |
+| PUT | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.PutIntranetNode` | COVERED |
+| PUT | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.PutL3VPN` | COVERED |
 | PUT | `/api/orgs/{orgId}/config/{property}` | `Properties.SetOrganization` | COVERED |
 | PUT | `/api/users/{userId}/supported-orgs` | `Admin.SetSupportedOrganizations` | COVERED |

@@ -74,7 +74,7 @@
       "method": "DELETE",
       "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
       "symbols": [
-        "SyntheticNodes.Delete"
+        "SyntheticNodes.DeleteIntranetNode"
       ],
       "coverage": "COVERED"
     },
@@ -82,7 +82,7 @@
       "method": "DELETE",
       "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
       "symbols": [
-        "SyntheticNodes.Delete"
+        "SyntheticNodes.DeleteL3VPN"
       ],
       "coverage": "COVERED"
     },
@@ -409,7 +409,7 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/internet-node",
       "symbols": [
-        "SyntheticNodes.Get"
+        "SyntheticNodes.GetInternetNode"
       ],
       "coverage": "COVERED"
     },
@@ -417,7 +417,7 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/intranet-nodes",
       "symbols": [
-        "SyntheticNodes.List"
+        "SyntheticNodes.ListIntranetNodes"
       ],
       "coverage": "COVERED"
     },
@@ -425,7 +425,7 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
       "symbols": [
-        "SyntheticNodes.Get"
+        "SyntheticNodes.GetIntranetNode"
       ],
       "coverage": "COVERED"
     },
@@ -433,7 +433,7 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/l3-vpns",
       "symbols": [
-        "SyntheticNodes.List"
+        "SyntheticNodes.ListL3VPNs"
       ],
       "coverage": "COVERED"
     },
@@ -441,7 +441,7 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
       "symbols": [
-        "SyntheticNodes.Get"
+        "SyntheticNodes.GetL3VPN"
       ],
       "coverage": "COVERED"
     },
@@ -1329,7 +1329,7 @@
       "method": "PUT",
       "route": "/api/networks/{networkId}/internet-node",
       "symbols": [
-        "SyntheticNodes.Put"
+        "SyntheticNodes.PutInternetNode"
       ],
       "coverage": "COVERED"
     },
@@ -1337,7 +1337,7 @@
       "method": "PUT",
       "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
       "symbols": [
-        "SyntheticNodes.Put"
+        "SyntheticNodes.PutIntranetNode"
       ],
       "coverage": "COVERED"
     },
@@ -1345,7 +1345,7 @@
       "method": "PUT",
       "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
       "symbols": [
-        "SyntheticNodes.Put"
+        "SyntheticNodes.PutL3VPN"
       ],
       "coverage": "COVERED"
     },

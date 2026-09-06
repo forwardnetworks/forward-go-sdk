@@ -105,6 +105,29 @@ func (s *SyntheticNodesService) nodePath(networkID string, kind SyntheticNodeKin
 	}
 }
 
+// opName gives each (kind, verb) pair its OWN bounded operation name. The
+// coverage catalog maps one symbol to one route, and these methods address a
+// different route per kind, so a single name would be ambiguous -- and the
+// telemetry would lump an internet-node write together with an L3 VPN write.
+func (k SyntheticNodeKind) opName(verb string) string {
+	switch k {
+	case SyntheticInternet:
+		return "SyntheticNodes." + verb + "InternetNode"
+	case SyntheticIntranet:
+		if verb == "List" {
+			return "SyntheticNodes.ListIntranetNodes"
+		}
+		return "SyntheticNodes." + verb + "IntranetNode"
+	case SyntheticL3VPN:
+		if verb == "List" {
+			return "SyntheticNodes.ListL3VPNs"
+		}
+		return "SyntheticNodes." + verb + "L3VPN"
+	default:
+		return "SyntheticNodes." + verb
+	}
+}
+
 // Get returns one synthetic node, or (nil, nil) when it does not exist.
 // Absence is not an error: callers read before writing precisely to find out
 // whether to create.
@@ -117,7 +140,7 @@ func (s *SyntheticNodesService) Get(ctx context.Context, networkID string, kind 
 	if err != nil {
 		return nil, nil, err
 	}
-	req = markOperation(req, "SyntheticNodes.Get")
+	req = markOperation(req, kind.opName("Get"))
 	out := new(SyntheticNode)
 	resp, err := s.client.Do(req, out)
 	if isStatus(err, http.StatusNotFound) {
@@ -139,7 +162,7 @@ func (s *SyntheticNodesService) Put(ctx context.Context, networkID string, kind 
 	if err != nil {
 		return nil, err
 	}
-	req = markOperation(req, "SyntheticNodes.Put")
+	req = markOperation(req, kind.opName("Put"))
 	return s.client.Do(req, nil)
 }
 
@@ -157,7 +180,7 @@ func (s *SyntheticNodesService) Delete(ctx context.Context, networkID string, ki
 	if err != nil {
 		return nil, err
 	}
-	req = markOperation(req, "SyntheticNodes.Delete")
+	req = markOperation(req, kind.opName("Delete"))
 	resp, err := s.client.Do(req, nil)
 	if isStatus(err, http.StatusNotFound) {
 		return resp, nil
@@ -185,11 +208,66 @@ func (s *SyntheticNodesService) List(ctx context.Context, networkID string, kind
 	if err != nil {
 		return nil, nil, err
 	}
-	req = markOperation(req, "SyntheticNodes.List")
+	req = markOperation(req, kind.opName("List"))
 	resp, err := s.client.doRequired(req, &result)
 	if isStatus(err, http.StatusNotFound) {
 		// A network with no such collection is not an error; it has none.
 		return nil, resp, nil
 	}
 	return result.Items, resp, err
+}
+
+// The per-resource methods below are the named surface the coverage catalog
+// maps route-by-route. They are thin: the behaviour lives in the kind-based
+// calls above, which is what a caller iterating over kinds should use.
+
+// GetInternetNode returns the network's single internet node, or nil if it
+// has none.
+func (s *SyntheticNodesService) GetInternetNode(ctx context.Context, networkID string) (*SyntheticNode, *Response, error) {
+	return s.Get(ctx, networkID, SyntheticInternet, "")
+}
+
+// PutInternetNode creates or replaces the network's internet node.
+func (s *SyntheticNodesService) PutInternetNode(ctx context.Context, networkID string, node SyntheticNode) (*Response, error) {
+	return s.Put(ctx, networkID, SyntheticInternet, "", node)
+}
+
+// ListIntranetNodes returns the network's intranet nodes.
+func (s *SyntheticNodesService) ListIntranetNodes(ctx context.Context, networkID string) ([]SyntheticNode, *Response, error) {
+	return s.List(ctx, networkID, SyntheticIntranet)
+}
+
+// GetIntranetNode returns one intranet node, or nil if absent.
+func (s *SyntheticNodesService) GetIntranetNode(ctx context.Context, networkID, name string) (*SyntheticNode, *Response, error) {
+	return s.Get(ctx, networkID, SyntheticIntranet, name)
+}
+
+// PutIntranetNode creates or replaces one intranet node.
+func (s *SyntheticNodesService) PutIntranetNode(ctx context.Context, networkID, name string, node SyntheticNode) (*Response, error) {
+	return s.Put(ctx, networkID, SyntheticIntranet, name, node)
+}
+
+// DeleteIntranetNode removes one intranet node. A 404 is success.
+func (s *SyntheticNodesService) DeleteIntranetNode(ctx context.Context, networkID, name string) (*Response, error) {
+	return s.Delete(ctx, networkID, SyntheticIntranet, name)
+}
+
+// ListL3VPNs returns the network's L3 VPNs.
+func (s *SyntheticNodesService) ListL3VPNs(ctx context.Context, networkID string) ([]SyntheticNode, *Response, error) {
+	return s.List(ctx, networkID, SyntheticL3VPN)
+}
+
+// GetL3VPN returns one L3 VPN, or nil if absent.
+func (s *SyntheticNodesService) GetL3VPN(ctx context.Context, networkID, name string) (*SyntheticNode, *Response, error) {
+	return s.Get(ctx, networkID, SyntheticL3VPN, name)
+}
+
+// PutL3VPN creates or replaces one L3 VPN.
+func (s *SyntheticNodesService) PutL3VPN(ctx context.Context, networkID, name string, node SyntheticNode) (*Response, error) {
+	return s.Put(ctx, networkID, SyntheticL3VPN, name, node)
+}
+
+// DeleteL3VPN removes one L3 VPN. A 404 is success.
+func (s *SyntheticNodesService) DeleteL3VPN(ctx context.Context, networkID, name string) (*Response, error) {
+	return s.Delete(ctx, networkID, SyntheticL3VPN, name)
 }
