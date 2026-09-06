@@ -42,9 +42,12 @@ type SyntheticNodeConn struct {
 	VRF                    string                `json:"vrf,omitempty"`
 }
 
+// SyntheticDevicePort names one end of a connection. The wire fields are
+// "device" and "port" -- measured, not guessed: Skyforge has been writing
+// synthetic nodes with exactly this shape in production.
 type SyntheticDevicePort struct {
 	Device string `json:"device"`
-	Iface  string `json:"iface"`
+	Port   string `json:"port"`
 }
 
 // SyntheticNodeKind selects which resource a call addresses. Forward gives
