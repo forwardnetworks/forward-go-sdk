@@ -1,20 +1,23 @@
 # Skyforge Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05.
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest.
 
-Current inventory: **210 semantic call sites**, **142 distinct normalized method+route pairs**, **142 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **223 semantic call sites**, **153 distinct normalized method+route pairs**, **153 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
 | Method | Normalized route | Typed SDK symbol(s) | Class |
 |---|---|---|---|
+| DELETE | `/api/access-control-groups/{groupId}` | `AccessControl.DeleteGroup` | COVERED |
 | DELETE | `/api/admin/orgs/{orgId}` | `Organizations.Delete` | COVERED |
 | DELETE | `/api/collectors/{collectorIdOrName}` | `Collectors.Delete` | COVERED |
+| DELETE | `/api/device-access-labels/{labelId}` | `AccessControl.DeleteDeviceAccessLabel` | COVERED |
 | DELETE | `/api/integrations/servicenow` | `Integrations.DeleteServiceNow` | COVERED |
 | DELETE | `/api/networks/{networkId}` | `Networks.Delete` | COVERED |
 | DELETE | `/api/orgs/{orgId}/config/software_central` | `Properties.ClearOrganization` | COVERED |
 | DELETE | `/api/users/current/tokens/{tokenName}` | `Users.DeleteToken` | COVERED |
 | DELETE | `/api/users/{userId}` | `Admin.DeleteUser` | COVERED |
+| GET | `/api/access-control-groups` | `AccessControl.ListGroups` | COVERED |
 | GET | `/api/admin/impersonate` | `Browser.Impersonate`, `Browser.ImpersonateWithServiceCredential` | COVERED |
 | GET | `/api/admin/networks` | `Admin.ListNetworks` | COVERED |
 | GET | `/api/admin/orgs` | `Organizations.List` | COVERED |
@@ -22,11 +25,13 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | GET | `/api/admin/users/{idOrUsername}` | `Admin.LookupUser` | COVERED |
 | GET | `/api/ai-chats/{chatId}` | `AI.GetChat` | COVERED |
 | GET | `/api/ai-chats/{chatId}/messages` | `AI.ListMessages` | COVERED |
+| GET | `/api/auth/saml-settings` | `SAML.GetSettings` | COVERED |
 | GET | `/api/collector-tasks` | `CollectorTasks.List`, `CollectorTasks.Progress` | COVERED |
 | GET | `/api/collectors` | `Collectors.List` | COVERED |
 | GET | `/api/collectors/{collectorIdOrName}` | `Collectors.Get` | COVERED |
 | GET | `/api/custom-banners` | `Banners.List` | COVERED |
 | GET | `/api/deployment-config/{property}` | `Configuration.GetDeployment` | COVERED |
+| GET | `/api/device-access-labels` | `AccessControl.ListDeviceAccessLabels` | COVERED |
 | GET | `/api/endpoint-profiles` | `Endpoints.ListProfiles` | COVERED |
 | GET | `/api/global-config` | `Properties.Global` | COVERED |
 | GET | `/api/integrations/infoblox` | `Integrations.ListInfobloxLegacy` | COVERED |
@@ -66,6 +71,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | GET | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.Overrides` | COVERED |
 | GET | `/api/users/current` | `Users.Current`, `Browser.CurrentUser` | COVERED |
 | GET | `/api/users/current/tokens` | `Users.ListTokens` | COVERED |
+| GET | `/api/users/{userId}/roles` | `Users.Roles` | COVERED |
 | GET | `/api/version` | `Version.Get`, `Version.Reachable` | COVERED |
 | GET | `/api/webhooks` | `Webhooks.List` | COVERED |
 | GET | `/backup-settings` | `Backups.GetSettings` | COVERED |
@@ -75,6 +81,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | GET | `/public/csrf` | `Browser.PublicCSRFLegacy` | COVERED |
 | PATCH | `/api/collection-settings` | `Collectors.PatchOrganizationSettings` | COVERED |
 | PATCH | `/api/collectors/{collectorId}/collection-settings` | `Collectors.PatchSettings` | COVERED |
+| PATCH | `/api/device-access-labels/{labelId}` | `AccessControl.UpdateDeviceAccessLabel` | COVERED |
 | PATCH | `/api/integrations/servicenow` | `Integrations.PatchServiceNow` | COVERED |
 | PATCH | `/api/networks/{networkId}/atlas` | `Locations.Assign` | COVERED |
 | PATCH | `/api/networks/{networkId}/cloudAccounts/{accountName}` | `CloudAccounts.Update` | COVERED |
@@ -89,6 +96,8 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | PATCH | `/api/webhooks/{name}` | `Webhooks.Update` | COVERED |
 | PATCH | `/backup-settings` | `Backups.UpdateSettings` | COVERED |
 | PATCH | `/backup-settings/storage` | `Backups.UpdateS3Storage` | COVERED |
+| POST | `/api/access-control-groups` | `AccessControl.CreateGroup` | COVERED |
+| POST | `/api/access-control-groups/{groupId}` | `AccessControl.UpdateGroup` | COVERED |
 | POST | `/api/admin/orgs` | `Organizations.Create` | COVERED |
 | POST | `/api/ai-chats` | `AI.StartChat` | COVERED |
 | POST | `/api/ai-chats/{chatId}/messages` | `AI.AddMessage` | COVERED |
@@ -96,6 +105,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | POST | `/api/collector-tasks` | `CollectorTasks.Start`, `Compatibility.StartCollectorTask` | COVERED |
 | POST | `/api/collectors` | `Collectors.Register` | COVERED |
 | POST | `/api/custom-banners` | `Banners.Create` | COVERED |
+| POST | `/api/device-access-labels` | `AccessControl.CreateDeviceAccessLabel` | COVERED |
 | POST | `/api/endpoint-profiles` | `Endpoints.CreateProfile` | COVERED |
 | POST | `/api/integrations/infoblox/instances` | `Integrations.CreateInfoblox` | COVERED |
 | POST | `/api/integrations/servicenow-cmdb` | `Integrations.ServiceNowCMDBSchema`, `Integrations.EnableServiceNowCMDB` | COVERED |
@@ -143,6 +153,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | POST | `/backup-settings` | `Backups.SetS3BucketOwnership` | COVERED |
 | POST | `/backups` | `Backups.Trigger` | COVERED |
 | POST | `/login` | `Browser.LoginLegacy` | COVERED |
+| PUT | `/api/auth/saml-settings` | `SAML.PutSettings` | COVERED |
 | PUT | `/api/custom-banners/{bannerId}` | `Banners.Replace` | COVERED |
 | PUT | `/api/deployment-config/{property}` | `Configuration.SetDeployment` | COVERED |
 | PUT | `/api/integrations/servicenow` | `Integrations.PutServiceNow` | COVERED |

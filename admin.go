@@ -61,6 +61,12 @@ type AdminUser struct {
 	OrgID    Identifier `json:"orgId"`
 	Username string     `json:"username"`
 	Email    string     `json:"email"`
+	// AuthSource names where the user authenticates (local, saml, ldap).
+	AuthSource string `json:"authSource,omitempty"`
+	// ExternalGroups is the IdP group membership Forward derives ACG
+	// membership from. A LOCAL user has none and can never join an ACG, which
+	// is why device-access restrictions cannot apply to local accounts.
+	ExternalGroups []string `json:"externalGroups,omitempty"`
 }
 
 type AdminUserCreateRequest struct {

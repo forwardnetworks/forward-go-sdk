@@ -117,3 +117,37 @@ func (s *UsersService) CreateToken(ctx context.Context, tokenName, password stri
 	}
 	return out, response, err
 }
+
+// UserRoles is GET /api/users/{id}/roles: org-level roles and per-network
+// roles. It exists so a reconcile can ask before it writes -- granting org
+// admin is not idempotent on the wire and re-granting flaps a user's
+// network-scoped permissions.
+type UserRoles struct {
+	Org     []string            `json:"org"`
+	Network map[string][]string `json:"network"`
+}
+
+// HasOrgAdmin reports whether Org carries ADMIN (case-insensitive).
+func (r UserRoles) HasOrgAdmin() bool {
+	for _, role := range r.Org {
+		if strings.EqualFold(strings.TrimSpace(role), "ADMIN") {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *UsersService) Roles(ctx context.Context, userID string) (*UserRoles, *Response, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, nil, errors.New("forward: user ID is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/users/"+url.PathEscape(userID)+"/roles", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Users.Roles")
+	out := new(UserRoles)
+	response, err := s.client.doRequired(req, out)
+	return out, response, err
+}
