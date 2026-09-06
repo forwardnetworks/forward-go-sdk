@@ -43,6 +43,107 @@ type CLICredential struct {
 	CreatedAt                string `json:"createdAt,omitempty"`
 }
 
+// SNMP credentials, typed from Forward's own model (SnmpCredential.java).
+//
+// The version decides which of the two credential halves is legal, and the
+// server enforces it rather than ignoring the wrong one:
+//
+//	V2C -> communityString applies; authSettings is NOT supported
+//	V3  -> authSettings is REQUIRED; communityString is NOT supported
+//
+// There is no V1. Version itself is required -- the constructor does
+// checkNotNull on it -- so it is sent even when empty would have been
+// tempting, and the zero value is not silently meaningful.
+type SNMPVersion string
+
+const (
+	SNMPVersionV2C SNMPVersion = "V2C"
+	SNMPVersionV3  SNMPVersion = "V3"
+)
+
+// SNMPAuthType is the v3 authentication digest. MD5 and SHA are SHA-1 era;
+// the SHA_2xx family is what current devices expect.
+type SNMPAuthType string
+
+const (
+	SNMPAuthMD5    SNMPAuthType = "MD5"
+	SNMPAuthSHA    SNMPAuthType = "SHA"
+	SNMPAuthSHA256 SNMPAuthType = "SHA_256"
+	SNMPAuthSHA384 SNMPAuthType = "SHA_384"
+	SNMPAuthSHA512 SNMPAuthType = "SHA_512"
+)
+
+// SNMPPrivacyProtocol is the v3 privacy cipher. AES_192 and AES_256 are the
+// extended-key variants some vendors ship, not RFC 3826 standard.
+type SNMPPrivacyProtocol string
+
+const (
+	SNMPPrivacyDES    SNMPPrivacyProtocol = "DES"
+	SNMPPrivacyAES128 SNMPPrivacyProtocol = "AES_128"
+	SNMPPrivacyAES192 SNMPPrivacyProtocol = "AES_192"
+	SNMPPrivacyAES256 SNMPPrivacyProtocol = "AES_256"
+)
+
+// SNMPAuthSettings is the v3 half. The fields are conditionally dependent, in
+// Forward's words: password applies iff authType is set, privacyProtocol
+// applies iff privacyPassword is set AND requires authType. Username is the
+// only unconditional field and cannot be blank.
+type SNMPAuthSettings struct {
+	Username        string              `json:"username"`
+	Password        string              `json:"password,omitempty"`
+	AuthType        SNMPAuthType        `json:"authType,omitempty"`
+	PrivacyProtocol SNMPPrivacyProtocol `json:"privacyProtocol,omitempty"`
+	PrivacyPassword string              `json:"privacyPassword,omitempty"`
+}
+
+// SNMPCredentialRequest creates an SNMP credential.
+type SNMPCredentialRequest struct {
+	Name            string            `json:"name,omitempty"`
+	Version         SNMPVersion       `json:"version"`
+	Port            *int              `json:"port,omitempty"`
+	TimeoutSec      *int              `json:"timeoutSec,omitempty"`
+	CommunityString string            `json:"communityString,omitempty"`
+	AuthSettings    *SNMPAuthSettings `json:"authSettings,omitempty"`
+	AutoAssociate   *bool             `json:"autoAssociate,omitempty"`
+}
+
+// SNMPCredential is a stored SNMP credential. The secret material is not
+// returned; what comes back identifies the credential.
+type SNMPCredential struct {
+	ID            string      `json:"id,omitempty"`
+	Name          string      `json:"name,omitempty"`
+	Version       SNMPVersion `json:"version,omitempty"`
+	Port          *int        `json:"port,omitempty"`
+	TimeoutSec    *int        `json:"timeoutSec,omitempty"`
+	AutoAssociate *bool       `json:"autoAssociate,omitempty"`
+}
+
+// validateSNMPCredential refuses only what Forward refuses, and refuses it
+// here so the message names the field instead of arriving as an opaque 400.
+func validateSNMPCredential(c SNMPCredentialRequest) error {
+	switch c.Version {
+	case SNMPVersionV2C:
+		if c.AuthSettings != nil {
+			return errors.New("forward: authSettings is not supported for SNMP V2C")
+		}
+	case SNMPVersionV3:
+		if c.CommunityString != "" {
+			return errors.New("forward: communityString is not supported for SNMP V3")
+		}
+		if c.AuthSettings == nil {
+			return errors.New("forward: authSettings is required for SNMP V3")
+		}
+		if strings.TrimSpace(c.AuthSettings.Username) == "" {
+			return errors.New("forward: SNMP V3 authSettings.username is required")
+		}
+	case "":
+		return errors.New("forward: SNMP credential version is required (V2C or V3)")
+	default:
+		return errors.New("forward: SNMP credential version must be V2C or V3")
+	}
+	return nil
+}
+
 // HTTPCredentialRequest creates an HTTP login or API-key credential.
 type HTTPCredentialRequest struct {
 	// Omitted when empty, for the same reason as the CLI request: Forward
@@ -244,6 +345,47 @@ func (s *CredentialsService) CreateSNMP(ctx context.Context, networkID string, c
 	created := map[string]json.RawMessage{}
 	resp, err := s.client.Do(req, &created)
 	return created, resp, err
+}
+
+// CreateSNMPCredential is the typed form of CreateSNMP. Prefer it: the map
+// form cannot tell V2C's communityString from V3's authSettings, and sending
+// the wrong half is a 400 that names nothing.
+func (s *CredentialsService) CreateSNMPCredential(ctx context.Context, networkID string, credential SNMPCredentialRequest) (*SNMPCredential, *Response, error) {
+	if err := validateSNMPCredential(credential); err != nil {
+		return nil, nil, err
+	}
+	path, err := credentialBasePath(networkID, "snmpCredentials")
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, credential)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Credentials.CreateSNMP")
+	created := new(SNMPCredential)
+	resp, err := s.client.Do(req, created)
+	return created, resp, err
+}
+
+// ListSNMPCredentials is the typed form of ListSNMP. It accepts the wrapped
+// envelopes Forward uses across list routes as well as a bare array.
+func (s *CredentialsService) ListSNMPCredentials(ctx context.Context, networkID string) ([]SNMPCredential, *Response, error) {
+	path, err := credentialBasePath(networkID, "snmpCredentials")
+	if err != nil {
+		return nil, nil, err
+	}
+	result := listResponse[SNMPCredential]{
+		Keys:        []string{"snmpCredentials", "credentials", "items", "data", "results"},
+		AllowSingle: true,
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Credentials.ListSNMP")
+	resp, err := s.client.doRequired(req, &result)
+	return result.Items, resp, err
 }
 
 func (s *CredentialsService) UpdateSNMP(ctx context.Context, networkID, credentialID string, patch map[string]any) (*Response, error) {
