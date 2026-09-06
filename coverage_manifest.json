@@ -4,7 +4,7 @@
   "consumer_go_sha256": "634a7187549987f6298be20fe0549923dfc46e4182ed7d1a3b66266878820fd6",
   "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest",
   "semantic_call_sites": 223,
-  "distinct_method_routes": 157,
+  "distinct_method_routes": 167,
   "endpoints": [
     {
       "method": "DELETE",
@@ -67,6 +67,22 @@
       "route": "/api/networks/{networkId}/endpoints/{name}",
       "symbols": [
         "Endpoints.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
+      "symbols": [
+        "SyntheticNodes.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
+      "symbols": [
+        "SyntheticNodes.Delete"
       ],
       "coverage": "COVERED"
     },
@@ -386,6 +402,46 @@
       "symbols": [
         "Performance.InterfaceMetrics",
         "Performance.InterfaceMetricsDocument"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/internet-node",
+      "symbols": [
+        "SyntheticNodes.Get"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/intranet-nodes",
+      "symbols": [
+        "SyntheticNodes.List"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
+      "symbols": [
+        "SyntheticNodes.Get"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/l3-vpns",
+      "symbols": [
+        "SyntheticNodes.List"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
+      "symbols": [
+        "SyntheticNodes.Get"
       ],
       "coverage": "COVERED"
     },
@@ -1266,6 +1322,30 @@
       "route": "/api/networks/{networkId}/collector",
       "symbols": [
         "Collectors.Attach"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/networks/{networkId}/internet-node",
+      "symbols": [
+        "SyntheticNodes.Put"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
+      "symbols": [
+        "SyntheticNodes.Put"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
+      "symbols": [
+        "SyntheticNodes.Put"
       ],
       "coverage": "COVERED"
     },
