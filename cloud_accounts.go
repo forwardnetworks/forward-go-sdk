@@ -58,9 +58,74 @@ type AWSAssumeRoleInfo struct {
 	ErrorMsg    string `json:"errorMsg,omitempty"`
 }
 
-// CloudAccountRequest contains the common AWS fields. Fields carries
-// provider- and version-specific properties for Azure, GCP, and newer sources.
-type CloudAccountRequest map[string]any
+// CloudAccountRequest is what Forward accepts when creating or updating a
+// cloud collection source. It was map[string]any, which meant a misspelled
+// key was a silent no-op against the API and every caller had to know the
+// wire format this SDK exists to hide.
+//
+// The provider decides which fields apply, and the shapes are NOT symmetric
+// with the CloudAccount that comes back:
+//
+//   - Regions on the REQUEST is {"us-east-1": 0} -- a set encoded as a map to
+//     zero. The RESPONSE returns {"us-east-1": {"testInstant": ...}}. Do not
+//     assume one can be fed back as the other.
+//   - Username/Password are the access key and secret for AWS, IBM and GCP.
+//   - ClientID, Tenant, Environment and SubscriptionIDs are Azure's, and
+//     Environment is the literal "AZURE".
+//   - DiscoveredSubscriptionIDs and TestInstants are Forward-populated; they
+//     are here so a read-modify-write round-trips instead of erasing them.
+//
+// Extra carries anything a newer Forward build accepts that this struct does
+// not name yet, so a version-specific property is still reachable without
+// giving up typing for every caller.
+type CloudAccountRequest struct {
+	Type          string         `json:"type"`
+	Name          string         `json:"name"`
+	Collect       bool           `json:"collect"`
+	ProxyServerID string         `json:"proxyServerId,omitempty"`
+	Regions       map[string]int `json:"regions,omitempty"`
+
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+
+	ClientID                  string         `json:"clientId,omitempty"`
+	Tenant                    string         `json:"tenant,omitempty"`
+	Environment               string         `json:"environment,omitempty"`
+	SubscriptionIDs           []string       `json:"subscriptionIds,omitempty"`
+	DiscoveredSubscriptionIDs []string       `json:"discoveredSubscriptionIds,omitempty"`
+	TestInstants              map[string]int `json:"testInstants,omitempty"`
+
+	Extra map[string]any `json:"-"`
+}
+
+// MarshalJSON folds Extra in beside the named fields. A named field always
+// wins: Extra is an escape hatch for properties this struct does not know,
+// never a way to quietly override one it does.
+func (r CloudAccountRequest) MarshalJSON() ([]byte, error) {
+	type plain CloudAccountRequest
+	base, err := json.Marshal(plain(r))
+	if err != nil {
+		return nil, err
+	}
+	if len(r.Extra) == 0 {
+		return base, nil
+	}
+	var merged map[string]json.RawMessage
+	if err := json.Unmarshal(base, &merged); err != nil {
+		return nil, err
+	}
+	for k, v := range r.Extra {
+		if _, taken := merged[k]; taken {
+			continue
+		}
+		raw, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		merged[k] = raw
+	}
+	return json.Marshal(merged)
+}
 
 func (s *CloudAccountsService) List(ctx context.Context, networkID string) ([]CloudAccount, *Response, error) {
 	path, err := cloudAccountsPath(networkID)
