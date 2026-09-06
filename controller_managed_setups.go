@@ -76,14 +76,23 @@ func (s *ControllerManagedSetupsService) base(networkID string) (string, error) 
 // exists", which sends the caller straight into a create that then collides
 // with the setup that was sitting there ("Controller-managed setup named
 // 'sdwan' already exists in network", measured on cs-lab network 3150).
+//
+// A body that is NEITHER an array nor an object with a known key is an
+// ERROR, not an empty list -- an HTML login page or {"error":...} must not
+// read as "this network has no setups".
 func (s *ControllerManagedSetupsService) List(ctx context.Context, networkID string) ([]ControllerManagedSetup, *Response, error) {
 	path, err := s.base(networkID)
 	if err != nil {
 		return nil, nil, err
 	}
+	// AllowSingle is deliberately OFF. This list drives a delete-and-recreate
+	// reconciliation, so a misread is not a cosmetic problem: with a single
+	// object accepted, an ERROR body like {"error":"forbidden"} would decode
+	// into one setup with an empty name, match nothing, and let the drifted
+	// setup survive exactly as if the list had been empty. An object carrying
+	// none of the known keys must therefore be an ERROR.
 	result := listResponse[ControllerManagedSetup]{
-		Keys:        []string{"setups", "data", "items", "results"},
-		AllowSingle: true,
+		Keys: []string{"setups", "data", "items", "results"},
 	}
 	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
