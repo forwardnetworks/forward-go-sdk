@@ -204,6 +204,7 @@ flags, and permissions can change between Forward releases.
 | `Endpoints`, `Locations`, `Proxies`, `Topology` | Preview | Skyforge source/site/proxy/topology contracts |
 | `Backups`, `Browser` | Preview | root-scoped CBR and cookie/CSRF/session workflows |
 | `Integrations`, `Configuration`, `Banners` | Preview | Infoblox/Rapid7/ServiceNow, deployment config, custom banners |
+| `AccessControl`, `SAML`, `Users.Roles` | Preview | device access labels, access control groups (nil networkRoles = org admin), SAML settings, user roles |
 | `Webhooks` | Preview | outbound callback CRUD and connectivity tests |
 | `Raw` | Any | forward-compatible access to every `/api` route |
 

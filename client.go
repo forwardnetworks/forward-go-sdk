@@ -98,6 +98,8 @@ type Client struct {
 	Admin          *AdminService
 	NQERepository  *NQERepositoryService
 	Banners        *BannersService
+	AccessControl  *AccessControlService
+	SAML           *SAMLService
 	Configuration  *ConfigurationService
 	Integrations   *IntegrationsService
 	Topology       *TopologyService
@@ -244,6 +246,8 @@ func (c *Client) bindServices() {
 	c.Admin = (*AdminService)(&service{client: c})
 	c.NQERepository = (*NQERepositoryService)(&service{client: c})
 	c.Banners = (*BannersService)(&service{client: c})
+	c.AccessControl = (*AccessControlService)(&service{client: c})
+	c.SAML = (*SAMLService)(&service{client: c})
 	c.Configuration = (*ConfigurationService)(&service{client: c})
 	c.Integrations = (*IntegrationsService)(&service{client: c})
 	c.Topology = (*TopologyService)(&service{client: c})

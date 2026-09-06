@@ -28,6 +28,9 @@ every controller shipped by every Forward release.
 | AI and AI Assist | Preview | chats/messages/wait; NQE/docs/Predict/diff assists |
 | Organizations/properties | Preview | current/admin org lifecycle; dynamic property keys |
 | Webhooks | Preview | list/create/update/delete/test |
+| Access control | Preview | device access labels list/create/update/delete; access control groups list/create/update/delete; nil networkRoles = org admin, never coerced |
+| SAML | Preview | per-registration settings get/put; empty or null = not configured |
+| User roles | Preview | `Users.Roles` org/network roles so a reconcile can ask before it grants |
 | Skyforge preview families | Preview | collectors/attachment, endpoints/profiles, locations/clusters/atlas, proxies, topology, users/admin, CBR, browser sessions, deployment config, banners, NQE repository mutation, Infoblox/Rapid7/ServiceNow |
 | Compatibility | SDK | version diagnostics; explicit track/build profiles; tri-state capability support |
 
