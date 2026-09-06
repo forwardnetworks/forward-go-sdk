@@ -168,6 +168,38 @@ func (s *EndpointsService) CreateProfile(ctx context.Context, input EndpointProf
 	return out, response, err
 }
 
+// Delete removes one endpoint from a network.
+//
+// WHY THIS EXISTS. Forward's device-name namespace is SHARED between endpoints
+// and classic devices. A name left behind as an endpoint after the device was
+// reclassified as classic is a stale record of an earlier sync, and it
+// collides with the classic putBatch forever until it is removed. Deleting it
+// is therefore part of converging inventory, not a cleanup nicety.
+//
+// A 404 is SUCCESS: the desired state, that the endpoint is absent, already
+// holds. This matches DeleteGroup and DeleteDeviceAccessLabel, and it is what
+// makes the call safe to repeat.
+func (s *EndpointsService) Delete(ctx context.Context, networkID, name string) (*Response, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, errors.New("forward: endpoint name is required")
+	}
+	path, err := s.networkPath(networkID, "/endpoints/"+url.PathEscape(name))
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Endpoints.Delete")
+	response, err := s.client.Do(req, nil)
+	if isStatus(err, http.StatusNotFound) {
+		return response, nil
+	}
+	return response, err
+}
+
 func (s *EndpointsService) networkPath(networkID, suffix string) (string, error) {
 	networkID, err := s.client.resolveNetworkID(networkID)
 	if err != nil {

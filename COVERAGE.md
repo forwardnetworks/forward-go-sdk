@@ -2,7 +2,7 @@
 
 This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest.
 
-Current inventory: **223 semantic call sites**, **153 distinct normalized method+route pairs**, **153 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **223 semantic call sites**, **154 distinct normalized method+route pairs**, **154 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -14,6 +14,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | DELETE | `/api/device-access-labels/{labelId}` | `AccessControl.DeleteDeviceAccessLabel` | COVERED |
 | DELETE | `/api/integrations/servicenow` | `Integrations.DeleteServiceNow` | COVERED |
 | DELETE | `/api/networks/{networkId}` | `Networks.Delete` | COVERED |
+| DELETE | `/api/networks/{networkId}/endpoints/{name}` | `Endpoints.Delete` | COVERED |
 | DELETE | `/api/orgs/{orgId}/config/software_central` | `Properties.ClearOrganization` | COVERED |
 | DELETE | `/api/users/current/tokens/{tokenName}` | `Users.DeleteToken` | COVERED |
 | DELETE | `/api/users/{userId}` | `Admin.DeleteUser` | COVERED |

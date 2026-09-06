@@ -9,6 +9,7 @@ var sdkCoverageCatalog = map[string]CoverageOperation{
 	"AccessControl.DeleteDeviceAccessLabel":      {Method: "DELETE", Route: "/api/device-access-labels/{labelId}"},
 	"Integrations.DeleteServiceNow":              {Method: "DELETE", Route: "/api/integrations/servicenow"},
 	"Networks.Delete":                            {Method: "DELETE", Route: "/api/networks/{networkId}"},
+	"Endpoints.Delete":                           {Method: "DELETE", Route: "/api/networks/{networkId}/endpoints/{name}"},
 	"Properties.ClearOrganization":               {Method: "DELETE", Route: "/api/orgs/{orgId}/config/software_central"},
 	"Users.DeleteToken":                          {Method: "DELETE", Route: "/api/users/current/tokens/{tokenName}"},
 	"Admin.DeleteUser":                           {Method: "DELETE", Route: "/api/users/{userId}"},
