@@ -16,7 +16,10 @@ type CredentialsService service
 // CLICredentialRequest creates a CLI login, privilege escalation, expert, or
 // shell credential. Password is write-only secret material.
 type CLICredentialRequest struct {
-	Type                     string `json:"type"`
+	// Type is OMITTED when empty, deliberately. Absent means LOGIN, which is
+	// what Forward defaults to; an empty STRING is a different thing entirely
+	// and fails enum deserialization with a 400.
+	Type                     string `json:"type,omitempty"`
 	Name                     string `json:"name"`
 	Username                 string `json:"username,omitempty"`
 	Password                 string `json:"password"`
@@ -42,7 +45,10 @@ type CLICredential struct {
 
 // HTTPCredentialRequest creates an HTTP login or API-key credential.
 type HTTPCredentialRequest struct {
-	Type          string `json:"type"`
+	// Omitted when empty, for the same reason as the CLI request: Forward
+	// defaults an absent type to LOGIN (NewHttpCredential.getType()), while an
+	// empty STRING fails enum deserialization.
+	Type          string `json:"type,omitempty"`
 	Name          string `json:"name"`
 	Username      string `json:"username,omitempty"`
 	Password      string `json:"password"`
@@ -287,9 +293,25 @@ func credentialPath(networkID, kind, credentialID string) (string, error) {
 	return path + "/" + url.PathEscape(credentialID), nil
 }
 
+// validateCredential refuses only what Forward itself refuses.
+//
+// It used to require a non-empty type. Forward does NOT: an absent type is
+// defaulted to LOGIN, in two places and for both credential kinds --
+// NewCliCredential.getType() and the CliCredential constructor
+// (`this.type = type != null ? type : CliCredentialType.LOGIN`), and the same
+// pair for HTTP. Skyforge has been creating CLI credentials without a type in
+// production for months on exactly that behaviour.
+//
+// A validator stricter than the server is worse than none: it refuses a
+// request the API would have accepted, and it did so in the client where the
+// error names nothing about Forward. Name and password are still required
+// because the server enforces them -- name cannot be empty, and password is
+// required for every type except SSH_KEY, which this request shape does not
+// carry.
 func validateCredential(kind, name, password string) error {
-	if strings.TrimSpace(kind) == "" || strings.TrimSpace(name) == "" || password == "" {
-		return errors.New("forward: credential type, name, and password are required")
+	_ = kind
+	if strings.TrimSpace(name) == "" || password == "" {
+		return errors.New("forward: credential name and password are required")
 	}
 	return nil
 }
