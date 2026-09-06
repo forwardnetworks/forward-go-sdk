@@ -68,44 +68,45 @@ type Client struct {
 	unavailableErr error
 	capabilities   *capabilityRegistry
 
-	Version        *VersionService
-	Networks       *NetworksService
-	Devices        *DevicesService
-	ClassicDevices *ClassicDevicesService
-	Credentials    *CredentialsService
-	CollectorTasks *CollectorTasksService
-	CloudAccounts  *CloudAccountsService
-	Webhooks       *WebhooksService
-	Snapshots      *SnapshotsService
-	NQE            *NQEService
-	Predict        *PredictService
-	AI             *AIService
-	AIAssist       *AIAssistService
-	Properties     *PropertiesService
-	Organizations  *OrganizationsService
-	Checks         *ChecksService
-	DeviceTags     *DeviceTagsService
-	Performance    *PerformanceService
-	Capabilities   *CapabilitiesService
-	Raw            *RawService
-	Collectors     *CollectorsService
-	Backups        *BackupsService
-	Browser        *BrowserService
-	Endpoints      *EndpointsService
-	Locations      *LocationsService
-	Proxies        *ProxiesService
-	Users          *UsersService
-	Admin          *AdminService
-	NQERepository  *NQERepositoryService
-	Banners        *BannersService
-	AccessControl  *AccessControlService
-	SAML           *SAMLService
-	Configuration  *ConfigurationService
-	Integrations   *IntegrationsService
-	Topology       *TopologyService
-	Collections    *CollectionsService
-	JumpServers    *JumpServersService
-	Compatibility  *CompatibilityService
+	Version                 *VersionService
+	Networks                *NetworksService
+	Devices                 *DevicesService
+	ClassicDevices          *ClassicDevicesService
+	ControllerManagedSetups *ControllerManagedSetupsService
+	Credentials             *CredentialsService
+	CollectorTasks          *CollectorTasksService
+	CloudAccounts           *CloudAccountsService
+	Webhooks                *WebhooksService
+	Snapshots               *SnapshotsService
+	NQE                     *NQEService
+	Predict                 *PredictService
+	AI                      *AIService
+	AIAssist                *AIAssistService
+	Properties              *PropertiesService
+	Organizations           *OrganizationsService
+	Checks                  *ChecksService
+	DeviceTags              *DeviceTagsService
+	Performance             *PerformanceService
+	Capabilities            *CapabilitiesService
+	Raw                     *RawService
+	Collectors              *CollectorsService
+	Backups                 *BackupsService
+	Browser                 *BrowserService
+	Endpoints               *EndpointsService
+	Locations               *LocationsService
+	Proxies                 *ProxiesService
+	Users                   *UsersService
+	Admin                   *AdminService
+	NQERepository           *NQERepositoryService
+	Banners                 *BannersService
+	AccessControl           *AccessControlService
+	SAML                    *SAMLService
+	Configuration           *ConfigurationService
+	Integrations            *IntegrationsService
+	Topology                *TopologyService
+	Collections             *CollectionsService
+	JumpServers             *JumpServersService
+	Compatibility           *CompatibilityService
 }
 
 // Response wraps an HTTP response returned by the Forward API.
@@ -220,6 +221,7 @@ func (c *Client) bindServices() {
 	c.Networks = (*NetworksService)(&service{client: c})
 	c.Devices = (*DevicesService)(&service{client: c})
 	c.ClassicDevices = (*ClassicDevicesService)(&service{client: c})
+	c.ControllerManagedSetups = (*ControllerManagedSetupsService)(&service{client: c})
 	c.Credentials = (*CredentialsService)(&service{client: c})
 	c.CollectorTasks = (*CollectorTasksService)(&service{client: c})
 	c.CloudAccounts = (*CloudAccountsService)(&service{client: c})

@@ -4,7 +4,7 @@
   "consumer_go_sha256": "634a7187549987f6298be20fe0549923dfc46e4182ed7d1a3b66266878820fd6",
   "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest",
   "semantic_call_sites": 223,
-  "distinct_method_routes": 154,
+  "distinct_method_routes": 157,
   "endpoints": [
     {
       "method": "DELETE",
@@ -51,6 +51,14 @@
       "route": "/api/networks/{networkId}",
       "symbols": [
         "Networks.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/controller-managed-setups/{setupName}",
+      "symbols": [
+        "ControllerManagedSetups.Delete"
       ],
       "coverage": "COVERED"
     },
@@ -303,6 +311,14 @@
       "route": "/api/networks/{networkId}/collector/status",
       "symbols": [
         "Collectors.Attachment"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/controller-managed-setups",
+      "symbols": [
+        "ControllerManagedSetups.List"
       ],
       "coverage": "COVERED"
     },
@@ -929,6 +945,14 @@
       "route": "/api/networks/{networkId}/cloudAccounts/{accountName}/test",
       "symbols": [
         "CloudAccounts.Test"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/controller-managed-setups",
+      "symbols": [
+        "ControllerManagedSetups.Create"
       ],
       "coverage": "COVERED"
     },
