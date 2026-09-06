@@ -17,7 +17,6 @@ func TestControllerManagedSetupsListAcceptsForwardsEnvelopes(t *testing.T) {
 		"setups wrapper": `{"setups":[{"name":"sdwan","controllers":[{"name":"vmanage"}]}]}`,
 		"bare array":     `[{"name":"sdwan","controllers":[{"name":"vmanage"}]}]`,
 		"data wrapper":   `{"data":[{"name":"sdwan","controllers":[{"name":"vmanage"}]}]}`,
-		"single object":  `{"name":"sdwan","controllers":[{"name":"vmanage"}]}`,
 	} {
 		c := acClient(t, func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(body))
@@ -29,6 +28,33 @@ func TestControllerManagedSetupsListAcceptsForwardsEnvelopes(t *testing.T) {
 		if len(got) != 1 || got[0].Name != "sdwan" || len(got[0].Controllers) != 1 {
 			t.Fatalf("%s: got %+v", name, got)
 		}
+	}
+}
+
+// An unreadable body must be an ERROR, never an empty list. This is the
+// property the whole reconciliation rests on: an empty list means "no setup
+// exists" and sends the caller into a create, so a misread body is how a
+// drifted setup survives forever.
+func TestControllerManagedSetupsListRefusesBodiesItCannotRead(t *testing.T) {
+	for name, body := range map[string]string{
+		"an HTML login page":       `<html>login</html>`,
+		"an error object":          `{"error":"forbidden"}`,
+		"an object with no setups": `{"unexpected":[]}`,
+	} {
+		c := acClient(t, func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(body))
+		})
+		if _, _, err := c.ControllerManagedSetups.List(context.Background(), "net-1"); err == nil {
+			t.Errorf("%s was accepted as an empty setup list", name)
+		}
+	}
+	// Genuinely empty stays empty, and is not an error.
+	c := acClient(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"setups":[]}`))
+	})
+	got, _, err := c.ControllerManagedSetups.List(context.Background(), "net-1")
+	if err != nil || len(got) != 0 {
+		t.Fatalf("an empty list must be empty and not an error: %v %v", got, err)
 	}
 }
 
