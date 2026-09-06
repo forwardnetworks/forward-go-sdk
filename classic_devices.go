@@ -146,15 +146,31 @@ func (s *ClassicDevicesService) List(ctx context.Context, networkID string, with
 	if len(with) != 0 {
 		path += "?" + url.Values{"with": with}.Encode()
 	}
-	var envelope struct {
-		Devices []ClassicDevice `json:"devices"`
+	// TOLERATE EVERY ENVELOPE FORWARD HAS ACTUALLY RETURNED, not just the one
+	// this route returned when it was written.
+	//
+	// A reader that knows one shape does not fail on another -- it reports an
+	// EMPTY list. Skyforge prunes classic devices by diffing this list against
+	// the topology, so an empty answer reads as "nothing to prune" and the
+	// drift it is meant to remove survives silently. Measured on cs-lab
+	// (network 3150) 2026-09-05: a renamed device left a stale record, and the
+	// SNMP contract then failed every sync with "12/13 devices observed"
+	// against a lab that was healthy.
+	//
+	// So this accepts a bare array, a single object, and the wrapped keys
+	// Forward uses across its list routes -- the same set Endpoints.List
+	// accepts, for the same reason.
+	result := listResponse[ClassicDevice]{
+		Keys:        []string{"devices", "classicDevices", "items", "data", "results"},
+		AllowSingle: true,
 	}
 	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	resp, err := s.client.Do(req, &envelope)
-	return envelope.Devices, resp, err
+	req = markOperation(req, "ClassicDevices.List")
+	resp, err := s.client.Do(req, &result)
+	return result.Items, resp, err
 }
 
 func (s *ClassicDevicesService) Create(ctx context.Context, networkID string, input ClassicDeviceRequest) (*ClassicDevice, *Response, error) {
