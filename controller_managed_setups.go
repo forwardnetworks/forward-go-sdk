@@ -19,6 +19,13 @@ type ControllerManagedSetupsService service
 type ControllerManagedSetup struct {
 	Name        string             `json:"name"`
 	Controllers []ControllerDevice `json:"controllers"`
+
+	// ManagedDevices is absent for controller-only setups and for a setup that
+	// has never had guests declared. Forward DISCOVERS guests during the SETUP
+	// phase of a connectivity test -- the vSmart reports them -- but discovery
+	// does not register them: a setup whose test just found four guests still
+	// reads back managedDevices null until someone writes them.
+	ManagedDevices []ManagedDevice `json:"managedDevices,omitempty"`
 }
 
 // ControllerDevice is one controller within a setup.
@@ -39,6 +46,44 @@ type ControllerDevice struct {
 	SNMPCollectionConfig              *SNMPCollectionConfig `json:"snmpCollectionConfig,omitempty"`
 }
 
+// ManagedDevice is one guest device collected THROUGH a setup's controller
+// rather than as a classic source of its own.
+//
+// Forward calls this a "controller-managed device". On the wire it is the same
+// flattened shape as ControllerDevice -- Forward's ControllerManagedDeviceWithMeta
+// @JsonUnwrap's a DeviceSetup (name/type/host/credentials) and a DeviceSetupMeta
+// (collect/note/snmp) into one object -- so the fields below mirror the DeviceSetup
+// field names exactly.
+//
+// Type matters and is easy to get wrong: it is the guest's OWN connection type,
+// not the controller's and not a vendor-family alias. A Cisco C8000V running
+// IOS-XE in SD-WAN controller mode is CISCO_IOS_XE_SSH (cisco_ios_xe_ssh) even
+// though its controller is a vSmart -- Forward's DeviceConnType lists
+// VIPTELA_SMART_SSH.relatedTypes as {VIPTELA_EDGE_SSH, CISCO_IOS_XE_SSH,
+// CISCO_IOS_XE_TELNET}, and StoredControllerManagedSetup rejects anything else.
+// Declaring such a device cisco_sdwan_ssh makes Forward's type discovery answer
+// DEVICE_TYPE_MISMATCH with discoveredType cisco_ios_xe_ssh (measured on cs-lab
+// network 3150, 2026-09-07).
+//
+// CLICredentialID is per-guest and required in practice: nothing is inherited
+// from the controller. StoredControllerManagedSetup.buildDeviceConfigs emits one
+// DeviceConfig per managed device from that device's own DeviceSetup, so a guest
+// with no credential is a guest Forward cannot log into.
+type ManagedDevice struct {
+	Name                              string                `json:"name"`
+	Type                              string                `json:"type,omitempty"`
+	Host                              string                `json:"host,omitempty"`
+	CLICredentialID                   string                `json:"cliCredentialId,omitempty"`
+	SNMPCredentialID                  string                `json:"snmpCredentialId,omitempty"`
+	JumpServerID                      string                `json:"jumpServerId,omitempty"`
+	BGPAdvertisementCollectionOptions *BGPCollectionOptions `json:"bgpAdvertisementCollectionOptions,omitempty"`
+	SNMPCollectionConfig              *SNMPCollectionConfig `json:"snmpCollectionConfig,omitempty"`
+
+	// Collect is DeviceSetupMeta.collect. Absent means true (Forward's
+	// isCollectionEnabled treats null as enabled), so leave it nil to collect.
+	Collect *bool `json:"collect,omitempty"`
+}
+
 type BGPCollectionOptions struct {
 	CollectBGPAdvertisements bool   `json:"collectBgpAdvertisements"`
 	TableType                string `json:"tableType,omitempty"`
@@ -56,8 +101,9 @@ type SNMPCollectionConfig struct {
 // that compares a returned name against the one it sent must fold case or it
 // will see a difference that is not there.
 type NewControllerManagedSetup struct {
-	Name        string             `json:"name"`
-	Controllers []ControllerDevice `json:"controllers"`
+	Name           string             `json:"name"`
+	Controllers    []ControllerDevice `json:"controllers"`
+	ManagedDevices []ManagedDevice    `json:"managedDevices,omitempty"`
 }
 
 func (s *ControllerManagedSetupsService) base(networkID string) (string, error) {
@@ -146,4 +192,62 @@ func (s *ControllerManagedSetupsService) Delete(ctx context.Context, networkID, 
 		return resp, nil
 	}
 	return resp, err
+}
+
+// ControllerManagedSetupPatch is a partial update of a setup.
+//
+// Every field is a pointer because Forward's ControllerManagedSetupPatch uses
+// JsonProp<T>, which distinguishes three states, not two: ABSENT leaves the
+// existing value alone, present-and-null clears it, and present-and-set
+// replaces it. A plain slice cannot say "leave the guests as they are" and
+// "this setup has no guests" differently, and confusing those two would
+// silently delete every guest on a patch that meant to touch nothing else.
+type ControllerManagedSetupPatch struct {
+	// ManagedDevices replaces the setup's whole guest list when present.
+	// Point it at an empty slice to remove every guest; leave it nil to keep
+	// the stored list untouched.
+	ManagedDevices *[]ManagedDevice `json:"managedDevices,omitempty"`
+}
+
+// Patch applies a partial update to an existing setup and returns it as stored.
+//
+// This is the idempotent way to declare a setup's guests. Forward compares the
+// patched setup against the stored one and writes only if they differ
+// (ControllerManagedSetupController.patchSetup: `if (!updated.equals(existing))`),
+// so re-sending the same guest list is a no-op on the server -- it does not
+// touch the controllers and does not churn the connectivity test result the way
+// a delete-and-recreate would.
+//
+// NAME COLLISIONS ARE THE CALLER'S PROBLEM. Forward validates a device name as
+// unique across ALL of a network's collection sources, so patching in a guest
+// whose name is still held by a classic device fails with a 400. The classic
+// record has to go first. Forward's own ?action=migrate create does exactly
+// that (addSetupMigratingClassicDevices deletes the overlapping classic devices
+// inside the same transaction), but there is no migrating form of PATCH.
+func (s *ControllerManagedSetupsService) Patch(
+	ctx context.Context,
+	networkID, setupName string,
+	patch ControllerManagedSetupPatch,
+) (*ControllerManagedSetup, *Response, error) {
+	setupName = strings.TrimSpace(setupName)
+	if setupName == "" {
+		return nil, nil, errors.New("forward: controller-managed setup name is required")
+	}
+	base, err := s.base(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newJSONRequest(
+		ctx,
+		http.MethodPatch,
+		base+"/"+url.PathEscape(strings.ToLower(setupName)),
+		patch,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "ControllerManagedSetups.Patch")
+	out := new(ControllerManagedSetup)
+	resp, err := s.client.Do(req, out)
+	return out, resp, err
 }
