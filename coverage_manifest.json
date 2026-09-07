@@ -2,9 +2,9 @@
   "schema_version": 1,
   "consumer": "skyforge/components/server",
   "consumer_go_sha256": "634a7187549987f6298be20fe0549923dfc46e4182ed7d1a3b66266878820fd6",
-  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest",
-  "semantic_call_sites": 223,
-  "distinct_method_routes": 167,
+  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them",
+  "semantic_call_sites": 224,
+  "distinct_method_routes": 168,
   "endpoints": [
     {
       "method": "DELETE",
@@ -711,6 +711,14 @@
       "route": "/api/networks/{networkId}/cloudAccounts/{accountName}",
       "symbols": [
         "CloudAccounts.Update"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/controller-managed-setups/{setupName}",
+      "symbols": [
+        "ControllerManagedSetups.Patch"
       ],
       "coverage": "COVERED"
     },

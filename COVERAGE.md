@@ -1,8 +1,8 @@
 # Skyforge Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest.
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them.
 
-Current inventory: **223 semantic call sites**, **167 distinct normalized method+route pairs**, **167 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **224 semantic call sites**, **168 distinct normalized method+route pairs**, **168 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -95,6 +95,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | PATCH | `/api/integrations/servicenow` | `Integrations.PatchServiceNow` | COVERED |
 | PATCH | `/api/networks/{networkId}/atlas` | `Locations.Assign` | COVERED |
 | PATCH | `/api/networks/{networkId}/cloudAccounts/{accountName}` | `CloudAccounts.Update` | COVERED |
+| PATCH | `/api/networks/{networkId}/controller-managed-setups/{setupName}` | `ControllerManagedSetups.Patch` | COVERED |
 | PATCH | `/api/networks/{networkId}/endpoints/{name}` | `Endpoints.Patch` | COVERED |
 | PATCH | `/api/networks/{networkId}/http-credentials/{credentialId}` | `Credentials.UpdateHTTPWithResult` | COVERED |
 | PATCH | `/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}` | `Locations.PatchCluster` | COVERED |

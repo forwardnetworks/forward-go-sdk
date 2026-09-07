@@ -102,6 +102,7 @@ var sdkCoverageCatalog = map[string]CoverageOperation{
 	"Integrations.PatchServiceNow":               {Method: "PATCH", Route: "/api/integrations/servicenow"},
 	"Locations.Assign":                           {Method: "PATCH", Route: "/api/networks/{networkId}/atlas"},
 	"CloudAccounts.Update":                       {Method: "PATCH", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}"},
+	"ControllerManagedSetups.Patch":              {Method: "PATCH", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
 	"Endpoints.Patch":                            {Method: "PATCH", Route: "/api/networks/{networkId}/endpoints/{name}"},
 	"Credentials.UpdateHTTPWithResult":           {Method: "PATCH", Route: "/api/networks/{networkId}/http-credentials/{credentialId}"},
 	"Locations.PatchCluster":                     {Method: "PATCH", Route: "/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}"},
