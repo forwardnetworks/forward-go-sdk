@@ -87,6 +87,23 @@ type ClassicDeviceBatchItem struct {
 	BGPTableType             string `json:"bgpTableType"`
 	BGPPeerType              string `json:"bgpPeerType"`
 	EnableSNMPCollection     bool   `json:"enableSnmpCollection"`
+	// Collect is Forward's per-device collection toggle -- the switch in the
+	// Sources table. A POINTER, and deliberately so: this batch is a PUT, and
+	// the three states have to stay distinguishable. Absent means "leave the
+	// device's current toggle alone", which is what every existing caller
+	// wants and gets for free by not setting the field. A non-nil false is an
+	// explicit request to onboard the device and NOT collect it.
+	//
+	// That third state is the point. A device can be present in the inventory,
+	// carrying its credentials, its jump server and its type, with collection
+	// off -- which is how you onboard something an operator may want to switch
+	// on later without collecting it today, and how a synthetic-node member
+	// stays visible beside the cloud that represents it.
+	//
+	// Same field name and semantics as ClassicDeviceRequest.Collect on the
+	// single-device path, which has carried it since the client was written;
+	// this only closes the gap on the batch path Skyforge actually uses.
+	Collect *bool `json:"collect,omitempty"`
 }
 
 func (s *ClassicDevicesService) PutBatch(ctx context.Context, networkID string, devices []ClassicDeviceBatchItem) (*Response, error) {
