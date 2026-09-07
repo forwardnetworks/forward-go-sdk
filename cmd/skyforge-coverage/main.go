@@ -26,7 +26,12 @@ type endpoint struct {
 
 var (
 	auditRowRE = regexp.MustCompile(`^\| ((?:F|D|T|X|E|S|A|G)[0-9]{3}) \|`)
-	quotedRE   = regexp.MustCompile("`([^`]+)`")
+	// Corrections carry their own id namespace ON PURPOSE. Part 1's 209 rows
+	// are a dated artifact whose count is pinned below so nobody rewrites
+	// history to make a check pass; a route wired after that inventory gets a
+	// C-row, which auditRowRE does not match and the count therefore ignores.
+	correctionRowRE = regexp.MustCompile(`^\| (C[0-9]{3}) \|`)
+	quotedRE        = regexp.MustCompile("`([^`]+)`")
 )
 
 func main() {
@@ -39,7 +44,7 @@ func main() {
 		fatalf("-audit is required; missing inventory input is never skipped")
 	}
 
-	auditRoutes, rows, ids, err := parseAudit(*auditPath)
+	auditRoutes, corrections, rows, ids, err := parseAudit(*auditPath)
 	must(err)
 	if rows != 209 {
 		fatalf("audit has %d inventory rows, want the evidenced baseline 209", rows)
@@ -50,9 +55,20 @@ func main() {
 	if _, ok := auditRoutes["POST /api/snapshots/{snapshotId}"]; !ok {
 		fatalf("positive control POST /api/snapshots/{snapshotId} was not derived")
 	}
-	// Correction found during implementation: this wired call post-dates or was
-	// omitted from the 209-row audit. The audit correction cites both locations.
-	auditRoutes["POST /api/users/{userId}/supported-orgs"] = struct{}{}
+	// Corrections come from the audit's own Part 5 table, not from this file.
+	// They used to be a single hard-coded route, which meant every LATER route
+	// had nowhere to be recorded: the cross-check simply failed, and stayed
+	// failed on 26 routes because fixing it required editing Go rather than
+	// the document that is supposed to be the inventory.
+	if len(corrections) == 0 {
+		fatalf("audit has no Part 5 correction rows; a route wired after the 209-row inventory would have nowhere to be recorded")
+	}
+	if _, ok := corrections["POST /api/users/{userId}/supported-orgs"]; !ok {
+		fatalf("positive control: the carried-over correction C027 was not parsed from the audit")
+	}
+	for route := range corrections {
+		auditRoutes[route] = struct{}{}
+	}
 
 	data, err := os.ReadFile(*manifestPath)
 	must(err)
@@ -64,7 +80,8 @@ func main() {
 	}
 	missing := difference(auditRoutes, manifestRoutes)
 	extra := difference(manifestRoutes, auditRoutes)
-	fmt.Printf("audit_rows=%d audit_routes_with_correction=%d manifest_routes=%d\n", rows, len(auditRoutes), len(manifestRoutes))
+	fmt.Printf("audit_rows=%d corrections=%d audit_routes_with_corrections=%d manifest_routes=%d\n",
+		rows, len(corrections), len(auditRoutes), len(manifestRoutes))
 	printDifference("missing_from_manifest", missing)
 	printDifference("not_in_audit_inventory", extra)
 	if len(missing) != 0 || len(extra) != 0 {
@@ -88,36 +105,50 @@ func main() {
 	}
 }
 
-func parseAudit(path string) (map[string]struct{}, int, map[string]struct{}, error) {
+// parseAudit returns the inventory's routes, the Part 5 corrections' routes,
+// the inventory ROW COUNT (pinned by the caller), and the inventory ids.
+//
+// Corrections are returned separately rather than merged here so the caller can
+// insist they exist: an empty corrections table and a table whose routes all
+// happen to be in the inventory look identical once merged, and the first of
+// those is a document that has silently stopped recording anything.
+func parseAudit(path string) (map[string]struct{}, map[string]struct{}, int, map[string]struct{}, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, nil, 0, nil, err
 	}
 	defer file.Close()
 	routes := map[string]struct{}{}
+	corrections := map[string]struct{}{}
 	ids := map[string]struct{}{}
 	rows := 0
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		line := scanner.Text()
+		into := routes
 		match := auditRowRE.FindStringSubmatch(line)
 		if len(match) == 0 {
-			continue
+			match = correctionRowRE.FindStringSubmatch(line)
+			if len(match) == 0 {
+				continue
+			}
+			into = corrections
+		} else {
+			rows++
+			ids[match[1]] = struct{}{}
 		}
-		rows++
-		ids[match[1]] = struct{}{}
 		columns := strings.Split(line, "|")
 		if len(columns) < 5 {
-			return nil, 0, nil, fmt.Errorf("malformed audit row %s", match[1])
+			return nil, nil, 0, nil, fmt.Errorf("malformed audit row %s", match[1])
 		}
 		for _, quoted := range quotedRE.FindAllStringSubmatch(columns[3], -1) {
 			for _, key := range normalizedKeys(quoted[1]) {
-				routes[key] = struct{}{}
+				into[key] = struct{}{}
 			}
 		}
 	}
-	return routes, rows, ids, scanner.Err()
+	return routes, corrections, rows, ids, scanner.Err()
 }
 
 func normalizedKeys(value string) []string {
