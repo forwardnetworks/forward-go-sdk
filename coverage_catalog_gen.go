@@ -31,6 +31,8 @@ var sdkCoverageCatalog = map[string]CoverageOperation{
 	"Collectors.List":                            {Method: "GET", Route: "/api/collectors"},
 	"Collectors.Get":                             {Method: "GET", Route: "/api/collectors/{collectorIdOrName}"},
 	"Banners.List":                               {Method: "GET", Route: "/api/custom-banners"},
+	"SoftwareCentral.ListDeploymentArtifacts":    {Method: "GET", Route: "/api/deployment-artifacts"},
+	"SoftwareCentral.DeploymentArtifactURL":      {Method: "GET", Route: "/api/deployment-artifacts/{artifactId}"},
 	"Configuration.GetDeployment":                {Method: "GET", Route: "/api/deployment-config/{property}"},
 	"AccessControl.ListDeviceAccessLabels":       {Method: "GET", Route: "/api/device-access-labels"},
 	"Endpoints.ListProfiles":                     {Method: "GET", Route: "/api/endpoint-profiles"},

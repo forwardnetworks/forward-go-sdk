@@ -1,8 +1,8 @@
 # Skyforge Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them.
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane.
 
-Current inventory: **224 semantic call sites**, **168 distinct normalized method+route pairs**, **168 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **226 semantic call sites**, **170 distinct normalized method+route pairs**, **170 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -34,6 +34,8 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | GET | `/api/collectors` | `Collectors.List` | COVERED |
 | GET | `/api/collectors/{collectorIdOrName}` | `Collectors.Get` | COVERED |
 | GET | `/api/custom-banners` | `Banners.List` | COVERED |
+| GET | `/api/deployment-artifacts` | `SoftwareCentral.ListDeploymentArtifacts` | COVERED |
+| GET | `/api/deployment-artifacts/{artifactId}` | `SoftwareCentral.DeploymentArtifactURL` | COVERED |
 | GET | `/api/deployment-config/{property}` | `Configuration.GetDeployment` | COVERED |
 | GET | `/api/device-access-labels` | `AccessControl.ListDeviceAccessLabels` | COVERED |
 | GET | `/api/endpoint-profiles` | `Endpoints.ListProfiles` | COVERED |

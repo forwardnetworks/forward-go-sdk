@@ -206,6 +206,7 @@ flags, and permissions can change between Forward releases.
 | `Integrations`, `Configuration`, `Banners` | Preview | Infoblox/Rapid7/ServiceNow, deployment config, custom banners |
 | `AccessControl`, `SAML`, `Users.Roles` | Preview | device access labels, access control groups (nil networkRoles = org admin), SAML settings, user roles |
 | `Webhooks` | Preview | outbound callback CRUD and connectivity tests |
+| `SoftwareCentral` | Preview | fwd.app deployment-artifact catalog, presigned download URL, credential-free file download, appliance OVA listing |
 | `Raw` | Any | forward-compatible access to every `/api` route |
 
 Snapshot compatibility flags include `async`, `excludeFailedDevices`,
