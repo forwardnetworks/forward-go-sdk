@@ -33,6 +33,7 @@ every controller shipped by every Forward release.
 | User roles | Preview | `Users.Roles` org/network roles so a reconcile can ask before it grants |
 | Skyforge preview families | Preview | collectors/attachment, endpoints/profiles, locations/clusters/atlas, proxies, topology, users/admin, CBR, browser sessions, deployment config, banners, NQE repository mutation, Infoblox/Rapid7/ServiceNow |
 | Compatibility | SDK | version diagnostics; explicit track/build profiles; tri-state capability support |
+| Software Central (fwd.app) | Preview | deployment-artifact catalog list, `as=url` download URL, unauthenticated streamed download of the presigned file, Forward appliance OVA convenience; SaaS-only, basic auth with a Software Central account |
 
 ## Next typed migrations
 

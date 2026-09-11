@@ -2,9 +2,9 @@
   "schema_version": 1,
   "consumer": "skyforge/components/server",
   "consumer_go_sha256": "e2e42a61f806617b44b957ec74e4e3959580e4067b616c3be23f75ca512a9fd4",
-  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them",
-  "semantic_call_sites": 224,
-  "distinct_method_routes": 168,
+  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane",
+  "semantic_call_sites": 226,
+  "distinct_method_routes": 170,
   "endpoints": [
     {
       "method": "DELETE",
@@ -213,6 +213,22 @@
       "route": "/api/custom-banners",
       "symbols": [
         "Banners.List"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/deployment-artifacts",
+      "symbols": [
+        "SoftwareCentral.ListDeploymentArtifacts"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/deployment-artifacts/{artifactId}",
+      "symbols": [
+        "SoftwareCentral.DeploymentArtifactURL"
       ],
       "coverage": "COVERED"
     },
