@@ -1,8 +1,8 @@
 # Skyforge Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane.
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl..
 
-Current inventory: **226 semantic call sites**, **170 distinct normalized method+route pairs**, **170 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **226 semantic call sites**, **173 distinct normalized method+route pairs**, **173 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -11,6 +11,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | DELETE | `/api/access-control-groups/{groupId}` | `AccessControl.DeleteGroup` | COVERED |
 | DELETE | `/api/admin/orgs/{orgId}` | `Organizations.Delete` | COVERED |
 | DELETE | `/api/collectors/{collectorIdOrName}` | `Collectors.Delete` | COVERED |
+| DELETE | `/api/cve-index` | `CVEIndex.Delete` | COVERED |
 | DELETE | `/api/device-access-labels/{labelId}` | `AccessControl.DeleteDeviceAccessLabel` | COVERED |
 | DELETE | `/api/integrations/servicenow` | `Integrations.DeleteServiceNow` | COVERED |
 | DELETE | `/api/networks/{networkId}` | `Networks.Delete` | COVERED |
@@ -34,6 +35,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | GET | `/api/collectors` | `Collectors.List` | COVERED |
 | GET | `/api/collectors/{collectorIdOrName}` | `Collectors.Get` | COVERED |
 | GET | `/api/custom-banners` | `Banners.List` | COVERED |
+| GET | `/api/cve-index` | `CVEIndex.Download`, `CVEIndex.Metadata` | COVERED |
 | GET | `/api/deployment-artifacts` | `SoftwareCentral.ListDeploymentArtifacts` | COVERED |
 | GET | `/api/deployment-artifacts/{artifactId}` | `SoftwareCentral.DeploymentArtifactURL` | COVERED |
 | GET | `/api/deployment-config/{property}` | `Configuration.GetDeployment` | COVERED |
@@ -169,6 +171,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | POST | `/login` | `Browser.LoginLegacy` | COVERED |
 | PUT | `/api/auth/saml-settings` | `SAML.PutSettings` | COVERED |
 | PUT | `/api/custom-banners/{bannerId}` | `Banners.Replace` | COVERED |
+| PUT | `/api/cve-index` | `CVEIndex.Put` | COVERED |
 | PUT | `/api/deployment-config/{property}` | `Configuration.SetDeployment` | COVERED |
 | PUT | `/api/integrations/servicenow` | `Integrations.PutServiceNow` | COVERED |
 | PUT | `/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands` | `Predict.StageCommands` | COVERED |
