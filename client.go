@@ -102,6 +102,7 @@ type Client struct {
 	Banners                 *BannersService
 	Licensing               *LicensingService
 	SoftwareCentral         *SoftwareCentralService
+	CVEIndex                *CVEIndexService
 	AccessControl           *AccessControlService
 	SAML                    *SAMLService
 	Configuration           *ConfigurationService
@@ -212,6 +213,15 @@ func (c *Client) ForNetwork(networkID string) *Client {
 }
 
 // Network returns the default network ID bound to the client.
+// BaseURL returns the origin this client was built against, as a string, for
+// reports that name where a call went.
+func (c *Client) BaseURL() string {
+	if c == nil || c.baseURL == nil {
+		return ""
+	}
+	return strings.TrimRight(c.baseURL.String(), "/")
+}
+
 func (c *Client) Network() string {
 	if c == nil {
 		return ""
@@ -254,6 +264,7 @@ func (c *Client) bindServices() {
 	c.Banners = (*BannersService)(&service{client: c})
 	c.Licensing = (*LicensingService)(&service{client: c})
 	c.SoftwareCentral = (*SoftwareCentralService)(&service{client: c})
+	c.CVEIndex = (*CVEIndexService)(&service{client: c})
 	c.AccessControl = (*AccessControlService)(&service{client: c})
 	c.SAML = (*SAMLService)(&service{client: c})
 	c.Configuration = (*ConfigurationService)(&service{client: c})
