@@ -16,18 +16,20 @@ const maxErrorBody = 1 << 20
 type ErrorKind string
 
 const (
-	ErrorKindUnknown                     ErrorKind = "unknown"
-	ErrorKindCollectionAlreadyInProgress ErrorKind = "collection-already-in-progress"
-	ErrorKindSnapshotNotProcessed        ErrorKind = "snapshot-not-processed"
-	ErrorKindNetworkNotFound             ErrorKind = "network-not-found"
-	ErrorKindAuthentication              ErrorKind = "authentication-failure"
+	ErrorKindUnknown                           ErrorKind = "unknown"
+	ErrorKindCollectionAlreadyInProgress       ErrorKind = "collection-already-in-progress"
+	ErrorKindSnapshotNotProcessed              ErrorKind = "snapshot-not-processed"
+	ErrorKindNetworkNotFound                   ErrorKind = "network-not-found"
+	ErrorKindAuthentication                    ErrorKind = "authentication-failure"
+	ErrorKindTrustedCertificateApplyInProgress ErrorKind = "trusted-certificate-apply-in-progress"
 )
 
 var (
-	ErrCollectionAlreadyInProgress = errors.New("forward: collection already in progress")
-	ErrSnapshotNotProcessed        = errors.New("forward: snapshot not processed")
-	ErrNetworkNotFound             = errors.New("forward: network not found")
-	ErrAuthentication              = errors.New("forward: authentication failed")
+	ErrCollectionAlreadyInProgress       = errors.New("forward: collection already in progress")
+	ErrSnapshotNotProcessed              = errors.New("forward: snapshot not processed")
+	ErrNetworkNotFound                   = errors.New("forward: network not found")
+	ErrAuthentication                    = errors.New("forward: authentication failed")
+	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
 )
 
 // UnavailableError preserves the reason a fail-closed client could not be
@@ -84,6 +86,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindNetworkNotFound
 	case ErrAuthentication:
 		return e.Kind == ErrorKindAuthentication
+	case ErrTrustedCertificateApplyInProgress:
+		return e.Kind == ErrorKindTrustedCertificateApplyInProgress
 	default:
 		return false
 	}
@@ -124,6 +128,15 @@ func IsErrorKind(err error, kind ErrorKind) bool {
 // by collection orchestrators. It performs no string matching at the call site.
 func IsCollectionAlreadyInProgress(err error) bool {
 	return errors.Is(err, ErrCollectionAlreadyInProgress)
+}
+
+// IsTrustedCertificateApplyInProgress reports whether err is the 409 Forward
+// returns from TrustedCertificates.Apply when an apply task is already queued
+// or running for every supported collector. Callers should treat this as
+// "already underway," not a failure, and must not retry in a way that queues
+// a second apply once a collector becomes free.
+func IsTrustedCertificateApplyInProgress(err error) bool {
+	return errors.Is(err, ErrTrustedCertificateApplyInProgress)
 }
 
 func newErrorResponse(resp *http.Response) *ErrorResponse {
@@ -201,7 +214,20 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 			isNetworkResourcePath(path)) {
 		return ErrorKindNetworkNotFound
 	}
+	// TrustedCertificateTaskService.applyCertificates is the only handler on
+	// this route that throws ConflictException, and only for action=apply.
+	if method == http.MethodPost && path == "/api/trusted-certificates" &&
+		status == http.StatusConflict && requestHasQueryValue(apiErr.Response, "action", "apply") {
+		return ErrorKindTrustedCertificateApplyInProgress
+	}
 	return ErrorKindUnknown
+}
+
+func requestHasQueryValue(response *http.Response, key, value string) bool {
+	if response == nil || response.Request == nil || response.Request.URL == nil {
+		return false
+	}
+	return response.Request.URL.Query().Get(key) == value
 }
 
 func requestHasNoQuery(response *http.Response) bool {

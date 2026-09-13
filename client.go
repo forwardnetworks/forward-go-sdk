@@ -111,6 +111,7 @@ type Client struct {
 	Collections             *CollectionsService
 	JumpServers             *JumpServersService
 	Compatibility           *CompatibilityService
+	TrustedCertificates     *TrustedCertificatesService
 }
 
 // Response wraps an HTTP response returned by the Forward API.
@@ -273,6 +274,7 @@ func (c *Client) bindServices() {
 	c.Collections = (*CollectionsService)(&service{client: c})
 	c.JumpServers = (*JumpServersService)(&service{client: c})
 	c.Compatibility = (*CompatibilityService)(&service{client: c})
+	c.TrustedCertificates = (*TrustedCertificatesService)(&service{client: c})
 }
 
 // NewRequest creates an authenticated request relative to the appliance URL.

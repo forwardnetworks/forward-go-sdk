@@ -1,8 +1,8 @@
 # Skyforge Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl..
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go..
 
-Current inventory: **226 semantic call sites**, **173 distinct normalized method+route pairs**, **173 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **230 semantic call sites**, **176 distinct normalized method+route pairs**, **176 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -20,6 +20,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | DELETE | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.DeleteIntranetNode` | COVERED |
 | DELETE | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.DeleteL3VPN` | COVERED |
 | DELETE | `/api/orgs/{orgId}/config/software_central` | `Properties.ClearOrganization` | COVERED |
+| DELETE | `/api/trusted-certificates/{name}` | `TrustedCertificates.Delete` | COVERED |
 | DELETE | `/api/users/current/tokens/{tokenName}` | `Users.DeleteToken` | COVERED |
 | DELETE | `/api/users/{userId}` | `Admin.DeleteUser` | COVERED |
 | GET | `/api/access-control-groups` | `AccessControl.ListGroups` | COVERED |
@@ -83,6 +84,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | GET | `/api/snapshots/{snapshotId}/checks` | `Checks.List`, `Compatibility.Checks` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/topology` | `Topology.List` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.Overrides` | COVERED |
+| GET | `/api/trusted-certificates` | `TrustedCertificates.List` | COVERED |
 | GET | `/api/users/current` | `Users.Current`, `Browser.CurrentUser` | COVERED |
 | GET | `/api/users/current/tokens` | `Users.ListTokens` | COVERED |
 | GET | `/api/users/{userId}/roles` | `Users.Roles` | COVERED |
@@ -160,6 +162,7 @@ The inventory becomes stale when Skyforge adds, removes, or changes a Forward wi
 | POST | `/api/snapshots/{snapshotId}` | `Snapshots.Reprocess`, `Snapshots.Invalidate`, `Snapshots.ExportSubset`, `Snapshots.ExportSubsetCompatibility` | COVERED |
 | POST | `/api/snapshots/{snapshotId}/checks` | `Checks.CreatePersistent` | COVERED |
 | POST | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.EditOverrides` | COVERED |
+| POST | `/api/trusted-certificates` | `TrustedCertificates.Add`, `TrustedCertificates.Apply` | COVERED |
 | POST | `/api/users/current/nqe/changes` | `NQERepository.DeleteDirectory`, `NQERepository.AddDirectory`, `NQERepository.AddQuery` | COVERED |
 | POST | `/api/users/current/password` | `Users.ResetPassword` | COVERED |
 | POST | `/api/users/current/tokens` | `Users.CreateToken` | COVERED |
