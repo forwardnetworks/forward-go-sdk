@@ -13,7 +13,9 @@ package forward
 // The wire contract mirrors firewall predict: cloud objects hang off
 // /change-sets/{cs}/devices/{cloudSetup}/cloud-objects/{objectId}, where the
 // cloud setup is the collection source that owns the object (its device name
-// in Forward) and the object id is the provider's own (rtb-..., sg-...).
+// in Forward) and the object id is the provider's own (rtb-..., sg-...). Edits
+// go through the one generic .../edits endpoint (gerrit 227695); the plan
+// import and the route-table diff are the additions on top of it.
 
 import (
 	"context"
@@ -114,6 +116,56 @@ func (s *PredictService) RouteTableDiff(
 	return cloudDo(s, req, new(RouteTableDiff))
 }
 
+// CloudObjectEditOp is what a cloud-object edit does to one row.
+type CloudObjectEditOp string
+
+const (
+	CloudObjectEditAdd     CloudObjectEditOp = "ADD"
+	CloudObjectEditModify  CloudObjectEditOp = "MODIFY"
+	CloudObjectEditRemove  CloudObjectEditOp = "REMOVE"
+	CloudObjectEditDiscard CloudObjectEditOp = "DISCARD"
+)
+
+// CloudObjectEdit is one edit against one cloud object, typed by object kind
+// so a single endpoint serves every kind: Type selects the kind (route tables
+// today), Op the operation, and the kind's payload rides in its own field.
+//
+// RowKey names the base-snapshot row being changed -- a route's destination --
+// and is required for MODIFY, REMOVE and DISCARD; Route carries the values for
+// ADD and MODIFY. The server refuses a mismatch with a 400.
+type CloudObjectEdit struct {
+	Type   string            `json:"type"`
+	Op     CloudObjectEditOp `json:"op"`
+	RowKey string            `json:"rowKey,omitempty"`
+	Route  *CloudRoute       `json:"route,omitempty"`
+}
+
+// EditCloudObject posts one edit to a cloud object on the change set's draft.
+// The typed helpers below build the edit; use this directly for a kind they
+// do not cover yet.
+func (s *PredictService) EditCloudObject(
+	ctx context.Context,
+	networkID string,
+	changeSetID string,
+	cloudSetup string,
+	objectID string,
+	edit CloudObjectEdit,
+) (*Response, error) {
+	if edit.Type == "" {
+		edit.Type = "ROUTE_TABLE"
+	}
+	path, err := s.cloudObjectPath(networkID, changeSetID, cloudSetup, objectID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path+"/edits", edit)
+	if err != nil {
+		return nil, err
+	}
+	_, resp, err := cloudDo[struct{}](s, req, nil)
+	return resp, err
+}
+
 // AddRoute stages a new route on a cloud route table.
 func (s *PredictService) AddRoute(
 	ctx context.Context,
@@ -123,16 +175,8 @@ func (s *PredictService) AddRoute(
 	objectID string,
 	route CloudRoute,
 ) (*Response, error) {
-	path, err := s.cloudObjectPath(networkID, changeSetID, cloudSetup, objectID)
-	if err != nil {
-		return nil, err
-	}
-	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path+"/routes", route)
-	if err != nil {
-		return nil, err
-	}
-	_, resp, err := cloudDo[struct{}](s, req, nil)
-	return resp, err
+	return s.EditCloudObject(ctx, networkID, changeSetID, cloudSetup, objectID,
+		CloudObjectEdit{Op: CloudObjectEditAdd, Route: &route})
 }
 
 // UpdateRoute restates the route currently at destination; the route's own
@@ -146,16 +190,8 @@ func (s *PredictService) UpdateRoute(
 	destination string,
 	route CloudRoute,
 ) (*Response, error) {
-	path, err := s.routePath(networkID, changeSetID, cloudSetup, objectID, destination)
-	if err != nil {
-		return nil, err
-	}
-	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, route)
-	if err != nil {
-		return nil, err
-	}
-	_, resp, err := cloudDo[struct{}](s, req, nil)
-	return resp, err
+	return s.EditCloudObject(ctx, networkID, changeSetID, cloudSetup, objectID,
+		CloudObjectEdit{Op: CloudObjectEditModify, RowKey: destination, Route: &route})
 }
 
 // RemoveRoute stages the removal of the route at destination.
@@ -167,16 +203,8 @@ func (s *PredictService) RemoveRoute(
 	objectID string,
 	destination string,
 ) (*Response, error) {
-	path, err := s.routePath(networkID, changeSetID, cloudSetup, objectID, destination)
-	if err != nil {
-		return nil, err
-	}
-	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
-	if err != nil {
-		return nil, err
-	}
-	_, resp, err := cloudDo[struct{}](s, req, nil)
-	return resp, err
+	return s.EditCloudObject(ctx, networkID, changeSetID, cloudSetup, objectID,
+		CloudObjectEdit{Op: CloudObjectEditRemove, RowKey: destination})
 }
 
 // DiscardRoute drops whatever the draft stages for the route at destination,
@@ -189,17 +217,8 @@ func (s *PredictService) DiscardRoute(
 	objectID string,
 	destination string,
 ) (*Response, error) {
-	path, err := s.routePath(networkID, changeSetID, cloudSetup, objectID, destination)
-	if err != nil {
-		return nil, err
-	}
-	path += "?" + url.Values{"action": []string{"discardChanges"}}.Encode()
-	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil)
-	if err != nil {
-		return nil, err
-	}
-	_, resp, err := cloudDo[struct{}](s, req, nil)
-	return resp, err
+	return s.EditCloudObject(ctx, networkID, changeSetID, cloudSetup, objectID,
+		CloudObjectEdit{Op: CloudObjectEditDiscard, RowKey: destination})
 }
 
 // cloudDo sends a cloud-object request behind the two capability gates and
@@ -250,16 +269,4 @@ func (s *PredictService) cloudObjectPath(networkID, changeSetID, cloudSetup, obj
 		return "", errors.New("forward: cloud object ID is required")
 	}
 	return path + "/" + url.PathEscape(objectID), nil
-}
-
-func (s *PredictService) routePath(networkID, changeSetID, cloudSetup, objectID, destination string) (string, error) {
-	path, err := s.cloudObjectPath(networkID, changeSetID, cloudSetup, objectID)
-	if err != nil {
-		return "", err
-	}
-	destination = strings.TrimSpace(destination)
-	if destination == "" {
-		return "", errors.New("forward: route destination is required")
-	}
-	return path + "/routes/" + url.PathEscape(destination), nil
 }
