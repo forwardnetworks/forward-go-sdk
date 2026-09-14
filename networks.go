@@ -81,6 +81,8 @@ type PathSearchRequest struct {
 	SrcPort string
 	DstPort string
 	Intent  string
+	// SnapshotID scopes the search to one snapshot (a predicted one, say) instead of the network's latest.
+	SnapshotID string
 }
 type PathHop struct {
 	DeviceName       string `json:"deviceName"`
@@ -110,7 +112,7 @@ func (s *NetworksService) Paths(ctx context.Context, networkID string, input Pat
 		return nil, nil, errors.New("forward: destination IP is required")
 	}
 	q := url.Values{"dstIp": []string{strings.TrimSpace(input.DstIP)}}
-	for key, value := range map[string]string{"from": input.From, "srcIp": input.SrcIP, "ipProto": input.IPProto, "srcPort": input.SrcPort, "dstPort": input.DstPort, "intent": strings.ToUpper(input.Intent)} {
+	for key, value := range map[string]string{"from": input.From, "srcIp": input.SrcIP, "ipProto": input.IPProto, "srcPort": input.SrcPort, "dstPort": input.DstPort, "intent": strings.ToUpper(input.Intent), "snapshotId": input.SnapshotID} {
 		if value = strings.TrimSpace(value); value != "" {
 			q.Set(key, value)
 		}
