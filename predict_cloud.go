@@ -29,13 +29,16 @@ import (
 
 // CloudRoute is one row of a cloud route table as Forward models it: the
 // columns of the generated cloud_route_table, so a staged route reads the same
-// as a collected one.
+// as a collected one. Every field is always sent -- Forward treats them all as
+// present, and an omitted one is a 500 rather than a default -- so a caller
+// states a new route fully: Status "active", Propagated "no", Origin "" are the
+// values a collected static route carries.
 type CloudRoute struct {
 	Destination string `json:"destination"`
 	Target      string `json:"target"`
-	Status      string `json:"status,omitempty"`
-	Propagated  string `json:"propagated,omitempty"`
-	Origin      string `json:"origin,omitempty"`
+	Status      string `json:"status"`
+	Propagated  string `json:"propagated"`
+	Origin      string `json:"origin"`
 }
 
 // CloudObjectImport says what a Terraform plan import staged on one cloud
