@@ -63,18 +63,20 @@ func (r ClassicDeviceRequest) MarshalJSON() ([]byte, error) {
 // ClassicDevice is a collection source. Raw retains the complete wire object
 // so callers can inspect fields introduced by newer Forward versions.
 type ClassicDevice struct {
-	Name             string                     `json:"name"`
-	Host             string                     `json:"host"`
-	Type             string                     `json:"type,omitempty"`
-	Port             *int32                     `json:"port,omitempty"`
-	CLICredentialID  string                     `json:"cliCredentialId,omitempty"`
-	HTTPCredentialID string                     `json:"httpCredentialId,omitempty"`
-	Collect          *bool                      `json:"collect,omitempty"`
-	Note             string                     `json:"note,omitempty"`
-	Raw              map[string]json.RawMessage `json:"-"`
+	Name             string `json:"name"`
+	Host             string `json:"host"`
+	Type             string `json:"type,omitempty"`
+	Port             *int32 `json:"port,omitempty"`
+	CLICredentialID  string `json:"cliCredentialId,omitempty"`
+	HTTPCredentialID string `json:"httpCredentialId,omitempty"`
+	Collect          *bool  `json:"collect,omitempty"`
+	Note             string `json:"note,omitempty"`
+	// Raw carries fields this SDK version does not model, so an object read
+	// from a newer appserver and written back does not silently lose them.
+	Raw map[string]json.RawMessage `json:"-"`
 }
 
-// ClassicDeviceBatchItem is the putBatch wire shape used by Skyforge.
+// ClassicDeviceBatchItem is the putBatch wire shape.
 type ClassicDeviceBatchItem struct {
 	Name                     string `json:"name"`
 	Type                     string `json:"type,omitempty"`
@@ -241,8 +243,22 @@ func (s *ClassicDevicesService) Put(ctx context.Context, networkID, deviceName s
 	return device, resp, err
 }
 
-// Patch updates only fields in patch. A nil map value is encoded as JSON null.
-func (s *ClassicDevicesService) Patch(ctx context.Context, networkID, deviceName string, patch map[string]any) (*ClassicDevice, *Response, error) {
+// ClassicDevicePatch changes part of a device. Every field is a pointer so that
+// "not stated" and "stated as empty" stay distinguishable -- clearing a note and
+// leaving it alone are different requests, and a plain string cannot say which
+// was meant.
+type ClassicDevicePatch struct {
+	Host             *string `json:"host,omitempty"`
+	Type             *string `json:"type,omitempty"`
+	Port             *int32  `json:"port,omitempty"`
+	CLICredentialID  *string `json:"cliCredentialId,omitempty"`
+	HTTPCredentialID *string `json:"httpCredentialId,omitempty"`
+	Collect          *bool   `json:"collect,omitempty"`
+	Note             *string `json:"note,omitempty"`
+}
+
+// Patch updates only the fields the patch states.
+func (s *ClassicDevicesService) Patch(ctx context.Context, networkID, deviceName string, patch ClassicDevicePatch) (*ClassicDevice, *Response, error) {
 	path, err := classicDevicePath(networkID, deviceName)
 	if err != nil {
 		return nil, nil, err

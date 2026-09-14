@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -16,18 +17,20 @@ import (
 type CloudAccountsService service
 
 type CloudAccount struct {
-	Type                          string                     `json:"type"`
-	Name                          string                     `json:"name"`
-	Collect                       bool                       `json:"collect"`
-	ProxyServerID                 string                     `json:"proxyServerId,omitempty"`
-	Regions                       map[string]Region          `json:"regions,omitempty"`
-	RegionToProxyServerID         map[string]string          `json:"regionToProxyServerId,omitempty"`
-	AssumeRoleInfos               []AWSAssumeRoleInfo        `json:"assumeRoleInfos,omitempty"`
-	UseForwardAccountToAssumeRole *bool                      `json:"useForwardAccountToAssumeRole,omitempty"`
-	Concurrency                   *int64                     `json:"concurrency,omitempty"`
-	ConnectionTimeoutSeconds      *int64                     `json:"connectionTimeoutSeconds,omitempty"`
-	RequestTimeoutSeconds         *int64                     `json:"requestTimeoutSeconds,omitempty"`
-	Raw                           map[string]json.RawMessage `json:"-"`
+	Type                          string              `json:"type"`
+	Name                          string              `json:"name"`
+	Collect                       bool                `json:"collect"`
+	ProxyServerID                 string              `json:"proxyServerId,omitempty"`
+	Regions                       map[string]Region   `json:"regions,omitempty"`
+	RegionToProxyServerID         map[string]string   `json:"regionToProxyServerId,omitempty"`
+	AssumeRoleInfos               []AWSAssumeRoleInfo `json:"assumeRoleInfos,omitempty"`
+	UseForwardAccountToAssumeRole *bool               `json:"useForwardAccountToAssumeRole,omitempty"`
+	Concurrency                   *int64              `json:"concurrency,omitempty"`
+	ConnectionTimeoutSeconds      *int64              `json:"connectionTimeoutSeconds,omitempty"`
+	RequestTimeoutSeconds         *int64              `json:"requestTimeoutSeconds,omitempty"`
+	// Raw carries fields this SDK version does not model, so an object read
+	// from a newer appserver and written back does not silently lose them.
+	Raw map[string]json.RawMessage `json:"-"`
 }
 
 func (a *CloudAccount) UnmarshalJSON(data []byte) error {
@@ -95,6 +98,16 @@ type CloudAccountRequest struct {
 	DiscoveredSubscriptionIDs []string       `json:"discoveredSubscriptionIds,omitempty"`
 	TestInstants              map[string]int `json:"testInstants,omitempty"`
 
+	// Per-region proxies and collection tuning; omitted when unstated.
+	RegionToProxyServerID    map[string]string `json:"regionToProxyServerId,omitempty"`
+	Concurrency              *int64            `json:"concurrency,omitempty"`
+	ConnectionTimeoutSeconds *int64            `json:"connectionTimeoutSeconds,omitempty"`
+	RequestTimeoutSeconds    *int64            `json:"requestTimeoutSeconds,omitempty"`
+
+	// AWS assume-role onboarding.
+	AssumeRoleInfos               []AWSAssumeRoleInfo `json:"assumeRoleInfos,omitempty"`
+	UseForwardAccountToAssumeRole *bool               `json:"useForwardAccountToAssumeRole,omitempty"`
+
 	Extra map[string]any `json:"-"`
 }
 
@@ -125,6 +138,22 @@ func (r CloudAccountRequest) MarshalJSON() ([]byte, error) {
 		merged[k] = raw
 	}
 	return json.Marshal(merged)
+}
+
+// CloudAccountCredentialRequest replaces the stored credential of a setup
+// without restating the rest of it.
+type CloudAccountCredentialRequest struct {
+	Type     string `json:"type"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	// Azure rotates a secret rather than a password.
+	ClientSecret string `json:"clientSecret,omitempty"`
+}
+
+// AWSAssumeRoleExternalID is the external id Forward expects a customer role to
+// require, which is what makes the trust policy specific to this instance.
+type AWSAssumeRoleExternalIDResponse struct {
+	ExternalID string `json:"externalId"`
 }
 
 func (s *CloudAccountsService) List(ctx context.Context, networkID string) ([]CloudAccount, *Response, error) {
@@ -169,7 +198,7 @@ func (s *CloudAccountsService) Update(ctx context.Context, networkID, name strin
 	return account, resp, err
 }
 
-func (s *CloudAccountsService) UpdateCredential(ctx context.Context, networkID, name string, request map[string]any) (*Response, error) {
+func (s *CloudAccountsService) UpdateCredential(ctx context.Context, networkID, name string, request CloudAccountCredentialRequest) (*Response, error) {
 	path, err := cloudAccountPath(networkID, name)
 	if err != nil {
 		return nil, err
@@ -244,4 +273,31 @@ func cloudAccountPath(networkID, name string) (string, error) {
 		return "", errors.New("forward: cloud account name is required")
 	}
 	return path + "/" + url.PathEscape(name), nil
+}
+
+// ErrCloudAccountNotFound is returned by Get when the network has no setup of
+// that name. A Terraform read distinguishes this from a transport failure --
+// the first means the resource is gone and should be removed from state, the
+// second means try again -- so it has to be matchable rather than a string.
+var ErrCloudAccountNotFound = errors.New("forward: cloud account not found")
+
+// Get returns one cloud setup by name.
+//
+// Forward exposes no per-name read, so this filters the list. The name is the
+// setup's identity for every other call -- update, credential rotation,
+// delete -- so a caller holding only a name can still read it back.
+func (s *CloudAccountsService) Get(ctx context.Context, networkID, name string) (*CloudAccount, *Response, error) {
+	if name = strings.TrimSpace(name); name == "" {
+		return nil, nil, errors.New("forward: cloud account name is required")
+	}
+	accounts, resp, err := s.List(ctx, networkID)
+	if err != nil {
+		return nil, resp, err
+	}
+	for i := range accounts {
+		if accounts[i].Name == name {
+			return &accounts[i], resp, nil
+		}
+	}
+	return nil, resp, fmt.Errorf("%w: %s", ErrCloudAccountNotFound, name)
 }

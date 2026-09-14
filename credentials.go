@@ -2,7 +2,6 @@ package forward
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -217,7 +216,7 @@ func (s *CredentialsService) GetCLI(ctx context.Context, networkID, credentialID
 
 // UpdateCLI patches version-specific credential fields. A nil map value emits
 // JSON null; password values are never exposed to client hooks.
-func (s *CredentialsService) UpdateCLI(ctx context.Context, networkID, credentialID string, patch map[string]any) (*CLICredential, *Response, error) {
+func (s *CredentialsService) UpdateCLI(ctx context.Context, networkID, credentialID string, patch CLICredentialPatch) (*CLICredential, *Response, error) {
 	path, err := credentialPath(networkID, "cli-credentials", credentialID)
 	if err != nil {
 		return nil, nil, err
@@ -280,7 +279,7 @@ func (s *CredentialsService) GetHTTP(ctx context.Context, networkID, credentialI
 	return value, resp, err
 }
 
-func (s *CredentialsService) UpdateHTTP(ctx context.Context, networkID, credentialID string, patch map[string]any) (*Response, error) {
+func (s *CredentialsService) UpdateHTTP(ctx context.Context, networkID, credentialID string, patch HTTPCredentialPatch) (*Response, error) {
 	path, err := credentialPath(networkID, "http-credentials", credentialID)
 	if err != nil {
 		return nil, err
@@ -316,13 +315,48 @@ func (s *CredentialsService) DeleteHTTP(ctx context.Context, networkID, credenti
 	return s.delete(ctx, networkID, "http-credentials", credentialID)
 }
 
+// CLICredentialPatch changes part of a stored CLI credential. Every field is a
+// pointer so that "not stated" and "stated as empty" stay distinguishable: a
+// patch that clears a username and one that leaves it alone are different
+// requests.
+type CLICredentialPatch struct {
+	Name                     *string `json:"name,omitempty"`
+	Username                 *string `json:"username,omitempty"`
+	Password                 *string `json:"password,omitempty"`
+	PrivilegedModePasswordID *string `json:"privilegedModePasswordId,omitempty"`
+	PrivilegeLevel           *int32  `json:"privilegeLevel,omitempty"`
+	AutoAssociate            *bool   `json:"autoAssociate,omitempty"`
+}
+
+// HTTPCredentialPatch changes part of a stored HTTP credential.
+type HTTPCredentialPatch struct {
+	Name          *string `json:"name,omitempty"`
+	Username      *string `json:"username,omitempty"`
+	Password      *string `json:"password,omitempty"`
+	LoginType     *string `json:"loginType,omitempty"`
+	AutoAssociate *bool   `json:"autoAssociate,omitempty"`
+}
+
+// SNMPCredentialPatch changes part of a stored SNMP credential.
+type SNMPCredentialPatch struct {
+	Name               *string `json:"name,omitempty"`
+	Community          *string `json:"community,omitempty"`
+	User               *string `json:"user,omitempty"`
+	AuthenticationType *string `json:"authenticationType,omitempty"`
+	AuthenticationKey  *string `json:"authenticationKey,omitempty"`
+	PrivacyType        *string `json:"privacyType,omitempty"`
+	PrivacyKey         *string `json:"privacyKey,omitempty"`
+	ContextName        *string `json:"contextName,omitempty"`
+	AutoAssociate      *bool   `json:"autoAssociate,omitempty"`
+}
+
 // ListSNMP returns the unpublished, version-specific SNMP credential objects.
-func (s *CredentialsService) ListSNMP(ctx context.Context, networkID string) ([]map[string]json.RawMessage, *Response, error) {
+func (s *CredentialsService) ListSNMP(ctx context.Context, networkID string) ([]SNMPCredential, *Response, error) {
 	path, err := credentialBasePath(networkID, "snmpCredentials")
 	if err != nil {
 		return nil, nil, err
 	}
-	var values []map[string]json.RawMessage
+	var values []SNMPCredential
 	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
@@ -333,7 +367,7 @@ func (s *CredentialsService) ListSNMP(ctx context.Context, networkID string) ([]
 
 // CreateSNMP creates an SNMP credential using a version-specific payload.
 // Preview: this route is not in the published OpenAPI contract.
-func (s *CredentialsService) CreateSNMP(ctx context.Context, networkID string, credential map[string]any) (map[string]json.RawMessage, *Response, error) {
+func (s *CredentialsService) CreateSNMP(ctx context.Context, networkID string, credential SNMPCredentialRequest) (*SNMPCredential, *Response, error) {
 	path, err := credentialBasePath(networkID, "snmpCredentials")
 	if err != nil {
 		return nil, nil, err
@@ -342,8 +376,8 @@ func (s *CredentialsService) CreateSNMP(ctx context.Context, networkID string, c
 	if err != nil {
 		return nil, nil, err
 	}
-	created := map[string]json.RawMessage{}
-	resp, err := s.client.Do(req, &created)
+	created := new(SNMPCredential)
+	resp, err := s.client.Do(req, created)
 	return created, resp, err
 }
 

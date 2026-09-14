@@ -8,7 +8,7 @@ import (
 )
 
 // CompatibilityService exposes operation-specific typed passthroughs for
-// Skyforge facades whose public contract is the upstream status/headers/body.
+// facades whose public contract is the upstream status/headers/body.
 // It is intentionally not an arbitrary Raw transport.
 type CompatibilityService service
 type ForwardHTTPDocument struct {

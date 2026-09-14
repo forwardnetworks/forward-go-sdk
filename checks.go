@@ -2,12 +2,14 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -19,25 +21,111 @@ type ChecksService service
 
 // Check is one evaluated check on a particular snapshot.
 type Check struct {
-	ID            Identifier `json:"id,omitempty"`
-	Name          string     `json:"name"`
-	Status        string     `json:"status"`
-	NumViolations int        `json:"numViolations"`
-	Enabled       bool       `json:"enabled,omitempty"`
-	Priority      string     `json:"priority,omitempty"`
-	Tags          []string   `json:"tags,omitempty"`
+	ID                    Identifier `json:"id,omitempty"`
+	Name                  string     `json:"name"`
+	Status                string     `json:"status"`
+	Description           string     `json:"description,omitempty"`
+	Note                  string     `json:"note,omitempty"`
+	Priority              string     `json:"priority,omitempty"`
+	Tags                  []string   `json:"tags,omitempty"`
+	Enabled               *bool      `json:"enabled,omitempty"`
+	PerfMonitoringEnabled *bool      `json:"perfMonitoringEnabled,omitempty"`
+	Creator               string     `json:"creator,omitempty"`
+	CreatorID             Identifier `json:"creatorId,omitempty"`
+	Editor                string     `json:"editor,omitempty"`
+	EditorID              Identifier `json:"editorId,omitempty"`
+	CreatedAt             string     `json:"createdAt,omitempty"`
+	DefinedAt             string     `json:"definedAt,omitempty"`
+	EditedAt              string     `json:"editedAt,omitempty"`
+	ExecutedAt            string     `json:"executedAt,omitempty"`
+	ExecutionDurationMS   *int64     `json:"executionDurationMillis,omitempty"`
+	// Outdated marks a result computed against a definition that has since
+	// changed, so the status describes a check that no longer exists as
+	// stated.
+	Outdated *bool `json:"outdated,omitempty"`
+	// NumViolations is only sent for a failing check, so nil means the check
+	// did not fail rather than "failed zero times".
+	NumViolations *int64 `json:"numViolations,omitempty"`
+	// Definition stays raw for the reason NewCheck.Definition is open: flow,
+	// isolation, NQE, and predefined checks have different schemas.
+	Definition json.RawMessage `json:"definition,omitempty"`
+	// NQE checks carry the keys that locate their query results.
+	NQEResultKey   string `json:"nqeResultKey,omitempty"`
+	NQESourceSetID string `json:"nqeSourceSetId,omitempty"`
+}
+
+// CheckDetail is a single check read back with its diagnosis. The diagnosis is
+// only computed for a lookup by id, which is why listing cannot produce one.
+type CheckDetail struct {
+	Check
+	Diagnosis *CheckDiagnosis `json:"diagnosis,omitempty"`
+}
+
+// CheckDiagnosis explains why a check failed.
+type CheckDiagnosis struct {
+	Summary string            `json:"summary,omitempty"`
+	Details []DiagnosisDetail `json:"details,omitempty"`
+	// DetailsIncomplete reports that Forward stopped short of enumerating
+	// every violation, so Details is a sample rather than the whole set.
+	DetailsIncomplete *bool `json:"detailsIncomplete,omitempty"`
+}
+
+// DiagnosisDetail is one finding, and the query that produced it.
+type DiagnosisDetail struct {
+	Query      string               `json:"query,omitempty"`
+	References []DiagnosisReference `json:"references,omitempty"`
+}
+
+// DiagnosisReference points a finding at the configuration that caused it,
+// down to the lines of the device files involved.
+type DiagnosisReference struct {
+	Key   string                 `json:"key,omitempty"`
+	Value string                 `json:"value,omitempty"`
+	Files map[string][]LineRange `json:"files,omitempty"`
+}
+
+// LineRange is a span within a device file.
+type LineRange struct {
+	Start *int32 `json:"start,omitempty"`
+	End   *int32 `json:"end,omitempty"`
+}
+
+// CheckListOptions filters a listing server-side. Each field contributes one
+// repeated query parameter, and an empty field means "no filter" rather than
+// "match nothing".
+type CheckListOptions struct {
+	Types      []string
+	Statuses   []string
+	Priorities []string
+}
+
+func (o CheckListOptions) query() url.Values {
+	query := url.Values{}
+	for key, values := range map[string][]string{
+		"type": o.Types, "status": o.Statuses, "priority": o.Priorities,
+	} {
+		for _, value := range values {
+			if value = strings.TrimSpace(value); value != "" {
+				query.Add(key, value)
+			}
+		}
+	}
+	return query
 }
 
 // NewCheck is Forward's NewNetworkCheck payload. Definition stays structurally
 // open because flow, isolation, NQE, and intent checks have different schemas.
 type NewCheck struct {
-	Definition            map[string]any `json:"definition"`
-	Name                  string         `json:"name"`
-	Note                  string         `json:"note,omitempty"`
-	Tags                  []string       `json:"tags,omitempty"`
-	Enabled               bool           `json:"enabled"`
-	Priority              string         `json:"priority,omitempty"`
-	PerfMonitoringEnabled *bool          `json:"perfMonitoringEnabled,omitempty"`
+	Definition map[string]any `json:"definition"`
+	// Name is omitted when empty. An NQE check takes its name from the query
+	// and Forward rejects the field outright -- including an empty one -- so
+	// sending it unconditionally makes every NQE check fail to create.
+	Name                  string   `json:"name,omitempty"`
+	Note                  string   `json:"note,omitempty"`
+	Tags                  []string `json:"tags,omitempty"`
+	Enabled               *bool    `json:"enabled,omitempty"`
+	Priority              string   `json:"priority,omitempty"`
+	PerfMonitoringEnabled *bool    `json:"perfMonitoringEnabled,omitempty"`
 }
 
 var (
@@ -99,17 +187,29 @@ func (s CheckSet) Checks() []Check    { return append([]Check(nil), s.checks...)
 
 const checkPrimeAttempts = 4
 
-// List returns checks evaluated on snapshotID. The first GET primes Forward's
+// List returns checks evaluated on snapshotID, optionally filtered. The first GET primes Forward's
 // evaluation cache and can outlive an http.Client deadline while computation
 // continues server-side, so client-side timeout failures are re-issued up to
 // four times. Cancellation of the caller's context is never retried.
-func (s *ChecksService) List(ctx context.Context, snapshotID string) ([]Check, *Response, error) {
+func (s *ChecksService) List(
+	ctx context.Context,
+	snapshotID string,
+	options ...CheckListOptions,
+) ([]Check, *Response, error) {
+	if len(options) > 1 {
+		return nil, nil, errors.New("forward: at most one check list option set is allowed")
+	}
 	if err := s.client.requireCapability(CapabilityPersistentSnapshotChecks); err != nil {
 		return nil, nil, err
 	}
 	path, err := checksPath(snapshotID)
 	if err != nil {
 		return nil, nil, err
+	}
+	if len(options) == 1 {
+		if query := options[0].query(); len(query) != 0 {
+			path += "?" + query.Encode()
+		}
 	}
 	var lastResponse *Response
 	for attempt := 1; attempt <= checkPrimeAttempts; attempt++ {
@@ -180,8 +280,8 @@ func (s *ChecksService) CreatePersistent(ctx context.Context, snapshotID string,
 	if err != nil {
 		return "", nil, err
 	}
-	if strings.TrimSpace(check.Name) == "" || check.Definition == nil {
-		return "", nil, errors.New("forward: check name and definition are required")
+	if check.Definition == nil {
+		return "", nil, errors.New("forward: check definition is required")
 	}
 	path += "?persistent=true"
 	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, check)
@@ -270,4 +370,97 @@ func missingCheckRequirements(checks []Check, required CheckRequirements) ([]str
 		}
 	}
 	return missing, nil
+}
+
+// Get returns one check with its diagnosis.
+func (s *ChecksService) Get(ctx context.Context, snapshotID, checkID string) (*CheckDetail, *Response, error) {
+	path, err := checkPath(snapshotID, checkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	detail := new(CheckDetail)
+	resp, err := s.client.Do(req, detail)
+	return detail, resp, err
+}
+
+// Create adds a check to snapshotID and returns it as evaluated.
+//
+// A persistent check is inherited and re-evaluated by later snapshots of the
+// same network, including Predict output; a non-persistent one belongs to this
+// snapshot alone. persistent is a pointer so that leaving it unstated defers
+// to whatever the appserver defaults to, rather than asserting a default here.
+func (s *ChecksService) Create(
+	ctx context.Context,
+	snapshotID string,
+	check NewCheck,
+	persistent *bool,
+) (*CheckDetail, *Response, error) {
+	if err := s.client.requireCapability(CapabilityPersistentSnapshotChecks); err != nil {
+		return nil, nil, err
+	}
+	path, err := checksPath(snapshotID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if check.Definition == nil {
+		return nil, nil, errors.New("forward: check definition is required")
+	}
+	if persistent != nil {
+		path += "?persistent=" + strconv.FormatBool(*persistent)
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, check)
+	if err != nil {
+		return nil, nil, err
+	}
+	created := new(CheckDetail)
+	resp, err := s.client.Do(req, created)
+	if err != nil {
+		return nil, resp, err
+	}
+	s.client.observeCapability(CapabilityPersistentSnapshotChecks)
+	return created, resp, nil
+}
+
+// Deactivate disables one check on a snapshot.
+//
+// Forward deactivates rather than deletes: the check stops evaluating but its
+// history stays readable, so a later snapshot can still be explained.
+func (s *ChecksService) Deactivate(ctx context.Context, snapshotID, checkID string) (*Response, error) {
+	path, err := checkPath(snapshotID, checkID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Do(req, nil)
+}
+
+// DeactivateAll disables every check on a snapshot.
+func (s *ChecksService) DeactivateAll(ctx context.Context, snapshotID string) (*Response, error) {
+	path, err := checksPath(snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Do(req, nil)
+}
+
+func checkPath(snapshotID, checkID string) (string, error) {
+	base, err := checksPath(snapshotID)
+	if err != nil {
+		return "", err
+	}
+	if checkID = strings.TrimSpace(checkID); checkID == "" {
+		return "", errors.New("forward: check ID is required")
+	}
+	return base + "/" + url.PathEscape(checkID), nil
 }
