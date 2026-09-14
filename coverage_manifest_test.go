@@ -26,7 +26,7 @@ type coverageEndpoint struct {
 
 var routeParameterRE = regexp.MustCompile(`\{[A-Za-z][A-Za-z0-9]*\}`)
 
-func TestSkyforgeCoverageManifest(t *testing.T) {
+func TestCoverageManifest(t *testing.T) {
 	data, err := os.ReadFile("coverage_manifest.json")
 	if err != nil {
 		t.Fatalf("coverage manifest is required: %v", err)

@@ -25,9 +25,6 @@ import (
 	"strings"
 )
 
-// CapabilityCloudPredict marks the cloud-object change-set routes.
-const CapabilityCloudPredict Capability = "cloud-predict"
-
 // CloudRoute is one row of a cloud route table as Forward models it: the
 // columns of the generated cloud_route_table, so a staged route reads the same
 // as a collected one.

@@ -1,10 +1,10 @@
-# Skyforge Forward API typed coverage
+# Forward API typed coverage
 
 This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop..
 
 Current inventory: **231 semantic call sites**, **177 distinct normalized method+route pairs**, **177 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
-The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.
+The inventory becomes stale when the consumer adds, removes, or changes a Forward wire call. Run `go run ./cmd/coverage-audit -audit /path/to/consumer/api-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
 | Method | Normalized route | Typed SDK symbol(s) | Class |
 |---|---|---|---|
