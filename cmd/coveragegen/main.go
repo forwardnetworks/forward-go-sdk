@@ -73,10 +73,10 @@ func writeCatalog(path string, endpoints []endpoint) error {
 
 func writeMarkdown(path string, input manifest) error {
 	var out bytes.Buffer
-	out.WriteString("# Skyforge Forward API typed coverage\n\n")
+	out.WriteString("# Forward API typed coverage\n\n")
 	fmt.Fprintf(&out, "This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from %s.\n\n", input.DerivedFrom)
 	fmt.Fprintf(&out, "Current inventory: **%d semantic call sites**, **%d distinct normalized method+route pairs**, **%d COVERED**, **0 PARTIAL**, **0 MISSING**.\n\n", input.SemanticCallSites, input.DistinctMethodRoutes, input.DistinctMethodRoutes)
-	out.WriteString("The inventory becomes stale when Skyforge adds, removes, or changes a Forward wire call. Run `go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md` to diff the audited route set. The command fails when its audit input is missing.\n\n")
+	out.WriteString("The inventory becomes stale when the consumer adds, removes, or changes a Forward wire call. Run `go run ./cmd/coverage-audit -audit /path/to/consumer/api-audit.md` to diff the audited route set. The command fails when its audit input is missing.\n\n")
 	out.WriteString("| Method | Normalized route | Typed SDK symbol(s) | Class |\n|---|---|---|---|\n")
 	for _, endpoint := range input.Endpoints {
 		fmt.Fprintf(&out, "| %s | `%s` | `%s` | %s |\n", endpoint.Method, strings.ReplaceAll(endpoint.Route, "|", "\\|"), strings.Join(endpoint.Symbols, "`, `"), endpoint.Coverage)

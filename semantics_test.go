@@ -131,7 +131,7 @@ func TestChecksRequireNonVacuousScoringAndCreatePersistent(t *testing.T) {
 		t.Fatalf("missing corpus error = %v", err)
 	}
 	id, _, err := client.Checks.CreatePersistent(context.Background(), "100", NewCheck{
-		Name: "reach-app", Definition: map[string]any{"checkType": "Existential"}, Enabled: true,
+		Name: "reach-app", Definition: map[string]any{"checkType": "Existential"}, Enabled: Ptr(true),
 	})
 	if err != nil || id != "902" {
 		t.Fatalf("CreatePersistent() = %q, %v", id, err)

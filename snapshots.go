@@ -32,11 +32,15 @@ type Snapshot struct {
 	ParentSnapshotID          Identifier `json:"parentSnapshotId,omitempty"`
 	ChangeSetID               Identifier `json:"changeSetId,omitempty"`
 	ProcessingTrigger         string     `json:"processingTrigger,omitempty"`
-	Note                      string     `json:"note,omitempty"`
-	IsDraft                   bool       `json:"isDraft,omitempty"`
-	IsPredicted               bool       `json:"isPredicted,omitempty"`
-	TotalDevices              int        `json:"totalDevices,omitempty"`
-	Message                   string     `json:"message,omitempty"`
+	// CollectionTaskID ties a collected snapshot back to the collector task
+	// that produced it. Forward records it without the task id's prefix, so
+	// task "P1021" appears here as "1021".
+	CollectionTaskID Identifier `json:"collectionTaskId,omitempty"`
+	Note             string     `json:"note,omitempty"`
+	IsDraft          bool       `json:"isDraft,omitempty"`
+	IsPredicted      bool       `json:"isPredicted,omitempty"`
+	TotalDevices     int        `json:"totalDevices,omitempty"`
+	Message          string     `json:"message,omitempty"`
 }
 
 // SnapshotStateTransition is returned by snapshot invalidation/reprocessing.
@@ -144,30 +148,66 @@ func (s *SnapshotsService) List(
 	return result.Items, resp, nil
 }
 
-// Get returns snapshot metadata using the preview network-scoped route used by
-// current Terraform and orchestration clients.
+// ErrSnapshotNotFound reports that a network holds no snapshot of that ID.
+var ErrSnapshotNotFound = errors.New("forward: snapshot not found")
+
+// snapshotSearchLimit bounds the fallback listing in Get. Large enough to cover
+// any recent snapshot, bounded so a network with a long history cannot make one
+// lookup unbounded.
+const snapshotSearchLimit = 1000
+
+// Get returns snapshot metadata.
 //
-// Preview: this metadata route is not in the published OpenAPI description.
+// It tries the network-scoped metadata route first and falls back to searching
+// the listing, because that route is absent from some appserver builds -- it
+// answers "No endpoint GET ..." rather than serving the snapshot. The bare
+// /api/snapshots/{id} route is not an alternative: it returns the snapshot's
+// exported ZIP, not its metadata.
+//
+// Preview: the metadata route is not in the published OpenAPI description.
 func (s *SnapshotsService) Get(ctx context.Context, networkID, snapshotID string) (*Snapshot, *Response, error) {
 	networkID, err := s.client.resolveNetworkID(networkID)
-	if err != nil {
-		return nil, nil, err
-	}
-	path, err := snapshotsPath(networkID)
 	if err != nil {
 		return nil, nil, err
 	}
 	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
 		return nil, nil, errors.New("forward: snapshot ID is required")
 	}
-	path += "/" + url.PathEscape(snapshotID)
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	path, err := snapshotsPath(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/"+url.PathEscape(snapshotID), nil)
 	if err != nil {
 		return nil, nil, err
 	}
 	snapshot := new(Snapshot)
 	resp, err := s.client.Do(req, snapshot)
-	return snapshot, resp, err
+	if err == nil {
+		return snapshot, resp, nil
+	}
+	if !IsStatus(err, http.StatusNotFound) {
+		return nil, resp, err
+	}
+	return s.findInListing(ctx, networkID, snapshotID)
+}
+
+func (s *SnapshotsService) findInListing(ctx context.Context, networkID, snapshotID string) (*Snapshot, *Response, error) {
+	limit := int32(snapshotSearchLimit)
+	includeArchived := true
+	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{
+		Limit:           &limit,
+		IncludeArchived: &includeArchived,
+	})
+	if err != nil {
+		return nil, resp, err
+	}
+	for i := range snapshots {
+		if string(snapshots[i].ID) == snapshotID {
+			return &snapshots[i], resp, nil
+		}
+	}
+	return nil, resp, fmt.Errorf("%w: %s", ErrSnapshotNotFound, snapshotID)
 }
 
 // LatestProcessed returns the most recent processed snapshot for a network.
@@ -532,8 +572,13 @@ func (s *SnapshotsService) ResolveID(ctx context.Context, networkID, which strin
 	return "", response, ErrNoSnapshots
 }
 
+// predicted reports whether a snapshot came from Predict rather than a
+// collection. ProcessingTrigger is the field Forward actually sets -- a
+// prediction reads PREDICT where a collection reads COLLECTION -- and the rest
+// are corroborating signals that older builds and other routes supply instead.
 func (s Snapshot) predicted() bool {
-	return s.IsPredicted || s.ParentSnapshotID != "" || s.ChangeSetID != ""
+	return strings.EqualFold(s.ProcessingTrigger, "PREDICT") ||
+		s.IsPredicted || s.ParentSnapshotID != "" || s.ChangeSetID != ""
 }
 
 // Download writes an exported snapshot ZIP to dst.
@@ -632,4 +677,111 @@ func nonEmptyStrings(values []string) []string {
 		}
 	}
 	return result
+}
+
+// Collect starts a network collection and returns the snapshot it produced.
+//
+// Collection is started through the collector-task queue, not by posting to
+// the snapshots route -- that route takes a multipart upload, and answers 415
+// to anything else. See Upload.
+//
+// The snapshot does not exist until the task finishes, so this waits for the
+// task and then resolves it. The snapshot returned is not processed yet;
+// Operation waits for that.
+func (s *SnapshotsService) Collect(ctx context.Context, networkID string) (*Snapshot, *Response, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	poller, resp, err := s.client.CollectorTasks.StartOperation(ctx, networkID)
+	if err != nil {
+		return nil, resp, err
+	}
+	task, resp, err := poller.Wait(ctx, PollOptions[CollectorTask]{Interval: 2 * time.Second})
+	if err != nil {
+		return nil, resp, err
+	}
+	snapshot, resp, err := s.ForCollectionTask(ctx, networkID, string(task.ID))
+	return snapshot, resp, err
+}
+
+// ForCollectionTask returns the snapshot a collector task produced.
+func (s *SnapshotsService) ForCollectionTask(
+	ctx context.Context,
+	networkID string,
+	taskID string,
+) (*Snapshot, *Response, error) {
+	if taskID = strings.TrimSpace(taskID); taskID == "" {
+		return nil, nil, errors.New("forward: collector task ID is required")
+	}
+	limit := int32(snapshotSearchLimit)
+	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{Limit: &limit})
+	if err != nil {
+		return nil, resp, err
+	}
+	want := strings.TrimLeft(taskID, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+	for i := range snapshots {
+		recorded := string(snapshots[i].CollectionTaskID)
+		if recorded != "" && (recorded == taskID || recorded == want) {
+			return &snapshots[i], resp, nil
+		}
+	}
+	return nil, resp, fmt.Errorf("%w: no snapshot for collector task %s", ErrSnapshotNotFound, taskID)
+}
+
+// LatestCollected returns the most recent processed snapshot that came from a
+// collection rather than a prediction.
+//
+// Predict refuses to run against predicted input, and every prediction leaves
+// a snapshot behind, so "the newest snapshot" is usually the wrong baseline
+// for a change set. This is the right one.
+func (s *SnapshotsService) LatestCollected(ctx context.Context, networkID string) (*Snapshot, *Response, error) {
+	limit := int32(50)
+	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{Limit: &limit})
+	if err != nil {
+		return nil, resp, err
+	}
+	for i := range snapshots {
+		if strings.EqualFold(snapshots[i].State, "PROCESSED") && !snapshots[i].predicted() {
+			return &snapshots[i], resp, nil
+		}
+	}
+	return nil, resp, ErrNoSnapshots
+}
+
+// Operation returns a handle that polls a snapshot until processing reaches a
+// terminal state, resolving to an error for any terminal state but PROCESSED.
+func (s *SnapshotsService) Operation(
+	ctx context.Context,
+	networkID string,
+	snapshotID string,
+) (*Poller[Snapshot], *Response, error) {
+	snapshot, resp, err := s.Get(ctx, networkID, snapshotID)
+	if err != nil {
+		return nil, resp, err
+	}
+	poller, err := NewPoller(snapshot, func(ctx context.Context) (*Snapshot, *Response, error) {
+		return s.Get(ctx, networkID, snapshotID)
+	}, snapshotProcessingDone)
+	return poller, resp, err
+}
+
+// SetNote records a note against a snapshot.
+//
+// Collection takes no note, so a caller that wants one sets it afterwards.
+// The updated snapshot is returned.
+func (s *SnapshotsService) SetNote(ctx context.Context, snapshotID, note string) (*Snapshot, *Response, error) {
+	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
+		return nil, nil, errors.New("forward: snapshot ID is required")
+	}
+	path := "/api/snapshots/" + url.PathEscape(snapshotID)
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, struct {
+		Note string `json:"note"`
+	}{Note: note})
+	if err != nil {
+		return nil, nil, err
+	}
+	snapshot := new(Snapshot)
+	resp, err := s.client.Do(req, snapshot)
+	return snapshot, resp, err
 }

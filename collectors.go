@@ -169,7 +169,7 @@ func (s *CollectorsService) Attach(ctx context.Context, networkID string, input 
 
 // StartLegacy starts the legacy network collection route. A typed conflict
 // for an already-running collection is returned as success, matching the
-// Skyforge call sites that treat the operation as idempotent.
+// call sites that treat the operation as idempotent.
 func (s *CollectorsService) StartLegacy(ctx context.Context, networkID string) (*Response, error) {
 	path, err := s.networkPath(networkID, "/startcollection")
 	if err != nil {

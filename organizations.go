@@ -18,12 +18,14 @@ type OrganizationsService service
 // Organization is a Forward tenant. Raw retains version-specific response
 // fields returned by administrative builds.
 type Organization struct {
-	ID            Identifier                 `json:"id"`
-	Name          string                     `json:"name"`
-	Disabled      bool                       `json:"disabled,omitempty"`
-	SFDCAccountID string                     `json:"sfdcAccountId,omitempty"`
-	SFDCContactID string                     `json:"sfdcContactId,omitempty"`
-	Raw           map[string]json.RawMessage `json:"-"`
+	ID            Identifier `json:"id"`
+	Name          string     `json:"name"`
+	Disabled      bool       `json:"disabled,omitempty"`
+	SFDCAccountID string     `json:"sfdcAccountId,omitempty"`
+	SFDCContactID string     `json:"sfdcContactId,omitempty"`
+	// Raw carries fields this SDK version does not model, so an object read
+	// from a newer appserver and written back does not silently lose them.
+	Raw map[string]json.RawMessage `json:"-"`
 }
 
 func (o *Organization) UnmarshalJSON(data []byte) error {
