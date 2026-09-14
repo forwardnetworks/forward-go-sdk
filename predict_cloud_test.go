@@ -17,6 +17,7 @@ func TestCloudPredictChangeLoop(t *testing.T) {
 	t.Parallel()
 	const base = "/api/networks/n-1/change-sets/cs-1"
 	var calls []string
+	var edits []CloudObjectEdit
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls = append(calls, r.Method+" "+r.URL.RequestURI())
 		w.Header().Set("Content-Type", "application/json")
@@ -37,20 +38,12 @@ func TestCloudPredictChangeLoop(t *testing.T) {
 			_, _ = io.WriteString(w, `{"entries":[`+
 				`{"diffType":"UNCHANGED","a":{"destination":"10.0.0.0/16","target":"local"},"b":{"destination":"10.0.0.0/16","target":"local"}},`+
 				`{"diffType":"ADDED","b":{"destination":"10.51.1.0/24","target":"igw-1","status":"active","origin":"CreateRoute"}}]}`)
-		case r.Method == http.MethodPost && r.URL.Path == base+"/devices/aws-lab/cloud-objects/rtb-1/routes":
-			var route CloudRoute
-			if err := json.NewDecoder(r.Body).Decode(&route); err != nil || route.Destination != "10.9.0.0/16" {
-				t.Errorf("add route body = %+v, %v", route, err)
+		case r.Method == http.MethodPost && r.URL.Path == base+"/devices/aws-lab/cloud-objects/rtb-1/edits":
+			var edit CloudObjectEdit
+			if err := json.NewDecoder(r.Body).Decode(&edit); err != nil || edit.Type != "ROUTE_TABLE" {
+				t.Errorf("edit body = %+v, %v", edit, err)
 			}
-			w.WriteHeader(http.StatusNoContent)
-		case r.Method == http.MethodPatch && r.URL.EscapedPath() == base+"/devices/aws-lab/cloud-objects/rtb-1/routes/10.9.0.0%2F16":
-			w.WriteHeader(http.StatusNoContent)
-		case r.Method == http.MethodDelete && r.URL.EscapedPath() == base+"/devices/aws-lab/cloud-objects/rtb-1/routes/10.9.0.0%2F16":
-			w.WriteHeader(http.StatusNoContent)
-		case r.Method == http.MethodPost && r.URL.EscapedPath() == base+"/devices/aws-lab/cloud-objects/rtb-1/routes/10.9.0.0%2F16":
-			if r.URL.Query().Get("action") != "discardChanges" {
-				t.Errorf("discard action = %q", r.URL.Query().Get("action"))
-			}
+			edits = append(edits, edit)
 			w.WriteHeader(http.StatusNoContent)
 		case r.Method == http.MethodPost && r.URL.Path == base+"/commits":
 			if r.URL.Query().Get("note") != "demo" {
@@ -124,15 +117,31 @@ func TestCloudPredictChangeLoop(t *testing.T) {
 		"POST /api/networks/n-1/change-sets",
 		"POST " + base + "/devices/aws-lab/cloud-objects?action=importTerraformPlan",
 		"GET " + base + "/devices/aws-lab/cloud-objects/rtb-1/route-table-diff",
-		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/routes",
-		"PATCH " + base + "/devices/aws-lab/cloud-objects/rtb-1/routes/10.9.0.0%2F16",
-		"DELETE " + base + "/devices/aws-lab/cloud-objects/rtb-1/routes/10.9.0.0%2F16",
-		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/routes/10.9.0.0%2F16?action=discardChanges",
+		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
+		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
+		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
+		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
 		"POST " + base + "/commits?note=demo",
 		"POST " + base + "?action=predict&note=demo",
 	}
 	if strings.Join(calls, "\n") != strings.Join(want, "\n") {
 		t.Errorf("calls:\n%s\nwant:\n%s", strings.Join(calls, "\n"), strings.Join(want, "\n"))
+	}
+	wantEdits := []CloudObjectEdit{
+		{Type: "ROUTE_TABLE", Op: CloudObjectEditAdd, Route: &route},
+		{Type: "ROUTE_TABLE", Op: CloudObjectEditModify, RowKey: "10.9.0.0/16", Route: &route},
+		{Type: "ROUTE_TABLE", Op: CloudObjectEditRemove, RowKey: "10.9.0.0/16"},
+		{Type: "ROUTE_TABLE", Op: CloudObjectEditDiscard, RowKey: "10.9.0.0/16"},
+	}
+	if len(edits) != len(wantEdits) {
+		t.Fatalf("edits = %+v", edits)
+	}
+	for i, want := range wantEdits {
+		got := edits[i]
+		if got.Op != want.Op || got.RowKey != want.RowKey || (got.Route == nil) != (want.Route == nil) ||
+			(got.Route != nil && *got.Route != *want.Route) {
+			t.Errorf("edit[%d] = %+v, want %+v", i, got, want)
+		}
 	}
 	if got := client.Capabilities.Support(CapabilityCloudPredict).Support; got != CapabilitySupported {
 		t.Errorf("cloud-predict capability after success = %q", got)
