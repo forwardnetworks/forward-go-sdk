@@ -230,6 +230,40 @@ func (s *PredictService) StageBGPAdvertisement(
 	return response, err
 }
 
+// Commit records the staged draft as a commit on the change set, which is
+// what Run then predicts from. A change set with no draft commits nothing.
+func (s *PredictService) Commit(
+	ctx context.Context,
+	networkID string,
+	changeSetID string,
+	note string,
+) (*Response, error) {
+	if err := s.client.requireCapability(CapabilityPredict); err != nil {
+		return nil, err
+	}
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, err
+	}
+	path, err := changeSetPath(networkID, changeSetID)
+	if err != nil {
+		return nil, err
+	}
+	path += "/commits"
+	if note = strings.TrimSpace(note); note != "" {
+		path += "?" + url.Values{"note": []string{note}}.Encode()
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.Do(req, nil)
+	if err == nil {
+		s.client.observeCapability(CapabilityPredict)
+	}
+	return resp, err
+}
+
 // Run starts predictive analysis and returns the newly created predicted
 // snapshot metadata. Processing continues asynchronously.
 func (s *PredictService) Run(

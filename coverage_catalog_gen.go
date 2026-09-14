@@ -141,6 +141,7 @@ var sdkCoverageCatalog = map[string]CoverageOperation{
 	"Networks.Create":                            {Method: "POST", Route: "/api/networks"},
 	"Predict.CreateChangeSet":                    {Method: "POST", Route: "/api/networks/{networkId}/change-sets"},
 	"Predict.Run":                                {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	"Predict.Commit":                             {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits"},
 	"AIAssist.GeneratePredictCLI":                {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/cli-assists"},
 	"Predict.StageBGPAdvertisement":              {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
 	"AIAssist.GeneratePredictOverview":           {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/overview-assists"},
