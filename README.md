@@ -24,7 +24,7 @@ The SDK currently provides:
   organizations, and organization properties
 - snapshot-bound persistent checks with a non-empty scoring guard
 - explicit per-track capability profiles and runtime capability evidence
-- typed coverage for every Forward method+route currently called by Skyforge,
+- typed coverage for every Forward method+route in the audited consumer inventory,
   enforced by `coverage_manifest_test.go`
 - a safe `Raw` service for other `/api` endpoints not typed yet
 
@@ -78,7 +78,7 @@ Encore events/SSE, Terraform diagnostics, logs, or metrics.
 For collection, use the composite operation. It captures the newest existing
 snapshot as a baseline, follows the collector task, identifies only the newer
 `COLLECTION` snapshot, and waits for processing. Its handle is JSON-safe and
-can be stored by Skyforge before a worker returns:
+can be stored by a caller before a worker returns:
 
 ```go
 operation, _, err := client.CollectorTasks.StartCollectionOperation(
@@ -151,7 +151,7 @@ root-route coverage did not broaden arbitrary credential-bearing requests.
 
 ## Direct REST binding
 
-Use `client.Raw` for a Forward endpoint outside the checked Skyforge inventory
+Use `client.Raw` for a Forward endpoint outside the checked inventory
 while it is not yet exposed as a typed service:
 
 ```go
@@ -201,7 +201,7 @@ flags, and permissions can change between Forward releases.
 | `Organizations` | Preview | current tenant plus support/admin lifecycle |
 | `Admin`, `Users` | Preview | support user/network lifecycle and current-user tokens/password |
 | `Collectors`, `Collections` | Preview | registration identity, attachment, settings, legacy collection/progress |
-| `Endpoints`, `Locations`, `Proxies`, `Topology` | Preview | Skyforge source/site/proxy/topology contracts |
+| `Endpoints`, `Locations`, `Proxies`, `Topology` | Preview | source/site/proxy/topology contracts |
 | `Backups`, `Browser` | Preview | root-scoped CBR and cookie/CSRF/session workflows |
 | `Integrations`, `Configuration`, `Banners` | Preview | Infoblox/Rapid7/ServiceNow, deployment config, custom banners |
 | `Webhooks` | Preview | outbound callback CRUD and connectivity tests |
@@ -288,12 +288,12 @@ appropriate transport.
 go generate ./...
 go test ./...
 go vet ./...
-go run ./cmd/skyforge-coverage \
-  -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md
+go run ./cmd/coverage-audit \
+  -audit /path/to/consumer/api-audit.md
 ```
 
-The complete Forward controller surface is larger than Skyforge's inventory.
-See `COVERAGE.md` for the machine-generated Skyforge matrix and
+The complete Forward controller surface is larger than the audited inventory.
+See `COVERAGE.md` for the machine-generated coverage matrix and
 `docs/api-coverage.md` for broader SDK direction. The manifest's consumer-tree
-fingerprint deliberately makes any Skyforge production Go change require a
+fingerprint deliberately makes any consumer Go change require a
 reviewed refresh rather than allowing coverage drift to stay silent.

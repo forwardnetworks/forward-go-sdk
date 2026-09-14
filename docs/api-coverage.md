@@ -5,7 +5,7 @@ means the route is present in `fwd/api/apis`; “preview” means it was sourced
 from application controllers or an existing consumer and may vary by release.
 All untyped routes remain callable through `Client.Raw`.
 
-Skyforge's current consumer inventory is separately complete: see
+The audited consumer inventory is separately complete: see
 [`../COVERAGE.md`](../COVERAGE.md) and `coverage_manifest.json`. That narrower
 claim is enforced by tests and must not be confused with complete coverage of
 every controller shipped by every Forward release.
@@ -28,7 +28,7 @@ every controller shipped by every Forward release.
 | AI and AI Assist | Preview | chats/messages/wait; NQE/docs/Predict/diff assists |
 | Organizations/properties | Preview | current/admin org lifecycle; dynamic property keys |
 | Webhooks | Preview | list/create/update/delete/test |
-| Skyforge preview families | Preview | collectors/attachment, endpoints/profiles, locations/clusters/atlas, proxies, topology, users/admin, CBR, browser sessions, deployment config, banners, NQE repository mutation, Infoblox/Rapid7/ServiceNow |
+| Preview families | Preview | collectors/attachment, endpoints/profiles, locations/clusters/atlas, proxies, topology, users/admin, CBR, browser sessions, deployment config, banners, NQE repository mutation, Infoblox/Rapid7/ServiceNow |
 | Compatibility | SDK | version diagnostics; explicit track/build profiles; tri-state capability support |
 
 ## Next typed migrations
@@ -36,13 +36,13 @@ every controller shipped by every Forward release.
 The published OpenAPI families still needing dedicated services include:
 
 - additional classic-device aliases, data connectors, and collection schedules
-  not exercised by Skyforge;
+  not exercised by the audited consumer;
 - snapshot metrics, topology/overrides, advanced reachability, path
   search, vulnerability analysis, L2/L3 VPNs, WAN circuits, endpoints, and
   internet/intranet nodes;
 - complete-seed, encryptors, and additional source families.
 
-Known preview/internal migrations beyond the checked Skyforge subset include
+Known preview/internal migrations beyond the checked subset include
 cloud-provider-specific models, vCenter/NSX, collector setup packages,
 collection logs/history, network membership/roles, Verify, NQE parameters/tags,
 AI feedback, and the full Predict draft model.

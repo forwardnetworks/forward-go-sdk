@@ -30,9 +30,9 @@ var (
 )
 
 func main() {
-	auditPath := flag.String("audit", "", "Skyforge forward-api-sdk-migration-audit.md (required)")
+	auditPath := flag.String("audit", "", "consumer API audit markdown (required)")
 	manifestPath := flag.String("manifest", "coverage_manifest.json", "SDK coverage manifest")
-	skyforgeRoot := flag.String("skyforge", "", "Skyforge repository root (inferred from audit when omitted)")
+	consumerRoot := flag.String("consumer", "", "consumer repository root (inferred from audit when omitted)")
 	ignoreTree := flag.Bool("ignore-tree-drift", false, "compare routes but do not require the recorded consumer Go-tree hash")
 	flag.Parse()
 	if strings.TrimSpace(*auditPath) == "" {
@@ -71,7 +71,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	root := strings.TrimSpace(*skyforgeRoot)
+	root := strings.TrimSpace(*consumerRoot)
 	if root == "" {
 		root = filepath.Dir(filepath.Dir(*auditPath))
 	}
@@ -83,7 +83,7 @@ func main() {
 			fatalf("manifest has no consumer_go_sha256; tree drift would be silent")
 		}
 		if hash != sdk.ConsumerTreeSHA256 {
-			fatalf("Skyforge production Go tree changed: manifest records %s", sdk.ConsumerTreeSHA256)
+			fatalf("consumer Go tree changed: manifest records %s", sdk.ConsumerTreeSHA256)
 		}
 	}
 }
