@@ -142,12 +142,15 @@ func (r CloudAccountRequest) MarshalJSON() ([]byte, error) {
 
 // CloudAccountCredentialRequest replaces the stored credential of a setup
 // without restating the rest of it.
+// The `type` discriminator selects the shape Forward reads: AWS takes
+// username (access key id) and password (secret); Azure takes clientId,
+// tenant and password (the client secret).
 type CloudAccountCredentialRequest struct {
 	Type     string `json:"type"`
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
-	// Azure rotates a secret rather than a password.
-	ClientSecret string `json:"clientSecret,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
+	Tenant   string `json:"tenant,omitempty"`
 }
 
 // AWSAssumeRoleExternalID is the external id Forward expects a customer role to
