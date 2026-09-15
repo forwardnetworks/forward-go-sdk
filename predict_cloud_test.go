@@ -38,6 +38,14 @@ func TestCloudPredictChangeLoop(t *testing.T) {
 			_, _ = io.WriteString(w, `{"entries":[`+
 				`{"diffType":"UNCHANGED","a":{"destination":"10.0.0.0/16","target":"local"},"b":{"destination":"10.0.0.0/16","target":"local"}},`+
 				`{"diffType":"ADDED","b":{"destination":"10.51.1.0/24","target":"igw-1","status":"active","origin":"CreateRoute"}}]}`)
+		case r.Method == http.MethodGet && r.URL.Path == base+"/devices/aws-lab/cloud-objects/sg-1/security-group-diff":
+			_, _ = io.WriteString(w, `{"entries":[{"diffType":"ADDED","b":{"protocol":"tcp","portRange":"8443","source":"10.140.0.0/16","description":"demo","action":"allow"}}]}`)
+		case r.Method == http.MethodPost && r.URL.Path == base+"/devices/aws-lab/cloud-objects/sg-1/edits":
+			var edit CloudObjectEdit
+			if err := json.NewDecoder(r.Body).Decode(&edit); err != nil || edit.Type != "SECURITY_GROUP" || edit.Rule == nil {
+				t.Errorf("security-group edit body: %+v (%v)", edit, err)
+			}
+			w.WriteHeader(http.StatusNoContent)
 		case r.Method == http.MethodPost && r.URL.Path == base+"/devices/aws-lab/cloud-objects/rtb-1/edits":
 			var edit CloudObjectEdit
 			if err := json.NewDecoder(r.Body).Decode(&edit); err != nil || edit.Type != "ROUTE_TABLE" {
@@ -102,6 +110,17 @@ func TestCloudPredictChangeLoop(t *testing.T) {
 	if _, err := client.Predict.DiscardRoute(ctx, "n-1", "cs-1", "aws-lab", "rtb-1", "10.9.0.0/16"); err != nil {
 		t.Fatalf("DiscardRoute: %v", err)
 	}
+	sgDiff, _, err := client.Predict.SecurityGroupDiff(ctx, "n-1", "cs-1", "aws-lab", "sg-1")
+	if err != nil {
+		t.Fatalf("SecurityGroupDiff: %v", err)
+	}
+	if len(sgDiff.Entries) != 1 || sgDiff.Entries[0].B.Key() != "tcp|8443|10.140.0.0/16" {
+		t.Errorf("security-group diff = %+v", sgDiff)
+	}
+	rule := InboundRule{Protocol: "tcp", PortRange: "8443", Source: "10.140.0.0/16", Description: "demo", Action: "allow"}
+	if _, err := client.Predict.AddInboundRule(ctx, "n-1", "cs-1", "aws-lab", "sg-1", rule); err != nil {
+		t.Fatalf("AddInboundRule: %v", err)
+	}
 	if _, err := client.Predict.Commit(ctx, "n-1", "cs-1", "demo"); err != nil {
 		t.Fatalf("Commit: %v", err)
 	}
@@ -121,6 +140,8 @@ func TestCloudPredictChangeLoop(t *testing.T) {
 		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
 		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
 		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
+		"GET " + base + "/devices/aws-lab/cloud-objects/sg-1/security-group-diff",
+		"POST " + base + "/devices/aws-lab/cloud-objects/sg-1/edits",
 		"POST " + base + "/commits?note=demo",
 		"POST " + base + "?action=predict&note=demo",
 	}

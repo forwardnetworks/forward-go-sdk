@@ -41,10 +41,38 @@ type CloudRoute struct {
 	Origin      string `json:"origin"`
 }
 
+// InboundRule is one inbound rule of a security group as Forward models it:
+// the columns of the generated in_security_group table. A rule has no id;
+// Forward keys it by protocol|portRange|source (see InboundRuleKey). Protocol
+// "-1" is spelled "all", a port range "from" when both ends match and
+// "from,to" otherwise, and a new rule's Action is "allow".
+type InboundRule struct {
+	Protocol    string `json:"protocol"`
+	PortRange   string `json:"portRange"`
+	Source      string `json:"source"`
+	Description string `json:"description"`
+	Action      string `json:"action"`
+}
+
+// InboundRuleKey is the identity Forward gives a rule: what it matches.
+func InboundRuleKey(protocol, portRange, source string) string {
+	return protocol + "|" + portRange + "|" + source
+}
+
+// Key is the rule's InboundRuleKey.
+func (r InboundRule) Key() string { return InboundRuleKey(r.Protocol, r.PortRange, r.Source) }
+
+// Cloud-object kinds, as the edit endpoint names them.
+const (
+	CloudObjectRouteTable    = "ROUTE_TABLE"
+	CloudObjectSecurityGroup = "SECURITY_GROUP"
+)
+
 // CloudObjectImport says what a Terraform plan import staged on one cloud
-// object.
+// object. Type is the object's kind, which says which diff to ask for.
 type CloudObjectImport struct {
 	ObjectID string `json:"objectId"`
+	Type     string `json:"type"`
 	Added    int    `json:"added"`
 	Modified int    `json:"modified"`
 	Removed  int    `json:"removed"`
@@ -72,6 +100,19 @@ type RouteDiffEntry struct {
 // row by row against what was collected.
 type RouteTableDiff struct {
 	Entries []RouteDiffEntry `json:"entries"`
+}
+
+// RuleDiffEntry is one row of a security-group diff, shaped like RouteDiffEntry.
+type RuleDiffEntry struct {
+	DiffType string       `json:"diffType"`
+	A        *InboundRule `json:"a,omitempty"`
+	B        *InboundRule `json:"b,omitempty"`
+}
+
+// SecurityGroupDiff is a security group's inbound rules with the draft's
+// changes applied, rule by rule against what was collected.
+type SecurityGroupDiff struct {
+	Entries []RuleDiffEntry `json:"entries"`
 }
 
 // ImportTerraformPlan stages the cloud-object changes a `terraform show -json`
@@ -119,6 +160,26 @@ func (s *PredictService) RouteTableDiff(
 	return cloudDo(s, req, new(RouteTableDiff))
 }
 
+// SecurityGroupDiff returns a security group's inbound rules as the draft
+// would leave them, each marked against the collected table.
+func (s *PredictService) SecurityGroupDiff(
+	ctx context.Context,
+	networkID string,
+	changeSetID string,
+	cloudSetup string,
+	objectID string,
+) (*SecurityGroupDiff, *Response, error) {
+	path, err := s.cloudObjectPath(networkID, changeSetID, cloudSetup, objectID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/security-group-diff", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return cloudDo(s, req, new(SecurityGroupDiff))
+}
+
 // CloudObjectEditOp is what a cloud-object edit does to one row.
 type CloudObjectEditOp string
 
@@ -141,6 +202,7 @@ type CloudObjectEdit struct {
 	Op     CloudObjectEditOp `json:"op"`
 	RowKey string            `json:"rowKey,omitempty"`
 	Route  *CloudRoute       `json:"route,omitempty"`
+	Rule   *InboundRule      `json:"rule,omitempty"`
 }
 
 // EditCloudObject posts one edit to a cloud object on the change set's draft.
@@ -155,7 +217,11 @@ func (s *PredictService) EditCloudObject(
 	edit CloudObjectEdit,
 ) (*Response, error) {
 	if edit.Type == "" {
-		edit.Type = "ROUTE_TABLE"
+		if edit.Rule != nil {
+			edit.Type = CloudObjectSecurityGroup
+		} else {
+			edit.Type = CloudObjectRouteTable
+		}
 	}
 	path, err := s.cloudObjectPath(networkID, changeSetID, cloudSetup, objectID)
 	if err != nil {
@@ -222,6 +288,46 @@ func (s *PredictService) DiscardRoute(
 ) (*Response, error) {
 	return s.EditCloudObject(ctx, networkID, changeSetID, cloudSetup, objectID,
 		CloudObjectEdit{Op: CloudObjectEditDiscard, RowKey: destination})
+}
+
+// AddInboundRule stages a new inbound rule on a security group.
+func (s *PredictService) AddInboundRule(
+	ctx context.Context,
+	networkID string,
+	changeSetID string,
+	cloudSetup string,
+	objectID string,
+	rule InboundRule,
+) (*Response, error) {
+	return s.EditCloudObject(ctx, networkID, changeSetID, cloudSetup, objectID,
+		CloudObjectEdit{Type: CloudObjectSecurityGroup, Op: CloudObjectEditAdd, Rule: &rule})
+}
+
+// RemoveInboundRule stages the removal of the rule with the given key.
+func (s *PredictService) RemoveInboundRule(
+	ctx context.Context,
+	networkID string,
+	changeSetID string,
+	cloudSetup string,
+	objectID string,
+	key string,
+) (*Response, error) {
+	return s.EditCloudObject(ctx, networkID, changeSetID, cloudSetup, objectID,
+		CloudObjectEdit{Type: CloudObjectSecurityGroup, Op: CloudObjectEditRemove, RowKey: key})
+}
+
+// DiscardInboundRule drops whatever the draft stages for the rule with the
+// given key.
+func (s *PredictService) DiscardInboundRule(
+	ctx context.Context,
+	networkID string,
+	changeSetID string,
+	cloudSetup string,
+	objectID string,
+	key string,
+) (*Response, error) {
+	return s.EditCloudObject(ctx, networkID, changeSetID, cloudSetup, objectID,
+		CloudObjectEdit{Type: CloudObjectSecurityGroup, Op: CloudObjectEditDiscard, RowKey: key})
 }
 
 // cloudDo sends a cloud-object request behind the two capability gates and
