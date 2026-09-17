@@ -76,7 +76,7 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().BoolVar(&flags.insecure, "insecure", true, "skip TLS verification for a self-signed dev Forward")
 
 	root.AddCommand(
-		newCollectorsCmd(), newCollectorCmd(), newDevicesCmd(), newLocationsCmd(), newCloudAccountsCmd(),
+		newCollectorsCmd(), newCollectorCmd(), newDevicesCmd(), newLocationsCmd(), newCloudAccountsCmd(), newJumpServersCmd(),
 		newSnapshotCmd(), newChangeSetCmd(), newRouteCmd(), newRuleCmd(), newPlanCmd(), newDiffCmd(),
 		newCommitCmd(), newRunCmd(), newChecksCmd(), newPathsCmd(),
 	)
