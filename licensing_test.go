@@ -2,7 +2,9 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -172,5 +174,45 @@ func TestLicenseKeyStatusOKIsAffirmativeOnly(t *testing.T) {
 		if s.OK() {
 			t.Errorf("status %q must not be OK", s)
 		}
+	}
+}
+
+// The body field is `signedLicenseKey` and the verdict field is `status`, on
+// 26.8.x and 26.9 alike (web/.../json/AsciiCodedSignedLicenseKey.java has one
+// @JsonCreator parameter of that name and requireNonNull()s it). This client
+// sent `key` and read `keyStatus` from 2026-09-08 to 2026-09-17, so decode and
+// apply were 400 "'signedLicenseKey' is required" against a real appserver --
+// measured live on 26.9.0-09. Both wire shapes are pinned here.
+func TestLicensingDecodeWireShapeMatchesForward(t *testing.T) {
+	var gotBody map[string]any
+	c := acClient(t, func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(b, &gotBody)
+		// 26.9 shape
+		_, _ = w.Write([]byte(`{"status":"ALREADY_USED","license":{"tier":"NSP"},"started":true}`))
+	})
+	out, _, err := c.Licensing.Decode(context.Background(), "LicenseKey__abc_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotBody["signedLicenseKey"] != "LicenseKey__abc_1" {
+		t.Fatalf("body = %v, want signedLicenseKey", gotBody)
+	}
+	if _, present := gotBody["key"]; present {
+		t.Fatal("body still carries the old `key` field Forward never read")
+	}
+	if out.Status != LicenseKeyAlreadyUsed || !out.AlreadyUsed() || out.Started == nil || !*out.Started {
+		t.Fatalf("26.9 decode read as %+v", out)
+	}
+	// 26.8.x shape decodes through the same struct
+	c2 := acClient(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"VALID","license":{"tier":"NS"},"licenseStatus":"ACTIVE","used":true}`))
+	})
+	out2, _, err := c2.Licensing.Decode(context.Background(), "LicenseKey__abc_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !out2.Status.OK() || !out2.AlreadyUsed() || out2.LicenseStatus != "ACTIVE" {
+		t.Fatalf("26.8 decode read as %+v", out2)
 	}
 }
