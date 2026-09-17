@@ -153,7 +153,7 @@ func (s *PredictService) RouteTableDiff(
 	if err != nil {
 		return nil, nil, err
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/route-table-diff", nil)
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/diff", nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -173,7 +173,7 @@ func (s *PredictService) SecurityGroupDiff(
 	if err != nil {
 		return nil, nil, err
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/security-group-diff", nil)
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/diff?view=security-group", nil)
 	if err != nil {
 		return nil, nil, err
 	}
