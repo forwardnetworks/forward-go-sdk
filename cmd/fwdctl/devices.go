@@ -40,13 +40,14 @@ func newDevicesCmd() *cobra.Command {
 }
 
 func newDevicesAddCmd() *cobra.Command {
-	var location string
+	var location, jump string
 	cmd := &cobra.Command{
 		Use:   "add <name> <host> <type> <username> <password>",
 		Short: "Add a classic device, reusing a matching CLI credential if one exists",
 		Long: "Add a classic device, reusing a matching CLI credential if one exists.\n\n" +
 			"A CLI credential named user@type is reused when it already exists, so re-running\n" +
-			"adds the device, not a duplicate. --location places it on the Forward map by name.",
+			"adds the device, not a duplicate. --location places it on the Forward map by name;\n" +
+			"--jump reaches the device through the network's jump server with that host.",
 		Args: cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -61,6 +62,15 @@ func newDevicesAddCmd() *cobra.Command {
 					return err
 				}
 				locationID = id
+			}
+
+			jumpID := ""
+			if jump != "" {
+				id, err := jumpServerByHost(ctx, c, net, jump)
+				if err != nil {
+					return err
+				}
+				jumpID = id
 			}
 
 			credName := user + "@" + kind
@@ -85,7 +95,7 @@ func newDevicesAddCmd() *cobra.Command {
 
 			collect := true
 			dev, _, err := c.ClassicDevices.Create(ctx, net, forward.ClassicDeviceRequest{
-				Name: name, Host: host, Type: kind, CLICredentialID: credID, Collect: &collect,
+				Name: name, Host: host, Type: kind, CLICredentialID: credID, Collect: &collect, JumpServerID: jumpID,
 			})
 			if err != nil {
 				return err
@@ -101,6 +111,7 @@ func newDevicesAddCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&location, "location", "", "place the device at this location (by name)")
+	cmd.Flags().StringVar(&jump, "jump", "", "reach the device through the jump server with this host")
 	return cmd
 }
 
