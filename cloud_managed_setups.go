@@ -57,8 +57,12 @@ type NewMistSetup struct {
 	APIKeyID string `json:"apiKeyId"`
 	// Collect: nil/true participates in collections; false parks the setup.
 	Collect *bool `json:"collect,omitempty"`
-	// CollectorID pins the collector; nil means the network's default one.
-	// Creation does NOT need the collector online -- discovery does.
+	// CollectorID pins the collector; empty means the network's default one.
+	// It is Forward's NUMERIC collector id (the controller parses it as a
+	// Long -- passing the collector UUID Skyforge records as
+	// forwardCollectorId fails with `400 For input string: "<uuid>"`,
+	// measured 2026-09-17). Creation does NOT need the collector online --
+	// discovery does.
 	CollectorID string   `json:"collectorId,omitempty"`
 	Hosts       []string `json:"hosts,omitempty"`
 	Concurrency *int     `json:"concurrency,omitempty"`
