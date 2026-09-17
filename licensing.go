@@ -52,6 +52,13 @@ const (
 	LicenseKeyWrongTier          LicenseKeyStatus = "WRONG_TIER"
 	LicenseKeyBadTierTrialTiming LicenseKeyStatus = "BAD_TIER_TRIAL_TIMING"
 	LicenseKeyBadTrialTier       LicenseKeyStatus = "BAD_TRIAL_TIER"
+	// Forward >= 26.9 (NewLicenseKeyStatus) folds what used to arrive as a
+	// separate licenseStatus/used pair into the one status:
+	LicenseKeyExpired            LicenseKeyStatus = "EXPIRED"
+	LicenseKeyUnsupportedType    LicenseKeyStatus = "UNSUPPORTED_TYPE"
+	LicenseKeyStartTimeCollision LicenseKeyStatus = "START_TIME_COLLISION"
+	LicenseKeyCCHDebtUnpaid      LicenseKeyStatus = "CCH_DEBT_UNPAID"
+	LicenseKeyAlreadyUsed        LicenseKeyStatus = "ALREADY_USED"
 )
 
 // OK reports whether the server accepted the key. It exists so callers stop
@@ -67,9 +74,14 @@ type InstanceFingerprint struct {
 }
 
 // AsciiCodedSignedLicenseKey is the wire shape both decode and apply take: the
-// license in its canonical ascii encoding, signature included.
+// license in its canonical ascii encoding, signature included. The field is
+// `signedLicenseKey` -- Forward's AsciiCodedSignedLicenseKey has ONE
+// @JsonCreator parameter of that name and requireNonNull()s it, on 26.8.x and
+// 26.9 alike, so any other name is a 400 "'signedLicenseKey' is required".
+// This client sent `key` from 2026-09-08 until 2026-09-17, so Decode and Apply
+// never reached the verifier; measured live against 26.9.0-09.
 type AsciiCodedSignedLicenseKey struct {
-	Key string `json:"key"`
+	SignedLicenseKey string `json:"signedLicenseKey"`
 }
 
 // License is the decoded body of a key.
@@ -82,14 +94,26 @@ type License struct {
 	Stackable bool   `json:"stackable,omitempty"`
 }
 
-// DecodedLicenseKey is what a preview returns. `Used` reports that this org
-// already holds this license, which is how a caller tells "would work" from
-// "already applied" -- two states that otherwise both look like success.
+// DecodedLicenseKey is what a preview returns (web/.../json/license/
+// DecodedLicenseKey.java). The verdict field is `status` on every version.
+// 26.8.x also sent `licenseStatus` and `used`; 26.9 dropped both and sends
+// `started` (whether the licence period has begun) with the reasons that
+// used to live in licenseStatus/used folded into Status (WRONG_TIER,
+// ALREADY_USED, EXPIRED, ...). Read the verdict through Status and
+// AlreadyUsed(), not the raw fields, so both shapes read the same.
 type DecodedLicenseKey struct {
-	KeyStatus     LicenseKeyStatus `json:"keyStatus"`
+	Status        LicenseKeyStatus `json:"status"`
 	License       *License         `json:"license,omitempty"`
-	LicenseStatus string           `json:"licenseStatus,omitempty"`
-	Used          bool             `json:"used,omitempty"`
+	LicenseStatus string           `json:"licenseStatus,omitempty"` // 26.8.x only
+	Used          bool             `json:"used,omitempty"`          // 26.8.x only
+	Started       *bool            `json:"started,omitempty"`       // 26.9+
+}
+
+// AlreadyUsed reports that the org already holds this exact licence -- "would
+// work" and "already applied" otherwise both look like success. 26.8.x said it
+// with `used:true`, 26.9 with status ALREADY_USED.
+func (d *DecodedLicenseKey) AlreadyUsed() bool {
+	return d != nil && (d.Used || d.Status == LicenseKeyAlreadyUsed)
 }
 
 // LicenseDetails is an applied license as the org holds it.
@@ -142,7 +166,7 @@ func (s *LicensingService) Decode(ctx context.Context, key string) (*DecodedLice
 	if key == "" {
 		return nil, nil, ErrLicenseKeyRequired
 	}
-	req, err := s.client.newJSONRequest(ctx, http.MethodPost, "/api/licenses?action=decode", AsciiCodedSignedLicenseKey{Key: key})
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, "/api/licenses?action=decode", AsciiCodedSignedLicenseKey{SignedLicenseKey: key})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -161,7 +185,7 @@ func (s *LicensingService) Apply(ctx context.Context, key string) (*LicenseDetai
 	if key == "" {
 		return nil, nil, ErrLicenseKeyRequired
 	}
-	req, err := s.client.newJSONRequest(ctx, http.MethodPost, "/api/licenses", AsciiCodedSignedLicenseKey{Key: key})
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, "/api/licenses", AsciiCodedSignedLicenseKey{SignedLicenseKey: key})
 	if err != nil {
 		return nil, nil, err
 	}
