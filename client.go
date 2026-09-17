@@ -87,6 +87,7 @@ type Client struct {
 	NQE                     *NQEService
 	Predict                 *PredictService
 	AI                      *AIService
+	Diffs                   *DiffsService
 	AIAssist                *AIAssistService
 	Properties              *PropertiesService
 	Organizations           *OrganizationsService
@@ -252,6 +253,7 @@ func (c *Client) bindServices() {
 	c.NQE = (*NQEService)(&service{client: c})
 	c.Predict = (*PredictService)(&service{client: c})
 	c.AI = (*AIService)(&service{client: c})
+	c.Diffs = (*DiffsService)(&service{client: c})
 	c.AIAssist = (*AIAssistService)(&service{client: c})
 	c.Properties = (*PropertiesService)(&service{client: c})
 	c.Organizations = (*OrganizationsService)(&service{client: c})
