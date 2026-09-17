@@ -34,11 +34,11 @@ func TestCloudPredictChangeLoop(t *testing.T) {
 			}
 			_, _ = io.WriteString(w, `{"applied":[{"objectId":"rtb-1","added":1,"modified":0,"removed":0}],`+
 				`"unsupported":["aws_security_group_rule.open"]}`)
-		case r.Method == http.MethodGet && r.URL.Path == base+"/devices/aws-lab/cloud-objects/rtb-1/route-table-diff":
+		case r.Method == http.MethodGet && r.URL.Path == base+"/devices/aws-lab/cloud-objects/rtb-1/diff" && r.URL.Query().Get("view") == "":
 			_, _ = io.WriteString(w, `{"entries":[`+
 				`{"diffType":"UNCHANGED","a":{"destination":"10.0.0.0/16","target":"local"},"b":{"destination":"10.0.0.0/16","target":"local"}},`+
 				`{"diffType":"ADDED","b":{"destination":"10.51.1.0/24","target":"igw-1","status":"active","origin":"CreateRoute"}}]}`)
-		case r.Method == http.MethodGet && r.URL.Path == base+"/devices/aws-lab/cloud-objects/sg-1/security-group-diff":
+		case r.Method == http.MethodGet && r.URL.Path == base+"/devices/aws-lab/cloud-objects/sg-1/diff" && r.URL.Query().Get("view") == "security-group":
 			_, _ = io.WriteString(w, `{"entries":[{"diffType":"ADDED","b":{"protocol":"tcp","portRange":"8443","source":"10.140.0.0/16","description":"demo","action":"allow"}}]}`)
 		case r.Method == http.MethodPost && r.URL.Path == base+"/devices/aws-lab/cloud-objects/sg-1/edits":
 			var edit CloudObjectEdit
@@ -135,12 +135,12 @@ func TestCloudPredictChangeLoop(t *testing.T) {
 	want := []string{
 		"POST /api/networks/n-1/change-sets",
 		"POST " + base + "/devices/aws-lab/cloud-objects?action=importTerraformPlan",
-		"GET " + base + "/devices/aws-lab/cloud-objects/rtb-1/route-table-diff",
+		"GET " + base + "/devices/aws-lab/cloud-objects/rtb-1/diff",
 		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
 		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
 		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
 		"POST " + base + "/devices/aws-lab/cloud-objects/rtb-1/edits",
-		"GET " + base + "/devices/aws-lab/cloud-objects/sg-1/security-group-diff",
+		"GET " + base + "/devices/aws-lab/cloud-objects/sg-1/diff?view=security-group",
 		"POST " + base + "/devices/aws-lab/cloud-objects/sg-1/edits",
 		"POST " + base + "/commits?note=demo",
 		"POST " + base + "?action=predict&note=demo",
