@@ -2,6 +2,7 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -76,17 +77,58 @@ type MistSetup struct {
 	APIKeyID    string     `json:"apiKeyId,omitempty"`
 	Collect     *bool      `json:"collect,omitempty"`
 	CollectorID string     `json:"collectorId,omitempty"`
-	Hosts       []string   `json:"hosts,omitempty"`
+	// Hosts on the READ side is the AP list Forward knows for this setup. It
+	// is written as strings (MACs) but read back as OBJECTS -- measured live
+	// 2026-09-17: after discover, GET returned hosts:[{name,model,displayName}]
+	// and a []string decode failed. MistHostRef accepts either.
+	Hosts []MistHostRef `json:"hosts,omitempty"`
 	// TestResult is filled by discover/test; DiscoveredHosts is the AP list the
 	// collector saw. Informational: collection does not depend on it.
 	TestResult *MistTestResult `json:"testResult,omitempty"`
 }
 
-// MistTestResult is the last discovery/connectivity outcome.
+// MistHostRef is one AP as a setup lists it: a bare MAC string in requests
+// and older responses, an object after discovery. Name is always the MAC.
+type MistHostRef struct {
+	Name        string `json:"name"`
+	Model       string `json:"model,omitempty"`
+	DisplayName string `json:"displayName,omitempty"`
+}
+
+// UnmarshalJSON accepts "0250aa010001" or {"name":"0250aa010001",...}.
+func (h *MistHostRef) UnmarshalJSON(b []byte) error {
+	if len(b) > 0 && b[0] == '"' {
+		var s string
+		if err := json.Unmarshal(b, &s); err != nil {
+			return err
+		}
+		*h = MistHostRef{Name: s}
+		return nil
+	}
+	type raw MistHostRef
+	var r raw
+	if err := json.Unmarshal(b, &r); err != nil {
+		return err
+	}
+	*h = MistHostRef(r)
+	return nil
+}
+
+// MistTestResult is the last discovery outcome as the setup persists it.
+// Measured live 2026-09-17: {"savedAt":"...","discoveredHosts":[...]}.
 type MistTestResult struct {
+	SavedAt         string               `json:"savedAt,omitempty"`
 	Status          string               `json:"status,omitempty"`
 	Message         string               `json:"message,omitempty"`
 	DiscoveredHosts []MistDiscoveredHost `json:"discoveredHosts,omitempty"`
+}
+
+// MistDiscovery is the body POST ...?action=discover returns: ONLY the APs the
+// collector enumerated (measured live 2026-09-17: {"hosts":[{name,model,
+// displayName}]}). It is not a MistSetup; the setup's own testResult is
+// updated server-side and read back with ListMist.
+type MistDiscovery struct {
+	Hosts []MistDiscoveredHost `json:"hosts"`
 }
 
 // MistDiscoveredHost is one AP as discovery reports it; Name is the MAC.
@@ -157,7 +199,7 @@ func (s *CloudManagedSetupsService) CreateMist(ctx context.Context, networkID st
 // an ONLINE collector (400 offline, 404 unbound) and blocks up to a minute;
 // pass a ctx with at least DiscoverTimeout. Best-effort for collection --
 // an undiscovered setup with an empty Hosts filter still collects every AP.
-func (s *CloudManagedSetupsService) DiscoverMist(ctx context.Context, networkID, setupName string) (*MistSetup, *Response, error) {
+func (s *CloudManagedSetupsService) DiscoverMist(ctx context.Context, networkID, setupName string) (*MistDiscovery, *Response, error) {
 	if strings.TrimSpace(setupName) == "" {
 		return nil, nil, errors.New("forward: mist setup name is required")
 	}
@@ -170,7 +212,7 @@ func (s *CloudManagedSetupsService) DiscoverMist(ctx context.Context, networkID,
 		return nil, nil, err
 	}
 	req = markOperation(req, "CloudManagedSetups.DiscoverMist")
-	out := new(MistSetup)
+	out := new(MistDiscovery)
 	resp, err := s.client.Do(req, out)
 	return out, resp, err
 }

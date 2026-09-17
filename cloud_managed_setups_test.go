@@ -67,13 +67,14 @@ func TestCloudManagedSetupsDiscoverAndDeletePaths(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound) // absent already == success
 			return
 		}
-		_, _ = w.Write([]byte(`{"name":"skyforge-mist","testResult":{"status":"OK","discoveredHosts":[{"name":"0250aa010001","model":"AP43","displayName":"SMOKE-AP-1"}]}}`))
+		// Verbatim live discover body, 2026-09-17.
+		_, _ = w.Write([]byte(`{"hosts":[{"name":"0250aa010001","model":"AP43","displayName":"SMOKE-AP-1"}]}`))
 	})
 	out, _, err := c.CloudManagedSetups.DiscoverMist(context.Background(), "net-1", "skyforge-mist")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.TestResult == nil || len(out.TestResult.DiscoveredHosts) != 1 || out.TestResult.DiscoveredHosts[0].Name != "0250aa010001" {
+	if len(out.Hosts) != 1 || out.Hosts[0].Name != "0250aa010001" || out.Hosts[0].DisplayName != "SMOKE-AP-1" {
 		t.Fatalf("discover decoded %+v", out)
 	}
 	if _, err := c.CloudManagedSetups.DeleteMist(context.Background(), "net-1", "skyforge-mist"); err != nil {
@@ -103,5 +104,22 @@ func TestCloudManagedSetupsListMistAcceptsEnvelopes(t *testing.T) {
 		if err != nil || len(got) != 1 || got[0].Name != "m" {
 			t.Fatalf("%s: %v %+v", name, err, got)
 		}
+	}
+}
+
+// A setup's hosts filter is written as MAC strings; the flexible ref also
+// accepts the discovered-host object shape so a future read-side change
+// cannot break decoding. The verbatim live setup (2026-09-17) is pinned too.
+func TestMistSetupHostsDecodeAsStringsOrObjects(t *testing.T) {
+	var live MistSetup
+	if err := json.Unmarshal([]byte(`{"name":"skyforge-mist-smoke","apiKeyId":"AK-0","region":"GLOBAL_01","collect":true,"hosts":[],"testResult":{"savedAt":"2026-09-17T11:47:14.021Z","discoveredHosts":[{"name":"0250aa010001","model":"AP43","displayName":"SMOKE-AP-1"}]},"type":"MIST"}`), &live); err != nil || live.TestResult == nil || live.TestResult.SavedAt == "" || len(live.TestResult.DiscoveredHosts) != 1 {
+		t.Fatalf("live setup: %v %+v", err, live)
+	}
+	var a, b MistSetup
+	if err := json.Unmarshal([]byte(`{"name":"m","hosts":["0250aa010001"]}`), &a); err != nil || len(a.Hosts) != 1 || a.Hosts[0].Name != "0250aa010001" {
+		t.Fatalf("strings: %v %+v", err, a.Hosts)
+	}
+	if err := json.Unmarshal([]byte(`{"name":"m","hosts":[{"name":"0250aa010001","model":"AP43","displayName":"SMOKE-AP-1"}]}`), &b); err != nil || len(b.Hosts) != 1 || b.Hosts[0].DisplayName != "SMOKE-AP-1" {
+		t.Fatalf("objects: %v %+v", err, b.Hosts)
 	}
 }
