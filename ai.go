@@ -106,14 +106,68 @@ type AIToolCall struct {
 
 // AIMessage is one user prompt and the agent work performed for it.
 type AIMessage struct {
-	ID               Identifier        `json:"id"`
-	Prompt           string            `json:"prompt"`
-	OutOfScopeReason string            `json:"outOfScopeReason,omitempty"`
-	ToolCalls        []AIToolCall      `json:"toolCalls"`
-	Tasks            []json.RawMessage `json:"tasks,omitempty"`
-	FinalAnswer      *AIFinalAnswer    `json:"finalAnswer,omitempty"`
-	CreatedAt        string            `json:"createdAt"`
-	UpdatedAt        string            `json:"updatedAt"`
+	ID        Identifier        `json:"id"`
+	Prompt    string            `json:"prompt"`
+	ToolCalls []AIToolCall      `json:"toolCalls"`
+	Tasks     []json.RawMessage `json:"tasks,omitempty"`
+	// Answer is the current appserver shape (cv/ai/MessageAnswer, 26.9):
+	// summary, outOfScope, keyInsights. Nil while the message is still being
+	// processed.
+	Answer *AIMessageAnswer `json:"answer,omitempty"`
+	// OutOfScopeReason and FinalAnswer are the pre-26.9 shape, kept so an
+	// older appserver still yields text. Use Answer()/OutOfScope() below
+	// rather than reading either field.
+	OutOfScopeReason string         `json:"outOfScopeReason,omitempty"`
+	FinalAnswer      *AIFinalAnswer `json:"finalAnswer,omitempty"`
+	CreatedAt        string         `json:"createdAt"`
+	UpdatedAt        string         `json:"updatedAt"`
+}
+
+// AIMessageAnswer is the answer produced at the end of the tool loop.
+type AIMessageAnswer struct {
+	Summary     string   `json:"summary"`
+	OutOfScope  bool     `json:"outOfScope"`
+	KeyInsights []string `json:"keyInsights,omitempty"`
+}
+
+// AnswerText returns the human answer from whichever shape the appserver sent
+// (summary plus key insights, or the legacy finalAnswer), "" when the message
+// has no answer yet or is out of scope.
+func (m *AIMessage) AnswerText() string {
+	if m == nil {
+		return ""
+	}
+	if m.Answer != nil {
+		if m.Answer.OutOfScope {
+			return ""
+		}
+		var b strings.Builder
+		b.WriteString(strings.TrimSpace(m.Answer.Summary))
+		if len(m.Answer.KeyInsights) > 0 {
+			b.WriteString("\n\nKey insights:")
+			for _, k := range m.Answer.KeyInsights {
+				if k = strings.TrimSpace(k); k != "" {
+					b.WriteString("\n- " + k)
+				}
+			}
+		}
+		return strings.TrimSpace(b.String())
+	}
+	if strings.TrimSpace(m.OutOfScopeReason) != "" {
+		return ""
+	}
+	return m.FinalAnswer.AnswerText()
+}
+
+// OutOfScope returns the reason Forward declined the prompt, "" otherwise.
+func (m *AIMessage) OutOfScope() string {
+	if m == nil {
+		return ""
+	}
+	if m.Answer != nil && m.Answer.OutOfScope {
+		return strings.TrimSpace(m.Answer.Summary)
+	}
+	return strings.TrimSpace(m.OutOfScopeReason)
 }
 
 // AIMessageListOptions filters messages updated after Since.
