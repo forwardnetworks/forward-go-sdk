@@ -211,22 +211,21 @@ func (s *SnapshotsService) findInListing(ctx context.Context, networkID, snapsho
 }
 
 // LatestProcessed returns the most recent processed snapshot for a network.
+//
+// Forward's dedicated /latestProcessed route is deprecated for removal in
+// 26.12, so this is built on List, which is newest-first: PROCESSED-filtered
+// and limit-1, taking the first (and only) result, the same pattern ResolveID
+// already uses for its own "latest" resolution above.
 func (s *SnapshotsService) LatestProcessed(ctx context.Context, networkID string) (*Snapshot, *Response, error) {
-	networkID, err := s.client.resolveNetworkID(networkID)
+	one := int32(1)
+	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{State: "PROCESSED", Limit: &one})
 	if err != nil {
-		return nil, nil, err
+		return nil, resp, err
 	}
-	path, err := snapshotsPath(networkID)
-	if err != nil {
-		return nil, nil, err
+	if len(snapshots) == 0 {
+		return nil, resp, fmt.Errorf("%w: %s", ErrNoSnapshots, networkID)
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/latestProcessed", nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	snapshot := new(Snapshot)
-	resp, err := s.client.Do(req, snapshot)
-	return snapshot, resp, err
+	return &snapshots[0], resp, nil
 }
 
 // Delete removes a snapshot.

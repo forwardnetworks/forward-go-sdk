@@ -53,7 +53,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/networks/{networkId}/cloudAccounts` | `CloudAccounts.List` | COVERED |
 | GET | `/api/networks/{networkId}/collectionProgress` | `Collections.Progress` | COVERED |
 | GET | `/api/networks/{networkId}/collections` | `Collections.List` | COVERED |
-| GET | `/api/networks/{networkId}/collector/status` | `Collectors.Attachment` | COVERED |
+| GET | `/api/networks/{networkId}/collector` | `Collectors.Attachment` | COVERED |
 | GET | `/api/networks/{networkId}/controller-managed-setups` | `ControllerManagedSetups.List` | COVERED |
 | GET | `/api/networks/{networkId}/device-metrics` | `Performance.DeviceMetrics`, `Performance.DeviceMetricsDocument` | COVERED |
 | GET | `/api/networks/{networkId}/device-statuses` | `Collections.DeviceStatuses` | COVERED |

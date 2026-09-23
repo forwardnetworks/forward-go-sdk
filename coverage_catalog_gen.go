@@ -53,7 +53,7 @@ var sdkCoverageCatalog = map[string]CoverageOperation{
 	"CloudAccounts.List":                         {Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
 	"Collections.Progress":                       {Method: "GET", Route: "/api/networks/{networkId}/collectionProgress"},
 	"Collections.List":                           {Method: "GET", Route: "/api/networks/{networkId}/collections"},
-	"Collectors.Attachment":                      {Method: "GET", Route: "/api/networks/{networkId}/collector/status"},
+	"Collectors.Attachment":                      {Method: "GET", Route: "/api/networks/{networkId}/collector"},
 	"ControllerManagedSetups.List":               {Method: "GET", Route: "/api/networks/{networkId}/controller-managed-setups"},
 	"Performance.DeviceMetrics":                  {Method: "GET", Route: "/api/networks/{networkId}/device-metrics"},
 	"Performance.DeviceMetricsDocument":          {Method: "GET", Route: "/api/networks/{networkId}/device-metrics"},

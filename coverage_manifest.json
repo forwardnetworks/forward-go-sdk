@@ -623,7 +623,7 @@
     },
     {
       "method": "GET",
-      "route": "/api/networks/{networkId}/collector/status",
+      "route": "/api/networks/{networkId}/collector",
       "symbols": [
         "Collectors.Attachment"
       ],
