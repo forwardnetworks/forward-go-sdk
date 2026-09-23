@@ -1,8 +1,8 @@
 # Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop..
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030..
 
-Current inventory: **231 semantic call sites**, **177 distinct normalized method+route pairs**, **177 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **234 semantic call sites**, **180 distinct normalized method+route pairs**, **180 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when the consumer adds, removes, or changes a Forward wire call. Run `go run ./cmd/coverage-audit -audit /path/to/consumer/api-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -13,6 +13,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | DELETE | `/api/collectors/{collectorIdOrName}` | `Collectors.Delete` | COVERED |
 | DELETE | `/api/cve-index` | `CVEIndex.Delete` | COVERED |
 | DELETE | `/api/device-access-labels/{labelId}` | `AccessControl.DeleteDeviceAccessLabel` | COVERED |
+| DELETE | `/api/global-config/{property}` | `Properties.ClearGlobal` | COVERED |
 | DELETE | `/api/integrations/servicenow` | `Integrations.DeleteServiceNow` | COVERED |
 | DELETE | `/api/networks/{networkId}` | `Networks.Delete` | COVERED |
 | DELETE | `/api/networks/{networkId}/controller-managed-setups/{setupName}` | `ControllerManagedSetups.Delete` | COVERED |
@@ -79,6 +80,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/nqe/repos/org/commits/head/queries` | `NQERepository.ListHeadQueries` | COVERED |
 | GET | `/api/nqe/repos/org/commits/{commitId}/queries` | `NQERepository.GetQuery` | COVERED |
 | GET | `/api/orgs/current` | `Organizations.Current` | COVERED |
+| GET | `/api/orgs/{orgId}/config` | `Properties.Organization`, `Properties.DescribeOrganization` | COVERED |
 | GET | `/api/public/csrf` | `Browser.PublicCSRFAPI` | COVERED |
 | GET | `/api/snapshots/{snapshotId}` | `Snapshots.Download` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/checks` | `Checks.List`, `Compatibility.Checks` | COVERED |
@@ -177,6 +179,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | PUT | `/api/custom-banners/{bannerId}` | `Banners.Replace` | COVERED |
 | PUT | `/api/cve-index` | `CVEIndex.Put` | COVERED |
 | PUT | `/api/deployment-config/{property}` | `Configuration.SetDeployment` | COVERED |
+| PUT | `/api/global-config/{property}` | `Properties.SetGlobal` | COVERED |
 | PUT | `/api/integrations/servicenow` | `Integrations.PutServiceNow` | COVERED |
 | PUT | `/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands` | `Predict.StageCommands` | COVERED |
 | PUT | `/api/networks/{networkId}/collector` | `Collectors.Attach` | COVERED |

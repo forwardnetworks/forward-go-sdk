@@ -38,7 +38,7 @@ type PropertyValues map[OrgProperty]json.RawMessage
 
 // Current returns property values for the authenticated user's organization.
 func (s *PropertiesService) Current(ctx context.Context, filter PropertyFilter) (PropertyValues, *Response, error) {
-	return s.get(ctx, propertyFilterPath("/api/config", filter))
+	return s.get(ctx, "Properties.Current", propertyFilterPath("/api/config", filter))
 }
 
 // Organization returns property values for orgID. Forward support permission
@@ -53,13 +53,13 @@ func (s *PropertiesService) Organization(
 		return nil, nil, errors.New("forward: organization ID is required")
 	}
 	path := fmt.Sprintf("/api/orgs/%s/config", url.PathEscape(orgID))
-	return s.get(ctx, propertyFilterPath(path, filter))
+	return s.get(ctx, "Properties.Organization", propertyFilterPath(path, filter))
 }
 
 // Global returns default property values. Global writes require Forward-admin
 // permission, while visibility depends on the requested filter.
 func (s *PropertiesService) Global(ctx context.Context, filter PropertyFilter) (PropertyValues, *Response, error) {
-	return s.get(ctx, propertyFilterPath("/api/global-config", filter))
+	return s.get(ctx, "Properties.Global", propertyFilterPath("/api/global-config", filter))
 }
 
 // SetCurrent sets an override for the authenticated user's organization.
@@ -68,12 +68,12 @@ func (s *PropertiesService) SetCurrent(
 	property OrgProperty,
 	value string,
 ) (PropertyValues, *Response, error) {
-	return s.set(ctx, "/api/config", property, value)
+	return s.set(ctx, "Properties.SetCurrent", "/api/config", property, value)
 }
 
 // ClearCurrent deletes an override for the authenticated user's organization.
 func (s *PropertiesService) ClearCurrent(ctx context.Context, property OrgProperty) (*Response, error) {
-	return s.clear(ctx, "/api/config", property)
+	return s.clear(ctx, "Properties.ClearCurrent", "/api/config", property)
 }
 
 // SetOrganization sets an organization override. Forward support permission is required.
@@ -87,7 +87,7 @@ func (s *PropertiesService) SetOrganization(
 	if orgID == "" {
 		return nil, nil, errors.New("forward: organization ID is required")
 	}
-	return s.set(ctx, "/api/orgs/"+url.PathEscape(orgID)+"/config", property, value)
+	return s.set(ctx, "Properties.SetOrganization", "/api/orgs/"+url.PathEscape(orgID)+"/config", property, value)
 }
 
 // ClearOrganization deletes an organization override. Forward support permission is required.
@@ -100,7 +100,7 @@ func (s *PropertiesService) ClearOrganization(
 	if orgID == "" {
 		return nil, errors.New("forward: organization ID is required")
 	}
-	return s.clear(ctx, "/api/orgs/"+url.PathEscape(orgID)+"/config", property)
+	return s.clear(ctx, "Properties.ClearOrganization", "/api/orgs/"+url.PathEscape(orgID)+"/config", property)
 }
 
 // SetGlobal sets a global default. Forward-admin permission is required.
@@ -109,19 +109,20 @@ func (s *PropertiesService) SetGlobal(
 	property OrgProperty,
 	value string,
 ) (PropertyValues, *Response, error) {
-	return s.set(ctx, "/api/global-config", property, value)
+	return s.set(ctx, "Properties.SetGlobal", "/api/global-config", property, value)
 }
 
 // ClearGlobal deletes a global default override. Forward-admin permission is required.
 func (s *PropertiesService) ClearGlobal(ctx context.Context, property OrgProperty) (*Response, error) {
-	return s.clear(ctx, "/api/global-config", property)
+	return s.clear(ctx, "Properties.ClearGlobal", "/api/global-config", property)
 }
 
-func (s *PropertiesService) get(ctx context.Context, path string) (PropertyValues, *Response, error) {
+func (s *PropertiesService) get(ctx context.Context, operation, path string) (PropertyValues, *Response, error) {
 	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
 	}
+	req = markOperation(req, operation)
 	values := PropertyValues{}
 	resp, err := s.client.Do(req, &values)
 	if err != nil {
@@ -132,6 +133,7 @@ func (s *PropertiesService) get(ctx context.Context, path string) (PropertyValue
 
 func (s *PropertiesService) set(
 	ctx context.Context,
+	operation string,
 	basePath string,
 	property OrgProperty,
 	value string,
@@ -145,6 +147,7 @@ func (s *PropertiesService) set(
 	if err != nil {
 		return nil, nil, err
 	}
+	req = markOperation(req, operation)
 	values := PropertyValues{}
 	resp, err := s.client.Do(req, &values)
 	if err != nil {
@@ -153,7 +156,7 @@ func (s *PropertiesService) set(
 	return values, resp, nil
 }
 
-func (s *PropertiesService) clear(ctx context.Context, basePath string, property OrgProperty) (*Response, error) {
+func (s *PropertiesService) clear(ctx context.Context, operation, basePath string, property OrgProperty) (*Response, error) {
 	path, err := propertyPath(basePath, property)
 	if err != nil {
 		return nil, err
@@ -162,6 +165,7 @@ func (s *PropertiesService) clear(ctx context.Context, basePath string, property
 	if err != nil {
 		return nil, err
 	}
+	req = markOperation(req, operation)
 	return s.client.Do(req, nil)
 }
 

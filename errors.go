@@ -22,6 +22,12 @@ const (
 	ErrorKindNetworkNotFound                   ErrorKind = "network-not-found"
 	ErrorKindAuthentication                    ErrorKind = "authentication-failure"
 	ErrorKindTrustedCertificateApplyInProgress ErrorKind = "trusted-certificate-apply-in-progress"
+	// ErrorKindUnknownOrgProperty is the appserver refusing an org property
+	// NAME its OrgProperty enum does not define (Spring's 400 "No enum constant
+	// com.forwardnetworks.cv.config.OrgProperty.X"). Property sets are
+	// version-dependent, so a caller writing across releases needs to tell this
+	// apart from a real failure without matching prose.
+	ErrorKindUnknownOrgProperty ErrorKind = "unknown-org-property"
 )
 
 var (
@@ -30,6 +36,7 @@ var (
 	ErrNetworkNotFound                   = errors.New("forward: network not found")
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
+	ErrUnknownOrgProperty                = errors.New("forward: organization property not defined by this appserver")
 )
 
 // UnavailableError preserves the reason a fail-closed client could not be
@@ -88,6 +95,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindAuthentication
 	case ErrTrustedCertificateApplyInProgress:
 		return e.Kind == ErrorKindTrustedCertificateApplyInProgress
+	case ErrUnknownOrgProperty:
+		return e.Kind == ErrorKindUnknownOrgProperty
 	default:
 		return false
 	}
@@ -137,6 +146,12 @@ func IsCollectionAlreadyInProgress(err error) bool {
 // a second apply once a collector becomes free.
 func IsTrustedCertificateApplyInProgress(err error) bool {
 	return errors.Is(err, ErrTrustedCertificateApplyInProgress)
+}
+
+// IsUnknownOrgProperty reports whether err is the appserver's 400 for an org
+// property name its enum does not define.
+func IsUnknownOrgProperty(err error) bool {
+	return errors.Is(err, ErrUnknownOrgProperty)
 }
 
 func newErrorResponse(resp *http.Response) *ErrorResponse {
@@ -216,6 +231,10 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	}
 	// TrustedCertificateTaskService.applyCertificates is the only handler on
 	// this route that throws ConflictException, and only for action=apply.
+	if status == http.StatusBadRequest &&
+		strings.Contains(detail, "no enum constant") && strings.Contains(detail, "orgproperty") {
+		return ErrorKindUnknownOrgProperty
+	}
 	if method == http.MethodPost && path == "/api/trusted-certificates" &&
 		status == http.StatusConflict && requestHasQueryValue(apiErr.Response, "action", "apply") {
 		return ErrorKindTrustedCertificateApplyInProgress

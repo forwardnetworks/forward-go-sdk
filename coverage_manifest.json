@@ -2,9 +2,9 @@
   "schema_version": 1,
   "consumer": "skyforge/components/server",
   "consumer_go_sha256": "e2e42a61f806617b44b957ec74e4e3959580e4067b616c3be23f75ca512a9fd4",
-  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.",
-  "semantic_call_sites": 231,
-  "distinct_method_routes": 177,
+  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.",
+  "semantic_call_sites": 234,
+  "distinct_method_routes": 180,
   "endpoints": [
     {
       "method": "GET",
@@ -351,6 +351,22 @@
       "route": "/api/global-config",
       "symbols": [
         "Properties.Global"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/global-config/{property}",
+      "symbols": [
+        "Properties.ClearGlobal"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/global-config/{property}",
+      "symbols": [
+        "Properties.SetGlobal"
       ],
       "coverage": "COVERED"
     },
@@ -1099,6 +1115,15 @@
       "route": "/api/orgs/current",
       "symbols": [
         "Organizations.Current"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/orgs/{orgId}/config",
+      "symbols": [
+        "Properties.Organization",
+        "Properties.DescribeOrganization"
       ],
       "coverage": "COVERED"
     },
