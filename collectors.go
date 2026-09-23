@@ -190,6 +190,13 @@ func (s *CollectorsService) Attach(ctx context.Context, networkID string, input 
 // StartLegacy starts the legacy network collection route. A typed conflict
 // for an already-running collection is returned as success, matching the
 // call sites that treat the operation as idempotent.
+//
+// Deprecated: POST /networks/{id}/startcollection is retiring in Forward
+// 26.10. Use CollectorTasks.Start (POST /api/collector-tasks), which returns
+// a durable task ID and classifies the same conflict as
+// ErrCollectionAlreadyInProgress via errors.Is. No caller in this repo uses
+// StartLegacy any more (retargeted 2026-09-23); kept only so a caller pinned
+// to an older SDK build does not break.
 func (s *CollectorsService) StartLegacy(ctx context.Context, networkID string) (*Response, error) {
 	path, err := s.networkPath(networkID, "/startcollection")
 	if err != nil {

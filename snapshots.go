@@ -216,6 +216,12 @@ func (s *SnapshotsService) findInListing(ctx context.Context, networkID, snapsho
 // 26.12, so this is built on List, which is newest-first: PROCESSED-filtered
 // and limit-1, taking the first (and only) result, the same pattern ResolveID
 // already uses for its own "latest" resolution above.
+//
+// Deprecated: call List(ctx, networkID, SnapshotListOptions{State:
+// "PROCESSED", Limit: &one}) directly and take the first result -- that is
+// all this wrapper does now that it no longer hits a dedicated route. No
+// caller in this repo uses LatestProcessed any more (retargeted 2026-09-23);
+// kept only so a caller pinned to an older SDK build does not break.
 func (s *SnapshotsService) LatestProcessed(ctx context.Context, networkID string) (*Snapshot, *Response, error) {
 	one := int32(1)
 	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{State: "PROCESSED", Limit: &one})
