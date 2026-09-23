@@ -46,11 +46,25 @@ func (r CollectorRegistration) Identity() CollectorIdentity {
 	return CollectorIdentity{Username: strings.TrimSpace(r.Username), AuthorizationKey: r.AuthorizationKey}
 }
 
+// CollectorAttachment reports whether a Collector is attached to a network.
+//
+// The wire shape is Forward's CollectorWithStatus (id/name/username/...),
+// decoded straight off GET /api/networks/{id}/collector -- NOT the legacy
+// "isSet"/"busyStatus" CollectorState shape. Forward retired the old
+// GET .../collector/status route server-side 2026-09-13 (FWD-52021,
+// "Retire legacy CollectorState, CollectorStateService and CollectorStatus");
+// it now 404s unconditionally, for every network, whether or not a collector
+// is attached. The live replacement returns 200 with an empty JSON object
+// ({}) when no collector is attached, so IsSet is derived from
+// CollectorUsername being present, not decoded from a wire field -- there is
+// no such field anymore.
 type CollectorAttachment struct {
-	IsSet             bool       `json:"isSet"`
-	CollectorID       Identifier `json:"collectorId,omitempty"`
-	CollectorUsername string     `json:"collectorUsername,omitempty"`
-	CollectorName     string     `json:"collectorName,omitempty"`
+	CollectorID       Identifier `json:"id,omitempty"`
+	CollectorUsername string     `json:"username,omitempty"`
+	CollectorName     string     `json:"name,omitempty"`
+	ConnectionStatus  string     `json:"connectionStatus,omitempty"`
+	UpdateStatus      string     `json:"updateStatus,omitempty"`
+	IsSet             bool       `json:"-"`
 }
 
 type CollectorAttachmentRequest struct {
@@ -136,7 +150,10 @@ func (s *CollectorsService) Delete(ctx context.Context, collectorIDOrName string
 }
 
 func (s *CollectorsService) Attachment(ctx context.Context, networkID string) (*CollectorAttachment, *Response, error) {
-	path, err := s.networkPath(networkID, "/collector/status")
+	// /collector, not /collector/status -- see the CollectorAttachment doc
+	// comment. The /status route is gone server-side and 404s regardless of
+	// network or attachment state.
+	path, err := s.networkPath(networkID, "/collector")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -147,6 +164,9 @@ func (s *CollectorsService) Attachment(ctx context.Context, networkID string) (*
 	req = markOperation(req, "Collectors.Attachment")
 	out := new(CollectorAttachment)
 	response, err := s.client.doRequired(req, out)
+	if err == nil && out != nil {
+		out.IsSet = strings.TrimSpace(out.CollectorUsername) != ""
+	}
 	return out, response, err
 }
 
