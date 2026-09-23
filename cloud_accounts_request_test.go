@@ -79,3 +79,75 @@ func TestCloudAccountRequestExtraCannotOverrideNamedFields(t *testing.T) {
 		t.Fatalf("Extra did not reach the wire: %v", got["futureField"])
 	}
 }
+
+// The credential endpoint is the only way to rotate a secret on an existing
+// account, so every provider's shape must be expressible -- GCP's
+// service-account key and IBM's api key were missing, which left a GCP account
+// holding whatever key it was created with forever.
+func TestCloudAccountCredentialRequestWireForm(t *testing.T) {
+	cases := map[string]struct {
+		req    CloudAccountCredentialRequest
+		want   map[string]any
+		absent []string
+	}{
+		"aws": {
+			req:    CloudAccountCredentialRequest{Type: "AWS", Username: "AKIA", Password: "s"},
+			want:   map[string]any{"type": "AWS", "username": "AKIA", "password": "s"},
+			absent: []string{"clientId", "tenant", "clientEmail", "privateKey", "apiKey"},
+		},
+		"azure": {
+			req:    CloudAccountCredentialRequest{Type: "AZURE", ClientID: "c", Tenant: "d", Password: "s"},
+			want:   map[string]any{"type": "AZURE", "clientId": "c", "tenant": "d", "password": "s"},
+			absent: []string{"username", "clientEmail", "privateKey", "apiKey"},
+		},
+		"gcp": {
+			req: CloudAccountCredentialRequest{Type: "GCP", ClientID: "1", ClientEmail: "sa@p.iam.gserviceaccount.com", PrivateKeyID: "k", PrivateKey: "PEM"},
+			want: map[string]any{"type": "GCP", "clientId": "1", "clientEmail": "sa@p.iam.gserviceaccount.com",
+				"privateKeyId": "k", "privateKey": "PEM"},
+			absent: []string{"username", "password", "tenant", "apiKey"},
+		},
+		"ibm": {
+			req:    CloudAccountCredentialRequest{Type: "IBM_CLOUD", APIKey: "key"},
+			want:   map[string]any{"type": "IBM_CLOUD", "apiKey": "key"},
+			absent: []string{"username", "password", "clientId", "privateKey"},
+		},
+	}
+	for name, tc := range cases {
+		b, err := json.Marshal(tc.req)
+		if err != nil {
+			t.Fatalf("%s: marshal: %v", name, err)
+		}
+		var got map[string]any
+		_ = json.Unmarshal(b, &got)
+		for k, v := range tc.want {
+			if got[k] != v {
+				t.Errorf("%s: %s = %v, want %v", name, k, got[k], v)
+			}
+		}
+		for _, k := range tc.absent {
+			if _, present := got[k]; present {
+				t.Errorf("%s: %s must be omitted", name, k)
+			}
+		}
+	}
+}
+
+// Forward stores each region's (and each Azure subscription's) last test on
+// the account; the error is what says whether the credential works.
+func TestCloudAccountDecodesTestResults(t *testing.T) {
+	var accounts []CloudAccount
+	body := `[{"type":"GCP","name":"g","collect":true,"regions":{"us-central1":{"testInstant":1758600000000,"error":"PROJECT_VIEW_PERMISSION_MISSING"},"us-east1":null}},
+	          {"type":"AZURE","name":"a","collect":true,"testResults":{"sub-1":{"testInstant":1758600000001,"error":"NONE"}}}]`
+	if err := json.Unmarshal([]byte(body), &accounts); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if r := accounts[0].Regions["us-central1"]; r.Error != "PROJECT_VIEW_PERMISSION_MISSING" || r.TestInstant != 1758600000000 {
+		t.Fatalf("gcp region result = %+v", r)
+	}
+	if r, ok := accounts[0].Regions["us-east1"]; !ok || r.Error != "" || r.TestInstant != 0 {
+		t.Fatalf("an untested region decodes to the zero result, got %+v (present=%v)", r, ok)
+	}
+	if r := accounts[1].TestResults["sub-1"]; r.Error != "NONE" || r.TestInstant != 1758600000001 {
+		t.Fatalf("azure subscription result = %+v", r)
+	}
+}

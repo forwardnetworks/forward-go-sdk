@@ -17,11 +17,14 @@ import (
 type CloudAccountsService service
 
 type CloudAccount struct {
-	Type                          string              `json:"type"`
-	Name                          string              `json:"name"`
-	Collect                       bool                `json:"collect"`
-	ProxyServerID                 string              `json:"proxyServerId,omitempty"`
-	Regions                       map[string]Region   `json:"regions,omitempty"`
+	Type          string            `json:"type"`
+	Name          string            `json:"name"`
+	Collect       bool              `json:"collect"`
+	ProxyServerID string            `json:"proxyServerId,omitempty"`
+	Regions       map[string]Region `json:"regions,omitempty"`
+	// TestResults is Azure's per-subscription connectivity-test result; AWS,
+	// GCP and IBM carry theirs per region in Regions.
+	TestResults                   map[string]Region   `json:"testResults,omitempty"`
 	RegionToProxyServerID         map[string]string   `json:"regionToProxyServerId,omitempty"`
 	AssumeRoleInfos               []AWSAssumeRoleInfo `json:"assumeRoleInfos,omitempty"`
 	UseForwardAccountToAssumeRole *bool               `json:"useForwardAccountToAssumeRole,omitempty"`
@@ -48,8 +51,16 @@ func (a *CloudAccount) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Region is one region's most recent connectivity-test result, as Forward
+// stores it on the account (CloudAccount.TestResult in the appserver). A
+// region never tested since its proxy changed comes back as JSON null, which
+// decodes to the zero Region: TestInstant 0 and no Error.
 type Region struct {
 	TestInstant int64 `json:"testInstant,omitempty"`
+	// Error is Forward's DeviceCollectionError name for the test: "NONE" on
+	// success, otherwise the failure (UNKNOWN, AUTHENTICATION_FAILED,
+	// PROJECT_VIEW_PERMISSION_MISSING, ...). Empty when never tested.
+	Error string `json:"error,omitempty"`
 }
 
 type AWSAssumeRoleInfo struct {
@@ -141,16 +152,29 @@ func (r CloudAccountRequest) MarshalJSON() ([]byte, error) {
 }
 
 // CloudAccountCredentialRequest replaces the stored credential of a setup
-// without restating the rest of it.
-// The `type` discriminator selects the shape Forward reads: AWS takes
-// username (access key id) and password (secret); Azure takes clientId,
-// tenant and password (the client secret).
+// without restating the rest of it (POST .../cloudAccounts/{name}/credential,
+// CloudAccountController#updateCloudAccountCredential). The account's update
+// (PATCH) body carries no credentials at all, so this is the ONLY way to
+// rotate a secret on an existing account.
+//
+// The `type` discriminator selects the shape Forward reads:
+//   - AWS: username (access key id) and password (secret).
+//   - AZURE: clientId, tenant (directory) and password (the client secret).
+//   - GCP: the service-account key -- clientId, clientEmail, privateKeyId and
+//     privateKey (PEM). Forward requires all four together.
+//   - IBM_CLOUD (the discriminator is IBM_CLOUD here, not IBM): apiKey.
 type CloudAccountCredentialRequest struct {
 	Type     string `json:"type"`
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
 	ClientID string `json:"clientId,omitempty"`
 	Tenant   string `json:"tenant,omitempty"`
+
+	ClientEmail  string `json:"clientEmail,omitempty"`
+	PrivateKeyID string `json:"privateKeyId,omitempty"`
+	PrivateKey   string `json:"privateKey,omitempty"`
+
+	APIKey string `json:"apiKey,omitempty"`
 }
 
 // AWSAssumeRoleExternalID is the external id Forward expects a customer role to
