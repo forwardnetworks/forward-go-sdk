@@ -71,6 +71,7 @@ type Client struct {
 	unavailableErr error
 	capabilities   *capabilityRegistry
 	retry          RetryPolicy
+	csrf           *browserCSRFState
 
 	Version                 *VersionService
 	Networks                *NetworksService
@@ -173,6 +174,7 @@ func NewClient(cfg Config) (*Client, error) {
 		password:     password,
 		authMode:     authMode,
 		userAgent:    userAgent,
+		csrf:         &browserCSRFState{},
 		hooks:        append([]Hook(nil), cfg.Hooks...),
 		networkID:    strings.TrimSpace(cfg.NetworkID),
 		capabilities: newCapabilityRegistry(cfg.Capabilities),
@@ -369,6 +371,11 @@ func (c *Client) do(req *http.Request, dst any, allowEmpty bool, accepted func(i
 
 	started := time.Now()
 	metadata := MetadataFromRequest(req)
+	if browserRequestNeedsCSRF(req, metadata.AuthMode) {
+		if err := c.attachBrowserCSRF(req); err != nil {
+			return nil, fmt.Errorf("forward: browser CSRF token: %w", err)
+		}
+	}
 	c.emit(req.Context(), Event{Type: EventRequest, Method: req.Method, Path: req.URL.Path, Operation: metadata.Operation, AuthMode: metadata.AuthMode})
 	resp, err := c.send(req)
 	if err != nil {
@@ -536,7 +543,8 @@ func (c *Client) resolveScoped(path string, scope pathScope) (*url.URL, error) {
 	case pathScopeBackup:
 		allowed = rel.Path == "/api/backup-settings" || rel.Path == "/api/backup-settings/storage" || rel.Path == "/api/backups"
 	case pathScopeBrowser:
-		allowed = allowed || rel.Path == "/login" || rel.Path == "/public/csrf"
+		allowed = allowed || rel.Path == "/login" || rel.Path == "/public/csrf" ||
+			strings.HasPrefix(rel.Path, "/saml2/authenticate/") || strings.HasPrefix(rel.Path, "/login/saml2/sso/")
 	}
 	if !allowed {
 		return nil, errors.New("forward: request path is outside the typed service scope")

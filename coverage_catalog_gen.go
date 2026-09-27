@@ -133,6 +133,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Banners.Replace": {
 		{Method: "PUT", Route: "/api/custom-banners/{bannerId}"},
 	},
+	"Browser.CurrentSession": {
+		{Method: "GET", Route: "/api/users/current"},
+	},
 	"Browser.CurrentUser": {
 		{Method: "GET", Route: "/api/users/current"},
 	},
@@ -155,6 +158,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Browser.PublicCSRFAPI": {
 		{Method: "GET", Route: "/api/public/csrf"},
+	},
+	"Browser.SAMLAssertionConsumer": {
+		{Method: "POST", Route: "/login/saml2/sso/{registrationId}"},
+	},
+	"Browser.SAMLAuthenticationRequest": {
+		{Method: "GET", Route: "/saml2/authenticate/{registrationId}"},
 	},
 	"CVEIndex.Delete": {
 		{Method: "DELETE", Route: "/api/cve-index"},

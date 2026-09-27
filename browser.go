@@ -22,6 +22,22 @@ type BrowserUser struct {
 	Username        string     `json:"username"`
 	Email           string     `json:"email"`
 	MustSetPassword bool       `json:"mustSetPassword"`
+	AuthSource      string     `json:"authSource,omitempty"`
+	ExternalGroups  []string   `json:"externalGroups,omitempty"`
+}
+
+// BrowserSessionRoles are the roles Forward resolved for the session's
+// principal: org roles (e.g. ADMIN) and network roles keyed by network ID.
+type BrowserSessionRoles struct {
+	Org     []string          `json:"org"`
+	Network map[string]string `json:"network"`
+}
+
+// BrowserSession is GET /api/users/current in full: who the session is and
+// what Forward lets it do. For an impersonated session it is the target.
+type BrowserSession struct {
+	User  BrowserUser         `json:"user"`
+	Roles BrowserSessionRoles `json:"roles"`
 }
 
 type BrowserCSRFToken struct {
@@ -67,6 +83,25 @@ func (s *BrowserService) CurrentUser(ctx context.Context) (*BrowserUser, *Respon
 	return &envelope.User, response, err
 }
 
+// CurrentSession reads the session's principal together with its resolved
+// roles, so a caller can prove a sign-in carries the access it needs.
+func (s *BrowserService) CurrentSession(ctx context.Context) (*BrowserSession, *Response, error) {
+	if err := s.requireBrowser(); err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newScopedRequest(ctx, http.MethodGet, "/api/users/current", nil, pathScopeBrowser, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Browser.CurrentSession")
+	out := new(BrowserSession)
+	response, err := s.client.doRequired(req, out)
+	if err == nil && out.User.ID == "" && strings.TrimSpace(out.User.Username) == "" {
+		err = errors.New("forward: browser session response is missing user identity")
+	}
+	return out, response, err
+}
+
 func (s *BrowserService) PublicCSRFAPI(ctx context.Context) (*BrowserCSRFToken, *Response, error) {
 	return s.publicCSRF(ctx, "/api/public/csrf", "Browser.PublicCSRFAPI")
 }
@@ -75,13 +110,20 @@ func (s *BrowserService) publicCSRF(ctx context.Context, path, operation string)
 	if err := s.requireBrowserOrNone(); err != nil {
 		return nil, nil, err
 	}
-	req, err := s.client.newScopedRequest(ctx, http.MethodGet, path, nil, pathScopeBrowser, &requestAuth{mode: AuthModeNone})
+	return s.client.fetchPublicCSRF(ctx, path, operation)
+}
+
+// fetchPublicCSRF reads the session's CSRF token. It is a client helper, not a
+// service method, because every browser-mode write reaches it (see
+// browser_csrf.go); the route stays listed under Browser.PublicCSRFAPI.
+func (c *Client) fetchPublicCSRF(ctx context.Context, path, operation string) (*BrowserCSRFToken, *Response, error) {
+	req, err := c.newScopedRequest(ctx, http.MethodGet, path, nil, pathScopeBrowser, &requestAuth{mode: AuthModeNone})
 	if err != nil {
 		return nil, nil, err
 	}
 	req = markOperation(req, operation)
 	out := new(BrowserCSRFToken)
-	response, err := s.client.doRequired(req, out)
+	response, err := c.doRequired(req, out)
 	if err == nil {
 		out.HeaderName = strings.TrimSpace(out.HeaderName)
 		out.ParameterName = strings.TrimSpace(out.ParameterName)
@@ -131,7 +173,8 @@ func (s *BrowserService) LoginLegacy(ctx context.Context, input BrowserLoginRequ
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json,text/html;q=0.9,*/*;q=0.8")
-	req = markOperation(req, "Browser.LoginLegacy")
+	// The form already carries this session's token as a parameter.
+	req = markOperation(skipBrowserCSRF(req), "Browser.LoginLegacy")
 	return s.finishLogin(req)
 }
 
@@ -192,6 +235,7 @@ func (s *BrowserService) impersonate(ctx context.Context, targetUserID string, b
 	req = markOperation(req, operation)
 	var body bytes.Buffer
 	response, err := s.client.doAccepted(req, &body, true, func(status int) bool { return status >= 200 && status < 400 })
+	s.client.resetBrowserCSRF()
 	if err != nil {
 		return nil, response, err
 	}
@@ -215,6 +259,7 @@ func (s *BrowserService) Cookies() []*http.Cookie {
 func (s *BrowserService) finishLogin(req *http.Request) (*BrowserLoginResult, *Response, error) {
 	var body bytes.Buffer
 	response, err := s.client.Do(req, &body)
+	s.client.resetBrowserCSRF()
 	if err != nil {
 		return nil, response, err
 	}

@@ -2,7 +2,7 @@
 
 This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.; 2026-09-27: dead routes removed after checking every route against the Spring mappings at primary 15398425a69 and stable 67e89c87124 -- JumpServers.Create onto /jumpServers (NewJumpServer body), Backups onto /api/backup-settings + /api/backups, and deleted: Collections.List/Progress, Collectors.Get, Collectors.StartLegacy, Browser.LoginAPI/PublicCSRFLegacy, Integrations.PutServiceNow.; 2026-09-27: every request-issuing exported service method mapped (coverage_completeness_test.go now fails on any that is not), including kind-dependent methods that send several routes (SyntheticNodes Get/Put/Delete/List) and composites that send their callees' routes (Diffs.MaterialSummary, Snapshots.Get/Operation, CollectorTasks.StartOperation, Properties.DescribeOrganization now also lists GET /api/global-config). predict_cloud.go stays out as pre-release (FWD-59003).; 2026-09-27: Snapshots.Get reads the listing only -- GET /api/networks/{networkId}/snapshots/{snapshotId} is not mapped at primary 15398425a69 or stable 67e89c87124..
 
-Current inventory: **367 semantic call sites**, **241 distinct normalized method+route pairs**, **241 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **370 semantic call sites**, **243 distinct normalized method+route pairs**, **243 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when the consumer adds, removes, or changes a Forward wire call. Run `go run ./cmd/coverage-audit -audit /path/to/consumer/api-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -131,13 +131,14 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/snapshots/{snapshotId}/topology` | `Topology.List` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.Overrides` | COVERED |
 | GET | `/api/trusted-certificates` | `TrustedCertificates.List` | COVERED |
-| GET | `/api/users/current` | `Users.Current`, `Browser.CurrentUser` | COVERED |
+| GET | `/api/users/current` | `Users.Current`, `Browser.CurrentUser`, `Browser.CurrentSession` | COVERED |
 | GET | `/api/users/current/tokens` | `Users.ListTokens` | COVERED |
 | GET | `/api/users/{userId}/roles` | `Users.Roles` | COVERED |
 | GET | `/api/version` | `Version.Get`, `Version.Reachable` | COVERED |
 | GET | `/api/vm/instanceId` | `Licensing.Fingerprint` | COVERED |
 | GET | `/api/webhooks` | `Webhooks.List` | COVERED |
 | GET | `/login` | `Browser.LoginPageCSRF`, `Browser.Login` | COVERED |
+| GET | `/saml2/authenticate/{registrationId}` | `Browser.SAMLAuthenticationRequest` | COVERED |
 | PATCH | `/api/admin/orgs/{orgId}` | `Organizations.Update` | COVERED |
 | PATCH | `/api/ai-chats/{chatId}` | `AI.RenameChat` | COVERED |
 | PATCH | `/api/backup-settings` | `Backups.UpdateSettings` | COVERED |
@@ -235,6 +236,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/users/{userId}/supported-orgs` | `Admin.AddSupportedOrganization` | COVERED |
 | POST | `/api/webhooks` | `Webhooks.Create`, `Webhooks.TestNew` | COVERED |
 | POST | `/login` | `Browser.LoginLegacy`, `Browser.Login` | COVERED |
+| POST | `/login/saml2/sso/{registrationId}` | `Browser.SAMLAssertionConsumer` | COVERED |
 | PUT | `/api/auth/saml-settings` | `SAML.PutSettings` | COVERED |
 | PUT | `/api/config/{property}` | `Properties.SetCurrent` | COVERED |
 | PUT | `/api/custom-banners/{bannerId}` | `Banners.Replace` | COVERED |
