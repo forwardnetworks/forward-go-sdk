@@ -80,17 +80,17 @@ func TestCoverageManifest(t *testing.T) {
 				t.Errorf("endpoint %s: %v", key, err)
 			}
 			seenSymbols[symbol] = append(seenSymbols[symbol], key)
-			catalogEntry, ok := sdkCoverageCatalog[symbol]
+			catalogEntries, ok := sdkCoverageCatalog[symbol]
 			if !ok {
 				t.Errorf("endpoint %s: SDK catalog is missing symbol %q; run go generate ./...", key, symbol)
-			} else if catalogEntry.Method != endpoint.Method || catalogEntry.Route != endpoint.Route {
-				t.Errorf("endpoint %s: SDK catalog maps %q to %s %s", key, symbol, catalogEntry.Method, catalogEntry.Route)
+			} else if !containsOperation(catalogEntries, CoverageOperation{Method: endpoint.Method, Route: endpoint.Route}) {
+				t.Errorf("endpoint %s: SDK catalog maps %q to %v, not this endpoint; run go generate ./...", key, symbol, catalogEntries)
 			}
 		}
 	}
-	for symbol := range sdkCoverageCatalog {
-		if _, ok := seenSymbols[symbol]; !ok {
-			t.Errorf("SDK catalog symbol %q is absent from the manifest", symbol)
+	for symbol, operations := range sdkCoverageCatalog {
+		if got := len(seenSymbols[symbol]); got != len(operations) {
+			t.Errorf("SDK catalog symbol %q has %d operations, the manifest lists it on %d endpoints; run go generate ./...", symbol, len(operations), got)
 		}
 	}
 
@@ -129,4 +129,13 @@ func requireExportedSDKMethod(clientType reflect.Type, symbol string) error {
 		}
 	}
 	return nil
+}
+
+func containsOperation(operations []CoverageOperation, want CoverageOperation) bool {
+	for _, operation := range operations {
+		if operation == want {
+			return true
+		}
+	}
+	return false
 }

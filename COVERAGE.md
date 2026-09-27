@@ -1,8 +1,8 @@
 # Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.; 2026-09-27: dead routes removed after checking every route against the Spring mappings at primary 15398425a69 and stable 67e89c87124 -- JumpServers.Create onto /jumpServers (NewJumpServer body), Backups onto /api/backup-settings + /api/backups, and deleted: Collections.List/Progress, Collectors.Get, Collectors.StartLegacy, Browser.LoginAPI/PublicCSRFLegacy, Integrations.PutServiceNow..
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.; 2026-09-27: dead routes removed after checking every route against the Spring mappings at primary 15398425a69 and stable 67e89c87124 -- JumpServers.Create onto /jumpServers (NewJumpServer body), Backups onto /api/backup-settings + /api/backups, and deleted: Collections.List/Progress, Collectors.Get, Collectors.StartLegacy, Browser.LoginAPI/PublicCSRFLegacy, Integrations.PutServiceNow.; 2026-09-27: every request-issuing exported service method mapped (coverage_completeness_test.go now fails on any that is not), including kind-dependent methods that send several routes (SyntheticNodes Get/Put/Delete/List) and composites that send their callees' routes (Diffs.MaterialSummary, Snapshots.Get/Operation, CollectorTasks.StartOperation, Properties.DescribeOrganization now also lists GET /api/global-config). predict_cloud.go stays out as pre-release (FWD-59003)..
 
-Current inventory: **234 semantic call sites**, **172 distinct normalized method+route pairs**, **172 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **370 semantic call sites**, **242 distinct normalized method+route pairs**, **242 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when the consumer adds, removes, or changes a Forward wire call. Run `go run ./cmd/coverage-audit -audit /path/to/consumer/api-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -10,70 +10,113 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 |---|---|---|---|
 | DELETE | `/api/access-control-groups/{groupId}` | `AccessControl.DeleteGroup` | COVERED |
 | DELETE | `/api/admin/orgs/{orgId}` | `Organizations.Delete` | COVERED |
+| DELETE | `/api/ai-chats/{chatId}` | `AI.DeleteChat` | COVERED |
 | DELETE | `/api/collectors/{collectorIdOrName}` | `Collectors.Delete` | COVERED |
+| DELETE | `/api/config/{property}` | `Properties.ClearCurrent` | COVERED |
 | DELETE | `/api/cve-index` | `CVEIndex.Delete` | COVERED |
 | DELETE | `/api/device-access-labels/{labelId}` | `AccessControl.DeleteDeviceAccessLabel` | COVERED |
 | DELETE | `/api/global-config/{property}` | `Properties.ClearGlobal` | COVERED |
 | DELETE | `/api/integrations/servicenow` | `Integrations.DeleteServiceNow` | COVERED |
 | DELETE | `/api/networks/{networkId}` | `Networks.Delete` | COVERED |
+| DELETE | `/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}` | `Predict.RemoveSecurityRule` | COVERED |
+| DELETE | `/api/networks/{networkId}/change-sets/{id}` | `Predict.DeleteChangeSet` | COVERED |
+| DELETE | `/api/networks/{networkId}/classic-devices/{deviceName}` | `ClassicDevices.Delete` | COVERED |
+| DELETE | `/api/networks/{networkId}/cli-credentials/{credentialId}` | `Credentials.DeleteCLI` | COVERED |
+| DELETE | `/api/networks/{networkId}/cloud-managed-setups/{setupName}` | `CloudManagedSetups.DeleteMist` | COVERED |
+| DELETE | `/api/networks/{networkId}/cloudAccounts/{accountName}` | `CloudAccounts.Delete` | COVERED |
 | DELETE | `/api/networks/{networkId}/controller-managed-setups/{setupName}` | `ControllerManagedSetups.Delete` | COVERED |
 | DELETE | `/api/networks/{networkId}/endpoints/{name}` | `Endpoints.Delete` | COVERED |
-| DELETE | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.DeleteIntranetNode` | COVERED |
-| DELETE | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.DeleteL3VPN` | COVERED |
+| DELETE | `/api/networks/{networkId}/http-credentials/{credentialId}` | `Credentials.DeleteHTTP` | COVERED |
+| DELETE | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.DeleteIntranetNode`, `SyntheticNodes.Delete` | COVERED |
+| DELETE | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.DeleteL3VPN`, `SyntheticNodes.Delete` | COVERED |
+| DELETE | `/api/networks/{networkId}/snmpCredentials/{credentialId}` | `Credentials.DeleteSNMP` | COVERED |
 | DELETE | `/api/orgs/{orgId}/config/software_central` | `Properties.ClearOrganization` | COVERED |
+| DELETE | `/api/orgs/{orgId}/licenses` | `Licensing.RemoveAllForOrg` | COVERED |
+| DELETE | `/api/snapshots/{snapshotId}` | `Snapshots.Delete` | COVERED |
+| DELETE | `/api/snapshots/{snapshotId}/checks` | `Checks.DeactivateAll` | COVERED |
+| DELETE | `/api/snapshots/{snapshotId}/checks/{checkId}` | `Checks.Deactivate` | COVERED |
 | DELETE | `/api/trusted-certificates/{name}` | `TrustedCertificates.Delete` | COVERED |
 | DELETE | `/api/users/current/tokens/{tokenName}` | `Users.DeleteToken` | COVERED |
 | DELETE | `/api/users/{userId}` | `Admin.DeleteUser` | COVERED |
+| DELETE | `/api/webhooks/{webhookName}` | `Webhooks.Delete` | COVERED |
 | GET | `/api/access-control-groups` | `AccessControl.ListGroups` | COVERED |
 | GET | `/api/admin/impersonate` | `Browser.Impersonate`, `Browser.ImpersonateWithServiceCredential` | COVERED |
 | GET | `/api/admin/networks` | `Admin.ListNetworks` | COVERED |
 | GET | `/api/admin/orgs` | `Organizations.List` | COVERED |
 | GET | `/api/admin/users` | `Admin.ListUsers` | COVERED |
 | GET | `/api/admin/users/{idOrUsername}` | `Admin.LookupUser` | COVERED |
-| GET | `/api/ai-chats/{chatId}` | `AI.GetChat` | COVERED |
+| GET | `/api/ai-chats` | `AI.ListChats` | COVERED |
+| GET | `/api/ai-chats/{chatId}` | `AI.GetChat`, `AI.StartChatOperation` | COVERED |
 | GET | `/api/ai-chats/{chatId}/messages` | `AI.ListMessages` | COVERED |
 | GET | `/api/auth/saml-settings` | `SAML.GetSettings` | COVERED |
 | GET | `/api/backup-settings` | `Backups.GetSettings` | COVERED |
 | GET | `/api/backup-settings/storage` | `Backups.GetS3Storage` | COVERED |
 | GET | `/api/backups` | `Backups.Last` | COVERED |
 | GET | `/api/collector-tasks` | `CollectorTasks.List`, `CollectorTasks.Progress` | COVERED |
+| GET | `/api/collector-tasks/{taskId}` | `CollectorTasks.Get`, `CollectorTasks.StartOperation`, `Snapshots.Collect`, `TrustedCertificates.ApplyOperations` | COVERED |
 | GET | `/api/collectors` | `Collectors.List` | COVERED |
+| GET | `/api/config` | `Properties.Current` | COVERED |
 | GET | `/api/custom-banners` | `Banners.List` | COVERED |
 | GET | `/api/cve-index` | `CVEIndex.Download`, `CVEIndex.Metadata` | COVERED |
-| GET | `/api/deployment-artifacts` | `SoftwareCentral.ListDeploymentArtifacts` | COVERED |
-| GET | `/api/deployment-artifacts/{artifactId}` | `SoftwareCentral.DeploymentArtifactURL` | COVERED |
+| GET | `/api/deployment-artifacts` | `SoftwareCentral.ListDeploymentArtifacts`, `SoftwareCentral.ListForwardApplianceOVAs` | COVERED |
+| GET | `/api/deployment-artifacts/{artifactId}` | `SoftwareCentral.DeploymentArtifactURL`, `SoftwareCentral.DownloadDeploymentArtifact` | COVERED |
 | GET | `/api/deployment-config/{property}` | `Configuration.GetDeployment` | COVERED |
 | GET | `/api/device-access-labels` | `AccessControl.ListDeviceAccessLabels` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/acl` | `Diffs.Count`, `Diffs.MaterialSummary` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/checks` | `Diffs.ChecksCount`, `Diffs.MaterialSummary` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/cloud-acl` | `Diffs.Count`, `Diffs.MaterialSummary` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/cloud-objects` | `Diffs.Count`, `Diffs.MaterialSummary` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/devices` | `Diffs.Count`, `Diffs.Devices`, `Diffs.MaterialSummary` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/files` | `Diffs.FilesCount`, `Diffs.MaterialSummary` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/interfaces` | `Diffs.Count`, `Diffs.MaterialSummary` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/l2` | `Diffs.Count`, `Diffs.MaterialSummary` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/routing-loop/count` | `Diffs.Count`, `Diffs.MaterialSummary` | COVERED |
+| GET | `/api/diffs/{snapshotAId}/{snapshotBId}/topology` | `Diffs.Count`, `Diffs.MaterialSummary` | COVERED |
 | GET | `/api/endpoint-profiles` | `Endpoints.ListProfiles` | COVERED |
-| GET | `/api/global-config` | `Properties.Global` | COVERED |
+| GET | `/api/global-config` | `Properties.Global`, `Properties.DescribeOrganization` | COVERED |
 | GET | `/api/integrations/infoblox` | `Integrations.ListInfobloxLegacy` | COVERED |
 | GET | `/api/integrations/infoblox/instances` | `Integrations.ListInfoblox` | COVERED |
 | GET | `/api/integrations/servicenow` | `Integrations.GetServiceNow` | COVERED |
 | GET | `/api/networks` | `Networks.List`, `Networks.CheckAccess` | COVERED |
+| GET | `/api/networks/{networkId}/change-sets` | `Predict.ListChangeSets` | COVERED |
+| GET | `/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/security-rules-diff` | `Predict.SecurityRulesDiff` | COVERED |
 | GET | `/api/networks/{networkId}/change-sets/{changeSetId}/predicted-snapshots` | `Predict.ListPredictedSnapshots` | COVERED |
 | GET | `/api/networks/{networkId}/classic-devices` | `ClassicDevices.List`, `ClassicDevices.ListTestStatuses` | COVERED |
-| GET | `/api/networks/{networkId}/cloudAccounts` | `CloudAccounts.List` | COVERED |
+| GET | `/api/networks/{networkId}/classic-devices/{deviceName}` | `ClassicDevices.Get` | COVERED |
+| GET | `/api/networks/{networkId}/cli-credentials` | `Credentials.ListCLI` | COVERED |
+| GET | `/api/networks/{networkId}/cli-credentials/{credentialId}` | `Credentials.GetCLI` | COVERED |
+| GET | `/api/networks/{networkId}/cloud-managed-setups` | `CloudManagedSetups.ListMist` | COVERED |
+| GET | `/api/networks/{networkId}/cloudAccounts` | `CloudAccounts.List`, `CloudAccounts.Get` | COVERED |
+| GET | `/api/networks/{networkId}/cloudAccounts/aws/assumeRole/externalId` | `CloudAccounts.AWSAssumeRoleExternalID` | COVERED |
 | GET | `/api/networks/{networkId}/collector` | `Collectors.Attachment` | COVERED |
 | GET | `/api/networks/{networkId}/controller-managed-setups` | `ControllerManagedSetups.List` | COVERED |
 | GET | `/api/networks/{networkId}/device-metrics` | `Performance.DeviceMetrics`, `Performance.DeviceMetricsDocument` | COVERED |
 | GET | `/api/networks/{networkId}/device-statuses` | `Collections.DeviceStatuses` | COVERED |
 | GET | `/api/networks/{networkId}/device-tags` | `DeviceTags.List` | COVERED |
 | GET | `/api/networks/{networkId}/devices` | `Devices.List` | COVERED |
+| GET | `/api/networks/{networkId}/devices/{deviceIdOrName}` | `Devices.Get` | COVERED |
+| GET | `/api/networks/{networkId}/devices/{deviceIdOrName}/files` | `Devices.ListFiles` | COVERED |
+| GET | `/api/networks/{networkId}/devices/{deviceName}/files/{fileName}` | `Devices.DownloadFile` | COVERED |
 | GET | `/api/networks/{networkId}/end-host-scanners` | `Integrations.ListRapid7` | COVERED |
 | GET | `/api/networks/{networkId}/endpoints` | `Endpoints.List`, `Endpoints.ListTestStatuses` | COVERED |
 | GET | `/api/networks/{networkId}/http-credentials` | `Credentials.ListHTTP` | COVERED |
+| GET | `/api/networks/{networkId}/http-credentials/{credentialId}` | `Credentials.GetHTTP` | COVERED |
 | GET | `/api/networks/{networkId}/interface-metrics` | `Performance.InterfaceMetrics`, `Performance.InterfaceMetricsDocument` | COVERED |
-| GET | `/api/networks/{networkId}/internet-node` | `SyntheticNodes.GetInternetNode` | COVERED |
-| GET | `/api/networks/{networkId}/intranet-nodes` | `SyntheticNodes.ListIntranetNodes` | COVERED |
-| GET | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.GetIntranetNode` | COVERED |
-| GET | `/api/networks/{networkId}/l3-vpns` | `SyntheticNodes.ListL3VPNs` | COVERED |
-| GET | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.GetL3VPN` | COVERED |
+| GET | `/api/networks/{networkId}/internet-node` | `SyntheticNodes.GetInternetNode`, `SyntheticNodes.Get` | COVERED |
+| GET | `/api/networks/{networkId}/intranet-nodes` | `SyntheticNodes.ListIntranetNodes`, `SyntheticNodes.List` | COVERED |
+| GET | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.GetIntranetNode`, `SyntheticNodes.Get` | COVERED |
+| GET | `/api/networks/{networkId}/jumpServers` | `JumpServers.List` | COVERED |
+| GET | `/api/networks/{networkId}/l3-vpns` | `SyntheticNodes.ListL3VPNs`, `SyntheticNodes.List` | COVERED |
+| GET | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.GetL3VPN`, `SyntheticNodes.Get` | COVERED |
 | GET | `/api/networks/{networkId}/locations` | `Locations.List` | COVERED |
 | GET | `/api/networks/{networkId}/locations/{locationId}/clusters` | `Locations.ListClusters` | COVERED |
+| GET | `/api/networks/{networkId}/nqe-executions/{executionKey}` | `NQE.StartOperation`, `NQE.Status` | COVERED |
+| GET | `/api/networks/{networkId}/nqe-executions/{executionKey}/result` | `NQE.Result`, `NQE.ResultJSONLines` | COVERED |
 | GET | `/api/networks/{networkId}/paths` | `Networks.Paths` | COVERED |
 | GET | `/api/networks/{networkId}/proxies` | `Proxies.List` | COVERED |
-| GET | `/api/networks/{networkId}/snapshots` | `Snapshots.List`, `Snapshots.ListDocument`, `Compatibility.ListSnapshots` | COVERED |
-| GET | `/api/networks/{networkId}/snmpCredentials` | `Credentials.ListSNMP` | COVERED |
+| GET | `/api/networks/{networkId}/snapshots` | `Snapshots.List`, `Snapshots.ListDocument`, `Compatibility.ListSnapshots`, `CollectorTasks.StartCollectionOperation`, `Predict.RunOperation`, `Snapshots.Collect`, `Snapshots.ForCollectionTask`, `Snapshots.Get`, `Snapshots.LatestCollected`, `Snapshots.LatestProcessed`, `Snapshots.Operation`, `Snapshots.ResolveID` | COVERED |
+| GET | `/api/networks/{networkId}/snapshots/{snapshotId}` | `Predict.RunOperation`, `Snapshots.Get`, `Snapshots.Operation` | COVERED |
+| GET | `/api/networks/{networkId}/snmpCredentials` | `Credentials.ListSNMP`, `Credentials.ListSNMPCredentials` | COVERED |
 | GET | `/api/networks/{networkId}/unhealthy-devices` | `Performance.UnhealthyDevices` | COVERED |
 | GET | `/api/nqe/repos/fwd/commits/head/queries` | `NQE.ListQueries` | COVERED |
 | GET | `/api/nqe/repos/org/commits/head` | `NQERepository.Head` | COVERED |
@@ -81,9 +124,11 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/nqe/repos/org/commits/{commitId}/queries` | `NQERepository.GetQuery` | COVERED |
 | GET | `/api/orgs/current` | `Organizations.Current` | COVERED |
 | GET | `/api/orgs/{orgId}/config` | `Properties.Organization`, `Properties.DescribeOrganization` | COVERED |
-| GET | `/api/public/csrf` | `Browser.PublicCSRFAPI` | COVERED |
+| GET | `/api/orgs/{orgId}/licenses` | `Licensing.ListForOrg` | COVERED |
+| GET | `/api/public/csrf` | `Browser.PublicCSRFAPI`, `Browser.Login` | COVERED |
 | GET | `/api/snapshots/{snapshotId}` | `Snapshots.Download` | COVERED |
-| GET | `/api/snapshots/{snapshotId}/checks` | `Checks.List`, `Compatibility.Checks` | COVERED |
+| GET | `/api/snapshots/{snapshotId}/checks` | `Checks.List`, `Compatibility.Checks`, `Checks.ExistingNames`, `Checks.ForScoring` | COVERED |
+| GET | `/api/snapshots/{snapshotId}/checks/{checkId}` | `Checks.Get` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/topology` | `Topology.List` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.Overrides` | COVERED |
 | GET | `/api/trusted-certificates` | `TrustedCertificates.List` | COVERED |
@@ -91,52 +136,68 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/users/current/tokens` | `Users.ListTokens` | COVERED |
 | GET | `/api/users/{userId}/roles` | `Users.Roles` | COVERED |
 | GET | `/api/version` | `Version.Get`, `Version.Reachable` | COVERED |
+| GET | `/api/vm/instanceId` | `Licensing.Fingerprint` | COVERED |
 | GET | `/api/webhooks` | `Webhooks.List` | COVERED |
-| GET | `/login` | `Browser.LoginPageCSRF` | COVERED |
+| GET | `/login` | `Browser.LoginPageCSRF`, `Browser.Login` | COVERED |
+| PATCH | `/api/admin/orgs/{orgId}` | `Organizations.Update` | COVERED |
+| PATCH | `/api/ai-chats/{chatId}` | `AI.RenameChat` | COVERED |
 | PATCH | `/api/backup-settings` | `Backups.UpdateSettings` | COVERED |
 | PATCH | `/api/backup-settings/storage` | `Backups.UpdateS3Storage` | COVERED |
 | PATCH | `/api/collection-settings` | `Collectors.PatchOrganizationSettings` | COVERED |
 | PATCH | `/api/collectors/{collectorId}/collection-settings` | `Collectors.PatchSettings` | COVERED |
 | PATCH | `/api/device-access-labels/{labelId}` | `AccessControl.UpdateDeviceAccessLabel` | COVERED |
 | PATCH | `/api/integrations/servicenow` | `Integrations.PatchServiceNow` | COVERED |
+| PATCH | `/api/networks/{networkId}` | `Networks.Update` | COVERED |
 | PATCH | `/api/networks/{networkId}/atlas` | `Locations.Assign` | COVERED |
+| PATCH | `/api/networks/{networkId}/classic-devices/{deviceName}` | `ClassicDevices.Patch` | COVERED |
+| PATCH | `/api/networks/{networkId}/cli-credentials/{credentialId}` | `Credentials.UpdateCLI` | COVERED |
 | PATCH | `/api/networks/{networkId}/cloudAccounts/{accountName}` | `CloudAccounts.Update` | COVERED |
 | PATCH | `/api/networks/{networkId}/controller-managed-setups/{setupName}` | `ControllerManagedSetups.Patch` | COVERED |
 | PATCH | `/api/networks/{networkId}/endpoints/{name}` | `Endpoints.Patch` | COVERED |
-| PATCH | `/api/networks/{networkId}/http-credentials/{credentialId}` | `Credentials.UpdateHTTPWithResult` | COVERED |
+| PATCH | `/api/networks/{networkId}/http-credentials/{credentialId}` | `Credentials.UpdateHTTPWithResult`, `Credentials.UpdateHTTP` | COVERED |
 | PATCH | `/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}` | `Locations.PatchCluster` | COVERED |
 | PATCH | `/api/networks/{networkId}/performance/settings` | `Collectors.SetPerformanceCollection` | COVERED |
 | PATCH | `/api/networks/{networkId}/proxies/{proxyId}` | `Proxies.Update` | COVERED |
 | PATCH | `/api/networks/{networkId}/rapid7-sources/{sourceName}` | `Integrations.UpdateRapid7` | COVERED |
-| PATCH | `/api/snapshots/{snapshotId}` | `Snapshots.Favorite` | COVERED |
+| PATCH | `/api/networks/{networkId}/snmpCredentials/{credentialId}` | `Credentials.UpdateSNMP` | COVERED |
+| PATCH | `/api/snapshots/{snapshotId}` | `Snapshots.Favorite`, `Snapshots.SetNote` | COVERED |
 | PATCH | `/api/users/{userId}` | `Admin.PatchUser` | COVERED |
 | PATCH | `/api/webhooks/{name}` | `Webhooks.Update` | COVERED |
 | POST | `/api/access-control-groups` | `AccessControl.CreateGroup` | COVERED |
 | POST | `/api/access-control-groups/{groupId}` | `AccessControl.UpdateGroup` | COVERED |
 | POST | `/api/admin/orgs` | `Organizations.Create` | COVERED |
-| POST | `/api/ai-chats` | `AI.StartChat` | COVERED |
+| POST | `/api/admin/orgs/{orgId}` | `Organizations.SetEnabled` | COVERED |
+| POST | `/api/ai-chats` | `AI.StartChat`, `AI.StartChatOperation` | COVERED |
 | POST | `/api/ai-chats/{chatId}/messages` | `AI.AddMessage` | COVERED |
 | POST | `/api/backup-settings` | `Backups.SetS3BucketOwnership` | COVERED |
 | POST | `/api/backups` | `Backups.Trigger` | COVERED |
-| POST | `/api/collector-tasks` | `CollectorTasks.Start`, `Compatibility.StartCollectorTask` | COVERED |
+| POST | `/api/collector-tasks` | `CollectorTasks.Start`, `Compatibility.StartCollectorTask`, `CollectorTasks.StartCollectionOperation`, `CollectorTasks.StartOperation`, `Snapshots.Collect` | COVERED |
+| POST | `/api/collector-tasks/{taskId}` | `CollectorTasks.Stop` | COVERED |
 | POST | `/api/collectors` | `Collectors.Register` | COVERED |
 | POST | `/api/custom-banners` | `Banners.Create` | COVERED |
 | POST | `/api/device-access-labels` | `AccessControl.CreateDeviceAccessLabel` | COVERED |
+| POST | `/api/diffs/{snapshotAId}/{snapshotBId}/config-summary-assists` | `AIAssist.SummarizeConfigDiff` | COVERED |
+| POST | `/api/diffs/{snapshotAId}/{snapshotBId}/impact-summary-assists` | `AIAssist.SummarizeChangeImpact` | COVERED |
 | POST | `/api/endpoint-profiles` | `Endpoints.CreateProfile` | COVERED |
 | POST | `/api/integrations/infoblox/instances` | `Integrations.CreateInfoblox` | COVERED |
 | POST | `/api/integrations/servicenow-cmdb` | `Integrations.ServiceNowCMDBSchema`, `Integrations.EnableServiceNowCMDB` | COVERED |
 | POST | `/api/integrations/servicenow-cmdb/configuration` | `Integrations.SaveServiceNowCMDB` | COVERED |
 | POST | `/api/internal/networks/{networkId}/performance` | `Performance.GenerateSynthetic` | COVERED |
+| POST | `/api/licenses` | `Licensing.Apply`, `Licensing.Decode` | COVERED |
 | POST | `/api/networks` | `Networks.Create` | COVERED |
 | POST | `/api/networks/{networkId}/change-sets` | `Predict.CreateChangeSet` | COVERED |
-| POST | `/api/networks/{networkId}/change-sets/{changeSetId}` | `Predict.Run` | COVERED |
+| POST | `/api/networks/{networkId}/change-sets/{changeSetId}` | `Predict.Run`, `Predict.RunOperation` | COVERED |
 | POST | `/api/networks/{networkId}/change-sets/{changeSetId}/commits` | `Predict.Commit` | COVERED |
+| POST | `/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules` | `Predict.AddSecurityRule` | COVERED |
 | POST | `/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/cli-assists` | `AIAssist.GeneratePredictCLI` | COVERED |
 | POST | `/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements` | `Predict.StageBGPAdvertisement` | COVERED |
 | POST | `/api/networks/{networkId}/change-sets/{changeSetId}/overview-assists` | `AIAssist.GeneratePredictOverview` | COVERED |
-| POST | `/api/networks/{networkId}/classic-devices` | `ClassicDevices.PutBatch` | COVERED |
+| POST | `/api/networks/{networkId}/classic-devices` | `ClassicDevices.PutBatch`, `ClassicDevices.Create` | COVERED |
 | POST | `/api/networks/{networkId}/cli-credentials` | `Credentials.CreateCLI` | COVERED |
+| POST | `/api/networks/{networkId}/cloud-managed-setups` | `CloudManagedSetups.CreateMist` | COVERED |
+| POST | `/api/networks/{networkId}/cloud-managed-setups/{setupName}` | `CloudManagedSetups.DiscoverMist` | COVERED |
 | POST | `/api/networks/{networkId}/cloudAccounts` | `CloudAccounts.Create` | COVERED |
+| POST | `/api/networks/{networkId}/cloudAccounts/{accountName}/credential` | `CloudAccounts.UpdateCredential` | COVERED |
 | POST | `/api/networks/{networkId}/cloudAccounts/{accountName}/test` | `CloudAccounts.Test` | COVERED |
 | POST | `/api/networks/{networkId}/controller-managed-setups` | `ControllerManagedSetups.Create` | COVERED |
 | POST | `/api/networks/{networkId}/device-metrics-history` | `Performance.DeviceMetricHistory`, `Performance.DeviceMetricHistoryDocument` | COVERED |
@@ -144,39 +205,48 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/networks/{networkId}/endpoints` | `Endpoints.AddBatch` | COVERED |
 | POST | `/api/networks/{networkId}/http-credentials` | `Credentials.CreateHTTP` | COVERED |
 | POST | `/api/networks/{networkId}/interface-metrics-history` | `Performance.InterfaceMetricHistory`, `Performance.InterfaceMetricHistoryDocument` | COVERED |
-| POST | `/api/networks/{networkId}/jumpServers` | `JumpServers.Create`, `JumpServers.CreateLegacy` | COVERED |
+| POST | `/api/networks/{networkId}/jumpServers` | `JumpServers.Create`, `JumpServers.CreateLegacy`, `JumpServers.CreateWithPassword` | COVERED |
 | POST | `/api/networks/{networkId}/locations` | `Locations.Create` | COVERED |
 | POST | `/api/networks/{networkId}/locations/{locationId}/clusters` | `Locations.CreateCluster` | COVERED |
-| POST | `/api/networks/{networkId}/performance` | `Performance.UploadWithIdentity` | COVERED |
+| POST | `/api/networks/{networkId}/nqe-executions` | `NQE.Start`, `NQE.StartOperation` | COVERED |
+| POST | `/api/networks/{networkId}/performance` | `Performance.UploadWithIdentity`, `Performance.Upload` | COVERED |
 | POST | `/api/networks/{networkId}/proxies` | `Proxies.Create` | COVERED |
 | POST | `/api/networks/{networkId}/rapid7-sources` | `Integrations.CreateRapid7` | COVERED |
-| POST | `/api/networks/{networkId}/snapshots` | `Snapshots.Upload`, `Snapshots.UploadMergeCompatibility` | COVERED |
-| POST | `/api/networks/{networkId}/snmpCredentials` | `Credentials.CreateSNMP` | COVERED |
+| POST | `/api/networks/{networkId}/snapshots` | `Snapshots.Upload`, `Snapshots.UploadMergeCompatibility`, `Snapshots.StartUploadOperation` | COVERED |
+| POST | `/api/networks/{networkId}/snmpCredentials` | `Credentials.CreateSNMP`, `Credentials.CreateSNMPCredential` | COVERED |
 | POST | `/api/networks/{networkId}/unhealthy-interfaces` | `Performance.UnhealthyInterfaces` | COVERED |
 | POST | `/api/networks/{networkId}/workspaces` | `Networks.CreateWorkspace` | COVERED |
 | POST | `/api/nqe` | `NQE.Run` | COVERED |
+| POST | `/api/nqe-diffs/{before}/{after}` | `NQE.Diff` | COVERED |
+| POST | `/api/nqe/doc-assists` | `AIAssist.AskNQEDocs` | COVERED |
+| POST | `/api/nqe/doc-assists/{docAssistId}/followup` | `AIAssist.SuggestNQEDocFollowups` | COVERED |
+| POST | `/api/nqe/query-assists` | `AIAssist.GenerateNQEQuery` | COVERED |
 | POST | `/api/nqe/repos/org/commits` | `NQERepository.Commit` | COVERED |
+| POST | `/api/nqe/summary-assists` | `AIAssist.SummarizeNQEQuery` | COVERED |
+| POST | `/api/orgs/{orgId}/licenses/{licenseId}` | `Licensing.InvalidateForOrg` | COVERED |
 | POST | `/api/orgs/{orgId}/users` | `Admin.CreateOrganizationUser` | COVERED |
 | POST | `/api/snapshots/{snapshotId}` | `Snapshots.Reprocess`, `Snapshots.Invalidate`, `Snapshots.ExportSubset`, `Snapshots.ExportSubsetCompatibility` | COVERED |
-| POST | `/api/snapshots/{snapshotId}/checks` | `Checks.CreatePersistent` | COVERED |
+| POST | `/api/snapshots/{snapshotId}/checks` | `Checks.CreatePersistent`, `Checks.Create` | COVERED |
 | POST | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.EditOverrides` | COVERED |
-| POST | `/api/trusted-certificates` | `TrustedCertificates.Add`, `TrustedCertificates.Apply` | COVERED |
-| POST | `/api/users/current/nqe/changes` | `NQERepository.DeleteDirectory`, `NQERepository.AddDirectory`, `NQERepository.AddQuery` | COVERED |
+| POST | `/api/trusted-certificates` | `TrustedCertificates.Add`, `TrustedCertificates.Apply`, `TrustedCertificates.ApplyOperations` | COVERED |
+| POST | `/api/users/current/nqe/changes` | `NQERepository.DeleteDirectory`, `NQERepository.AddDirectory`, `NQERepository.AddQuery`, `NQERepository.DeleteQuery` | COVERED |
 | POST | `/api/users/current/password` | `Users.ResetPassword` | COVERED |
 | POST | `/api/users/current/tokens` | `Users.CreateToken` | COVERED |
 | POST | `/api/users/{userId}/roles/org/ADMIN` | `Admin.GrantOrganizationAdmin` | COVERED |
 | POST | `/api/users/{userId}/supported-orgs` | `Admin.AddSupportedOrganization` | COVERED |
-| POST | `/api/webhooks` | `Webhooks.Create` | COVERED |
-| POST | `/login` | `Browser.LoginLegacy` | COVERED |
+| POST | `/api/webhooks` | `Webhooks.Create`, `Webhooks.TestNew` | COVERED |
+| POST | `/login` | `Browser.LoginLegacy`, `Browser.Login` | COVERED |
 | PUT | `/api/auth/saml-settings` | `SAML.PutSettings` | COVERED |
+| PUT | `/api/config/{property}` | `Properties.SetCurrent` | COVERED |
 | PUT | `/api/custom-banners/{bannerId}` | `Banners.Replace` | COVERED |
 | PUT | `/api/cve-index` | `CVEIndex.Put` | COVERED |
 | PUT | `/api/deployment-config/{property}` | `Configuration.SetDeployment` | COVERED |
 | PUT | `/api/global-config/{property}` | `Properties.SetGlobal` | COVERED |
 | PUT | `/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands` | `Predict.StageCommands` | COVERED |
+| PUT | `/api/networks/{networkId}/classic-devices/{deviceName}` | `ClassicDevices.Put` | COVERED |
 | PUT | `/api/networks/{networkId}/collector` | `Collectors.Attach` | COVERED |
-| PUT | `/api/networks/{networkId}/internet-node` | `SyntheticNodes.PutInternetNode` | COVERED |
-| PUT | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.PutIntranetNode` | COVERED |
-| PUT | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.PutL3VPN` | COVERED |
+| PUT | `/api/networks/{networkId}/internet-node` | `SyntheticNodes.PutInternetNode`, `SyntheticNodes.Put` | COVERED |
+| PUT | `/api/networks/{networkId}/intranet-nodes/{nodeName}` | `SyntheticNodes.PutIntranetNode`, `SyntheticNodes.Put` | COVERED |
+| PUT | `/api/networks/{networkId}/l3-vpns/{l3VpnName}` | `SyntheticNodes.PutL3VPN`, `SyntheticNodes.Put` | COVERED |
 | PUT | `/api/orgs/{orgId}/config/{property}` | `Properties.SetOrganization` | COVERED |
 | PUT | `/api/users/{userId}/supported-orgs` | `Admin.SetSupportedOrganizations` | COVERED |

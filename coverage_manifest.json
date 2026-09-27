@@ -2,26 +2,10 @@
   "schema_version": 1,
   "consumer": "skyforge/components/server",
   "consumer_go_sha256": "e2e42a61f806617b44b957ec74e4e3959580e4067b616c3be23f75ca512a9fd4",
-  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.; 2026-09-27: dead routes removed after checking every route against the Spring mappings at primary 15398425a69 and stable 67e89c87124 -- JumpServers.Create onto /jumpServers (NewJumpServer body), Backups onto /api/backup-settings + /api/backups, and deleted: Collections.List/Progress, Collectors.Get, Collectors.StartLegacy, Browser.LoginAPI/PublicCSRFLegacy, Integrations.PutServiceNow.",
-  "semantic_call_sites": 234,
-  "distinct_method_routes": 172,
+  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.; 2026-09-27: dead routes removed after checking every route against the Spring mappings at primary 15398425a69 and stable 67e89c87124 -- JumpServers.Create onto /jumpServers (NewJumpServer body), Backups onto /api/backup-settings + /api/backups, and deleted: Collections.List/Progress, Collectors.Get, Collectors.StartLegacy, Browser.LoginAPI/PublicCSRFLegacy, Integrations.PutServiceNow.; 2026-09-27: every request-issuing exported service method mapped (coverage_completeness_test.go now fails on any that is not), including kind-dependent methods that send several routes (SyntheticNodes Get/Put/Delete/List) and composites that send their callees' routes (Diffs.MaterialSummary, Snapshots.Get/Operation, CollectorTasks.StartOperation, Properties.DescribeOrganization now also lists GET /api/global-config). predict_cloud.go stays out as pre-release (FWD-59003).",
+  "semantic_call_sites": 370,
+  "distinct_method_routes": 242,
   "endpoints": [
-    {
-      "method": "GET",
-      "route": "/api/access-control-groups",
-      "symbols": [
-        "AccessControl.ListGroups"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/access-control-groups",
-      "symbols": [
-        "AccessControl.CreateGroup"
-      ],
-      "coverage": "COVERED"
-    },
     {
       "method": "DELETE",
       "route": "/api/access-control-groups/{groupId}",
@@ -31,10 +15,252 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/access-control-groups/{groupId}",
+      "method": "DELETE",
+      "route": "/api/admin/orgs/{orgId}",
       "symbols": [
-        "AccessControl.UpdateGroup"
+        "Organizations.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/ai-chats/{chatId}",
+      "symbols": [
+        "AI.DeleteChat"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/collectors/{collectorIdOrName}",
+      "symbols": [
+        "Collectors.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/config/{property}",
+      "symbols": [
+        "Properties.ClearCurrent"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/cve-index",
+      "symbols": [
+        "CVEIndex.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/device-access-labels/{labelId}",
+      "symbols": [
+        "AccessControl.DeleteDeviceAccessLabel"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/global-config/{property}",
+      "symbols": [
+        "Properties.ClearGlobal"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/integrations/servicenow",
+      "symbols": [
+        "Integrations.DeleteServiceNow"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}",
+      "symbols": [
+        "Networks.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}",
+      "symbols": [
+        "Predict.RemoveSecurityRule"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/change-sets/{id}",
+      "symbols": [
+        "Predict.DeleteChangeSet"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/classic-devices/{deviceName}",
+      "symbols": [
+        "ClassicDevices.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/cli-credentials/{credentialId}",
+      "symbols": [
+        "Credentials.DeleteCLI"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/cloud-managed-setups/{setupName}",
+      "symbols": [
+        "CloudManagedSetups.DeleteMist"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/cloudAccounts/{accountName}",
+      "symbols": [
+        "CloudAccounts.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/controller-managed-setups/{setupName}",
+      "symbols": [
+        "ControllerManagedSetups.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/endpoints/{name}",
+      "symbols": [
+        "Endpoints.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/http-credentials/{credentialId}",
+      "symbols": [
+        "Credentials.DeleteHTTP"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
+      "symbols": [
+        "SyntheticNodes.DeleteIntranetNode",
+        "SyntheticNodes.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
+      "symbols": [
+        "SyntheticNodes.DeleteL3VPN",
+        "SyntheticNodes.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/networks/{networkId}/snmpCredentials/{credentialId}",
+      "symbols": [
+        "Credentials.DeleteSNMP"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/orgs/{orgId}/config/software_central",
+      "symbols": [
+        "Properties.ClearOrganization"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/orgs/{orgId}/licenses",
+      "symbols": [
+        "Licensing.RemoveAllForOrg"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/snapshots/{snapshotId}",
+      "symbols": [
+        "Snapshots.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/snapshots/{snapshotId}/checks",
+      "symbols": [
+        "Checks.DeactivateAll"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/snapshots/{snapshotId}/checks/{checkId}",
+      "symbols": [
+        "Checks.Deactivate"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/trusted-certificates/{name}",
+      "symbols": [
+        "TrustedCertificates.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/users/current/tokens/{tokenName}",
+      "symbols": [
+        "Users.DeleteToken"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/users/{userId}",
+      "symbols": [
+        "Admin.DeleteUser"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/webhooks/{webhookName}",
+      "symbols": [
+        "Webhooks.Delete"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/access-control-groups",
+      "symbols": [
+        "AccessControl.ListGroups"
       ],
       "coverage": "COVERED"
     },
@@ -64,22 +290,6 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/admin/orgs",
-      "symbols": [
-        "Organizations.Create"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/admin/orgs/{orgId}",
-      "symbols": [
-        "Organizations.Delete"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/admin/users",
       "symbols": [
@@ -96,10 +306,10 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
+      "method": "GET",
       "route": "/api/ai-chats",
       "symbols": [
-        "AI.StartChat"
+        "AI.ListChats"
       ],
       "coverage": "COVERED"
     },
@@ -107,7 +317,8 @@
       "method": "GET",
       "route": "/api/ai-chats/{chatId}",
       "symbols": [
-        "AI.GetChat"
+        "AI.GetChat",
+        "AI.StartChatOperation"
       ],
       "coverage": "COVERED"
     },
@@ -120,14 +331,6 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/ai-chats/{chatId}/messages",
-      "symbols": [
-        "AI.AddMessage"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/auth/saml-settings",
       "symbols": [
@@ -136,18 +339,26 @@
       "coverage": "COVERED"
     },
     {
-      "method": "PUT",
-      "route": "/api/auth/saml-settings",
+      "method": "GET",
+      "route": "/api/backup-settings",
       "symbols": [
-        "SAML.PutSettings"
+        "Backups.GetSettings"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "PATCH",
-      "route": "/api/collection-settings",
+      "method": "GET",
+      "route": "/api/backup-settings/storage",
       "symbols": [
-        "Collectors.PatchOrganizationSettings"
+        "Backups.GetS3Storage"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/backups",
+      "symbols": [
+        "Backups.Last"
       ],
       "coverage": "COVERED"
     },
@@ -161,11 +372,13 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/collector-tasks",
+      "method": "GET",
+      "route": "/api/collector-tasks/{taskId}",
       "symbols": [
-        "CollectorTasks.Start",
-        "Compatibility.StartCollectorTask"
+        "CollectorTasks.Get",
+        "CollectorTasks.StartOperation",
+        "Snapshots.Collect",
+        "TrustedCertificates.ApplyOperations"
       ],
       "coverage": "COVERED"
     },
@@ -178,26 +391,10 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/collectors",
+      "method": "GET",
+      "route": "/api/config",
       "symbols": [
-        "Collectors.Register"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/collectors/{collectorIdOrName}",
-      "symbols": [
-        "Collectors.Delete"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/collectors/{collectorId}/collection-settings",
-      "symbols": [
-        "Collectors.PatchSettings"
+        "Properties.Current"
       ],
       "coverage": "COVERED"
     },
@@ -206,30 +403,6 @@
       "route": "/api/custom-banners",
       "symbols": [
         "Banners.List"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/custom-banners",
-      "symbols": [
-        "Banners.Create"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PUT",
-      "route": "/api/custom-banners/{bannerId}",
-      "symbols": [
-        "Banners.Replace"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/cve-index",
-      "symbols": [
-        "CVEIndex.Delete"
       ],
       "coverage": "COVERED"
     },
@@ -243,18 +416,11 @@
       "coverage": "COVERED"
     },
     {
-      "method": "PUT",
-      "route": "/api/cve-index",
-      "symbols": [
-        "CVEIndex.Put"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/deployment-artifacts",
       "symbols": [
-        "SoftwareCentral.ListDeploymentArtifacts"
+        "SoftwareCentral.ListDeploymentArtifacts",
+        "SoftwareCentral.ListForwardApplianceOVAs"
       ],
       "coverage": "COVERED"
     },
@@ -262,7 +428,8 @@
       "method": "GET",
       "route": "/api/deployment-artifacts/{artifactId}",
       "symbols": [
-        "SoftwareCentral.DeploymentArtifactURL"
+        "SoftwareCentral.DeploymentArtifactURL",
+        "SoftwareCentral.DownloadDeploymentArtifact"
       ],
       "coverage": "COVERED"
     },
@@ -275,14 +442,6 @@
       "coverage": "COVERED"
     },
     {
-      "method": "PUT",
-      "route": "/api/deployment-config/{property}",
-      "symbols": [
-        "Configuration.SetDeployment"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/device-access-labels",
       "symbols": [
@@ -291,26 +450,93 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/device-access-labels",
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/acl",
       "symbols": [
-        "AccessControl.CreateDeviceAccessLabel"
+        "Diffs.Count",
+        "Diffs.MaterialSummary"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "DELETE",
-      "route": "/api/device-access-labels/{labelId}",
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/checks",
       "symbols": [
-        "AccessControl.DeleteDeviceAccessLabel"
+        "Diffs.ChecksCount",
+        "Diffs.MaterialSummary"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "PATCH",
-      "route": "/api/device-access-labels/{labelId}",
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/cloud-acl",
       "symbols": [
-        "AccessControl.UpdateDeviceAccessLabel"
+        "Diffs.Count",
+        "Diffs.MaterialSummary"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/cloud-objects",
+      "symbols": [
+        "Diffs.Count",
+        "Diffs.MaterialSummary"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/devices",
+      "symbols": [
+        "Diffs.Count",
+        "Diffs.Devices",
+        "Diffs.MaterialSummary"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/files",
+      "symbols": [
+        "Diffs.FilesCount",
+        "Diffs.MaterialSummary"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/interfaces",
+      "symbols": [
+        "Diffs.Count",
+        "Diffs.MaterialSummary"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/l2",
+      "symbols": [
+        "Diffs.Count",
+        "Diffs.MaterialSummary"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/routing-loop/count",
+      "symbols": [
+        "Diffs.Count",
+        "Diffs.MaterialSummary"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/topology",
+      "symbols": [
+        "Diffs.Count",
+        "Diffs.MaterialSummary"
       ],
       "coverage": "COVERED"
     },
@@ -323,34 +549,11 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/endpoint-profiles",
-      "symbols": [
-        "Endpoints.CreateProfile"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/global-config",
       "symbols": [
-        "Properties.Global"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/global-config/{property}",
-      "symbols": [
-        "Properties.ClearGlobal"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PUT",
-      "route": "/api/global-config/{property}",
-      "symbols": [
-        "Properties.SetGlobal"
+        "Properties.Global",
+        "Properties.DescribeOrganization"
       ],
       "coverage": "COVERED"
     },
@@ -371,59 +574,10 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/integrations/infoblox/instances",
-      "symbols": [
-        "Integrations.CreateInfoblox"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/integrations/servicenow",
-      "symbols": [
-        "Integrations.DeleteServiceNow"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/integrations/servicenow",
       "symbols": [
         "Integrations.GetServiceNow"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/integrations/servicenow",
-      "symbols": [
-        "Integrations.PatchServiceNow"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/integrations/servicenow-cmdb",
-      "symbols": [
-        "Integrations.ServiceNowCMDBSchema",
-        "Integrations.EnableServiceNowCMDB"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/integrations/servicenow-cmdb/configuration",
-      "symbols": [
-        "Integrations.SaveServiceNowCMDB"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/internal/networks/{networkId}/performance",
-      "symbols": [
-        "Performance.GenerateSynthetic"
       ],
       "coverage": "COVERED"
     },
@@ -437,74 +591,18 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks",
-      "symbols": [
-        "Networks.Create"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/networks/{networkId}",
-      "symbols": [
-        "Networks.Delete"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/networks/{networkId}/atlas",
-      "symbols": [
-        "Locations.Assign"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
+      "method": "GET",
       "route": "/api/networks/{networkId}/change-sets",
       "symbols": [
-        "Predict.CreateChangeSet"
+        "Predict.ListChangeSets"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/change-sets/{changeSetId}",
+      "method": "GET",
+      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/security-rules-diff",
       "symbols": [
-        "Predict.Run"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/cli-assists",
-      "symbols": [
-        "AIAssist.GeneratePredictCLI"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements",
-      "symbols": [
-        "Predict.StageBGPAdvertisement"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PUT",
-      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands",
-      "symbols": [
-        "Predict.StageCommands"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/overview-assists",
-      "symbols": [
-        "AIAssist.GeneratePredictOverview"
+        "Predict.SecurityRulesDiff"
       ],
       "coverage": "COVERED"
     },
@@ -526,18 +624,34 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/classic-devices",
+      "method": "GET",
+      "route": "/api/networks/{networkId}/classic-devices/{deviceName}",
       "symbols": [
-        "ClassicDevices.PutBatch"
+        "ClassicDevices.Get"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
+      "method": "GET",
       "route": "/api/networks/{networkId}/cli-credentials",
       "symbols": [
-        "Credentials.CreateCLI"
+        "Credentials.ListCLI"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/cli-credentials/{credentialId}",
+      "symbols": [
+        "Credentials.GetCLI"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/cloud-managed-setups",
+      "symbols": [
+        "CloudManagedSetups.ListMist"
       ],
       "coverage": "COVERED"
     },
@@ -545,39 +659,16 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/cloudAccounts",
       "symbols": [
-        "CloudAccounts.List"
+        "CloudAccounts.List",
+        "CloudAccounts.Get"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/cloudAccounts",
+      "method": "GET",
+      "route": "/api/networks/{networkId}/cloudAccounts/aws/assumeRole/externalId",
       "symbols": [
-        "CloudAccounts.Create"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/networks/{networkId}/cloudAccounts/{accountName}",
-      "symbols": [
-        "CloudAccounts.Update"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/cloudAccounts/{accountName}/test",
-      "symbols": [
-        "CloudAccounts.Test"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PUT",
-      "route": "/api/networks/{networkId}/collector",
-      "symbols": [
-        "Collectors.Attach"
+        "CloudAccounts.AWSAssumeRoleExternalID"
       ],
       "coverage": "COVERED"
     },
@@ -598,44 +689,11 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/controller-managed-setups",
-      "symbols": [
-        "ControllerManagedSetups.Create"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/networks/{networkId}/controller-managed-setups/{setupName}",
-      "symbols": [
-        "ControllerManagedSetups.Delete"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/networks/{networkId}/controller-managed-setups/{setupName}",
-      "symbols": [
-        "ControllerManagedSetups.Patch"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/networks/{networkId}/device-metrics",
       "symbols": [
         "Performance.DeviceMetrics",
         "Performance.DeviceMetricsDocument"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/device-metrics-history",
-      "symbols": [
-        "Performance.DeviceMetricHistory",
-        "Performance.DeviceMetricHistoryDocument"
       ],
       "coverage": "COVERED"
     },
@@ -656,19 +714,34 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/device-tags",
+      "method": "GET",
+      "route": "/api/networks/{networkId}/devices",
       "symbols": [
-        "DeviceTags.AddBatch",
-        "DeviceTags.AddBatchTo"
+        "Devices.List"
       ],
       "coverage": "COVERED"
     },
     {
       "method": "GET",
-      "route": "/api/networks/{networkId}/devices",
+      "route": "/api/networks/{networkId}/devices/{deviceIdOrName}",
       "symbols": [
-        "Devices.List"
+        "Devices.Get"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/devices/{deviceIdOrName}/files",
+      "symbols": [
+        "Devices.ListFiles"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/networks/{networkId}/devices/{deviceName}/files/{fileName}",
+      "symbols": [
+        "Devices.DownloadFile"
       ],
       "coverage": "COVERED"
     },
@@ -690,30 +763,6 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/endpoints",
-      "symbols": [
-        "Endpoints.AddBatch"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/networks/{networkId}/endpoints/{name}",
-      "symbols": [
-        "Endpoints.Delete"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/networks/{networkId}/endpoints/{name}",
-      "symbols": [
-        "Endpoints.Patch"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/networks/{networkId}/http-credentials",
       "symbols": [
@@ -722,18 +771,10 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/http-credentials",
-      "symbols": [
-        "Credentials.CreateHTTP"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
+      "method": "GET",
       "route": "/api/networks/{networkId}/http-credentials/{credentialId}",
       "symbols": [
-        "Credentials.UpdateHTTPWithResult"
+        "Credentials.GetHTTP"
       ],
       "coverage": "COVERED"
     },
@@ -747,27 +788,11 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/interface-metrics-history",
-      "symbols": [
-        "Performance.InterfaceMetricHistory",
-        "Performance.InterfaceMetricHistoryDocument"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/networks/{networkId}/internet-node",
       "symbols": [
-        "SyntheticNodes.GetInternetNode"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PUT",
-      "route": "/api/networks/{networkId}/internet-node",
-      "symbols": [
-        "SyntheticNodes.PutInternetNode"
+        "SyntheticNodes.GetInternetNode",
+        "SyntheticNodes.Get"
       ],
       "coverage": "COVERED"
     },
@@ -775,15 +800,8 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/intranet-nodes",
       "symbols": [
-        "SyntheticNodes.ListIntranetNodes"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
-      "symbols": [
-        "SyntheticNodes.DeleteIntranetNode"
+        "SyntheticNodes.ListIntranetNodes",
+        "SyntheticNodes.List"
       ],
       "coverage": "COVERED"
     },
@@ -791,24 +809,16 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
       "symbols": [
-        "SyntheticNodes.GetIntranetNode"
+        "SyntheticNodes.GetIntranetNode",
+        "SyntheticNodes.Get"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "PUT",
-      "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
-      "symbols": [
-        "SyntheticNodes.PutIntranetNode"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
+      "method": "GET",
       "route": "/api/networks/{networkId}/jumpServers",
       "symbols": [
-        "JumpServers.Create",
-        "JumpServers.CreateLegacy"
+        "JumpServers.List"
       ],
       "coverage": "COVERED"
     },
@@ -816,15 +826,8 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/l3-vpns",
       "symbols": [
-        "SyntheticNodes.ListL3VPNs"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
-      "symbols": [
-        "SyntheticNodes.DeleteL3VPN"
+        "SyntheticNodes.ListL3VPNs",
+        "SyntheticNodes.List"
       ],
       "coverage": "COVERED"
     },
@@ -832,15 +835,8 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
       "symbols": [
-        "SyntheticNodes.GetL3VPN"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PUT",
-      "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
-      "symbols": [
-        "SyntheticNodes.PutL3VPN"
+        "SyntheticNodes.GetL3VPN",
+        "SyntheticNodes.Get"
       ],
       "coverage": "COVERED"
     },
@@ -853,14 +849,6 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/locations",
-      "symbols": [
-        "Locations.Create"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/networks/{networkId}/locations/{locationId}/clusters",
       "symbols": [
@@ -869,18 +857,20 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/locations/{locationId}/clusters",
+      "method": "GET",
+      "route": "/api/networks/{networkId}/nqe-executions/{executionKey}",
       "symbols": [
-        "Locations.CreateCluster"
+        "NQE.StartOperation",
+        "NQE.Status"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "PATCH",
-      "route": "/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}",
+      "method": "GET",
+      "route": "/api/networks/{networkId}/nqe-executions/{executionKey}/result",
       "symbols": [
-        "Locations.PatchCluster"
+        "NQE.Result",
+        "NQE.ResultJSONLines"
       ],
       "coverage": "COVERED"
     },
@@ -893,58 +883,10 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/performance",
-      "symbols": [
-        "Performance.UploadWithIdentity"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/networks/{networkId}/performance/settings",
-      "symbols": [
-        "Collectors.SetPerformanceCollection"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/networks/{networkId}/proxies",
       "symbols": [
         "Proxies.List"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/proxies",
-      "symbols": [
-        "Proxies.Create"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/networks/{networkId}/proxies/{proxyId}",
-      "symbols": [
-        "Proxies.Update"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/rapid7-sources",
-      "symbols": [
-        "Integrations.CreateRapid7"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/networks/{networkId}/rapid7-sources/{sourceName}",
-      "symbols": [
-        "Integrations.UpdateRapid7"
       ],
       "coverage": "COVERED"
     },
@@ -954,16 +896,26 @@
       "symbols": [
         "Snapshots.List",
         "Snapshots.ListDocument",
-        "Compatibility.ListSnapshots"
+        "Compatibility.ListSnapshots",
+        "CollectorTasks.StartCollectionOperation",
+        "Predict.RunOperation",
+        "Snapshots.Collect",
+        "Snapshots.ForCollectionTask",
+        "Snapshots.Get",
+        "Snapshots.LatestCollected",
+        "Snapshots.LatestProcessed",
+        "Snapshots.Operation",
+        "Snapshots.ResolveID"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/snapshots",
+      "method": "GET",
+      "route": "/api/networks/{networkId}/snapshots/{snapshotId}",
       "symbols": [
-        "Snapshots.Upload",
-        "Snapshots.UploadMergeCompatibility"
+        "Predict.RunOperation",
+        "Snapshots.Get",
+        "Snapshots.Operation"
       ],
       "coverage": "COVERED"
     },
@@ -971,15 +923,8 @@
       "method": "GET",
       "route": "/api/networks/{networkId}/snmpCredentials",
       "symbols": [
-        "Credentials.ListSNMP"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/snmpCredentials",
-      "symbols": [
-        "Credentials.CreateSNMP"
+        "Credentials.ListSNMP",
+        "Credentials.ListSNMPCredentials"
       ],
       "coverage": "COVERED"
     },
@@ -992,42 +937,10 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/unhealthy-interfaces",
-      "symbols": [
-        "Performance.UnhealthyInterfaces"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/workspaces",
-      "symbols": [
-        "Networks.CreateWorkspace"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/nqe",
-      "symbols": [
-        "NQE.Run"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/nqe/repos/fwd/commits/head/queries",
       "symbols": [
         "NQE.ListQueries"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/nqe/repos/org/commits",
-      "symbols": [
-        "NQERepository.Commit"
       ],
       "coverage": "COVERED"
     },
@@ -1073,26 +986,10 @@
       "coverage": "COVERED"
     },
     {
-      "method": "DELETE",
-      "route": "/api/orgs/{orgId}/config/software_central",
+      "method": "GET",
+      "route": "/api/orgs/{orgId}/licenses",
       "symbols": [
-        "Properties.ClearOrganization"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PUT",
-      "route": "/api/orgs/{orgId}/config/{property}",
-      "symbols": [
-        "Properties.SetOrganization"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/orgs/{orgId}/users",
-      "symbols": [
-        "Admin.CreateOrganizationUser"
+        "Licensing.ListForOrg"
       ],
       "coverage": "COVERED"
     },
@@ -1100,7 +997,8 @@
       "method": "GET",
       "route": "/api/public/csrf",
       "symbols": [
-        "Browser.PublicCSRFAPI"
+        "Browser.PublicCSRFAPI",
+        "Browser.Login"
       ],
       "coverage": "COVERED"
     },
@@ -1113,38 +1011,21 @@
       "coverage": "COVERED"
     },
     {
-      "method": "PATCH",
-      "route": "/api/snapshots/{snapshotId}",
+      "method": "GET",
+      "route": "/api/snapshots/{snapshotId}/checks",
       "symbols": [
-        "Snapshots.Favorite"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/snapshots/{snapshotId}",
-      "symbols": [
-        "Snapshots.Reprocess",
-        "Snapshots.Invalidate",
-        "Snapshots.ExportSubset",
-        "Snapshots.ExportSubsetCompatibility"
+        "Checks.List",
+        "Compatibility.Checks",
+        "Checks.ExistingNames",
+        "Checks.ForScoring"
       ],
       "coverage": "COVERED"
     },
     {
       "method": "GET",
-      "route": "/api/snapshots/{snapshotId}/checks",
+      "route": "/api/snapshots/{snapshotId}/checks/{checkId}",
       "symbols": [
-        "Checks.List",
-        "Compatibility.Checks"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/snapshots/{snapshotId}/checks",
-      "symbols": [
-        "Checks.CreatePersistent"
+        "Checks.Get"
       ],
       "coverage": "COVERED"
     },
@@ -1165,10 +1046,10 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/snapshots/{snapshotId}/topology/overrides",
+      "method": "GET",
+      "route": "/api/trusted-certificates",
       "symbols": [
-        "Topology.EditOverrides"
+        "TrustedCertificates.List"
       ],
       "coverage": "COVERED"
     },
@@ -1182,24 +1063,6 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/users/current/nqe/changes",
-      "symbols": [
-        "NQERepository.DeleteDirectory",
-        "NQERepository.AddDirectory",
-        "NQERepository.AddQuery"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/users/current/password",
-      "symbols": [
-        "Users.ResetPassword"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/users/current/tokens",
       "symbols": [
@@ -1208,26 +1071,222 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/users/current/tokens",
+      "method": "GET",
+      "route": "/api/users/{userId}/roles",
       "symbols": [
-        "Users.CreateToken"
+        "Users.Roles"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "DELETE",
-      "route": "/api/users/current/tokens/{tokenName}",
+      "method": "GET",
+      "route": "/api/version",
       "symbols": [
-        "Users.DeleteToken"
+        "Version.Get",
+        "Version.Reachable"
       ],
       "coverage": "COVERED"
     },
     {
-      "method": "DELETE",
-      "route": "/api/users/{userId}",
+      "method": "GET",
+      "route": "/api/vm/instanceId",
       "symbols": [
-        "Admin.DeleteUser"
+        "Licensing.Fingerprint"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/webhooks",
+      "symbols": [
+        "Webhooks.List"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/login",
+      "symbols": [
+        "Browser.LoginPageCSRF",
+        "Browser.Login"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/admin/orgs/{orgId}",
+      "symbols": [
+        "Organizations.Update"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/ai-chats/{chatId}",
+      "symbols": [
+        "AI.RenameChat"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/backup-settings",
+      "symbols": [
+        "Backups.UpdateSettings"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/backup-settings/storage",
+      "symbols": [
+        "Backups.UpdateS3Storage"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/collection-settings",
+      "symbols": [
+        "Collectors.PatchOrganizationSettings"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/collectors/{collectorId}/collection-settings",
+      "symbols": [
+        "Collectors.PatchSettings"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/device-access-labels/{labelId}",
+      "symbols": [
+        "AccessControl.UpdateDeviceAccessLabel"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/integrations/servicenow",
+      "symbols": [
+        "Integrations.PatchServiceNow"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}",
+      "symbols": [
+        "Networks.Update"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/atlas",
+      "symbols": [
+        "Locations.Assign"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/classic-devices/{deviceName}",
+      "symbols": [
+        "ClassicDevices.Patch"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/cli-credentials/{credentialId}",
+      "symbols": [
+        "Credentials.UpdateCLI"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/cloudAccounts/{accountName}",
+      "symbols": [
+        "CloudAccounts.Update"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/controller-managed-setups/{setupName}",
+      "symbols": [
+        "ControllerManagedSetups.Patch"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/endpoints/{name}",
+      "symbols": [
+        "Endpoints.Patch"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/http-credentials/{credentialId}",
+      "symbols": [
+        "Credentials.UpdateHTTPWithResult",
+        "Credentials.UpdateHTTP"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}",
+      "symbols": [
+        "Locations.PatchCluster"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/performance/settings",
+      "symbols": [
+        "Collectors.SetPerformanceCollection"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/proxies/{proxyId}",
+      "symbols": [
+        "Proxies.Update"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/rapid7-sources/{sourceName}",
+      "symbols": [
+        "Integrations.UpdateRapid7"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/networks/{networkId}/snmpCredentials/{credentialId}",
+      "symbols": [
+        "Credentials.UpdateSNMP"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PATCH",
+      "route": "/api/snapshots/{snapshotId}",
+      "symbols": [
+        "Snapshots.Favorite",
+        "Snapshots.SetNote"
       ],
       "coverage": "COVERED"
     },
@@ -1240,10 +1299,590 @@
       "coverage": "COVERED"
     },
     {
-      "method": "GET",
-      "route": "/api/users/{userId}/roles",
+      "method": "PATCH",
+      "route": "/api/webhooks/{name}",
       "symbols": [
-        "Users.Roles"
+        "Webhooks.Update"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/access-control-groups",
+      "symbols": [
+        "AccessControl.CreateGroup"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/access-control-groups/{groupId}",
+      "symbols": [
+        "AccessControl.UpdateGroup"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/admin/orgs",
+      "symbols": [
+        "Organizations.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/admin/orgs/{orgId}",
+      "symbols": [
+        "Organizations.SetEnabled"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/ai-chats",
+      "symbols": [
+        "AI.StartChat",
+        "AI.StartChatOperation"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/ai-chats/{chatId}/messages",
+      "symbols": [
+        "AI.AddMessage"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/backup-settings",
+      "symbols": [
+        "Backups.SetS3BucketOwnership"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/backups",
+      "symbols": [
+        "Backups.Trigger"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/collector-tasks",
+      "symbols": [
+        "CollectorTasks.Start",
+        "Compatibility.StartCollectorTask",
+        "CollectorTasks.StartCollectionOperation",
+        "CollectorTasks.StartOperation",
+        "Snapshots.Collect"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/collector-tasks/{taskId}",
+      "symbols": [
+        "CollectorTasks.Stop"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/collectors",
+      "symbols": [
+        "Collectors.Register"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/custom-banners",
+      "symbols": [
+        "Banners.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/device-access-labels",
+      "symbols": [
+        "AccessControl.CreateDeviceAccessLabel"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/config-summary-assists",
+      "symbols": [
+        "AIAssist.SummarizeConfigDiff"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/diffs/{snapshotAId}/{snapshotBId}/impact-summary-assists",
+      "symbols": [
+        "AIAssist.SummarizeChangeImpact"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/endpoint-profiles",
+      "symbols": [
+        "Endpoints.CreateProfile"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/integrations/infoblox/instances",
+      "symbols": [
+        "Integrations.CreateInfoblox"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/integrations/servicenow-cmdb",
+      "symbols": [
+        "Integrations.ServiceNowCMDBSchema",
+        "Integrations.EnableServiceNowCMDB"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/integrations/servicenow-cmdb/configuration",
+      "symbols": [
+        "Integrations.SaveServiceNowCMDB"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/internal/networks/{networkId}/performance",
+      "symbols": [
+        "Performance.GenerateSynthetic"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/licenses",
+      "symbols": [
+        "Licensing.Apply",
+        "Licensing.Decode"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks",
+      "symbols": [
+        "Networks.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/change-sets",
+      "symbols": [
+        "Predict.CreateChangeSet"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/change-sets/{changeSetId}",
+      "symbols": [
+        "Predict.Run",
+        "Predict.RunOperation"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/commits",
+      "symbols": [
+        "Predict.Commit"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules",
+      "symbols": [
+        "Predict.AddSecurityRule"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/cli-assists",
+      "symbols": [
+        "AIAssist.GeneratePredictCLI"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements",
+      "symbols": [
+        "Predict.StageBGPAdvertisement"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/overview-assists",
+      "symbols": [
+        "AIAssist.GeneratePredictOverview"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/classic-devices",
+      "symbols": [
+        "ClassicDevices.PutBatch",
+        "ClassicDevices.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/cli-credentials",
+      "symbols": [
+        "Credentials.CreateCLI"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/cloud-managed-setups",
+      "symbols": [
+        "CloudManagedSetups.CreateMist"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/cloud-managed-setups/{setupName}",
+      "symbols": [
+        "CloudManagedSetups.DiscoverMist"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/cloudAccounts",
+      "symbols": [
+        "CloudAccounts.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/cloudAccounts/{accountName}/credential",
+      "symbols": [
+        "CloudAccounts.UpdateCredential"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/cloudAccounts/{accountName}/test",
+      "symbols": [
+        "CloudAccounts.Test"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/controller-managed-setups",
+      "symbols": [
+        "ControllerManagedSetups.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/device-metrics-history",
+      "symbols": [
+        "Performance.DeviceMetricHistory",
+        "Performance.DeviceMetricHistoryDocument"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/device-tags",
+      "symbols": [
+        "DeviceTags.AddBatch",
+        "DeviceTags.AddBatchTo"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/endpoints",
+      "symbols": [
+        "Endpoints.AddBatch"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/http-credentials",
+      "symbols": [
+        "Credentials.CreateHTTP"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/interface-metrics-history",
+      "symbols": [
+        "Performance.InterfaceMetricHistory",
+        "Performance.InterfaceMetricHistoryDocument"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/jumpServers",
+      "symbols": [
+        "JumpServers.Create",
+        "JumpServers.CreateLegacy",
+        "JumpServers.CreateWithPassword"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/locations",
+      "symbols": [
+        "Locations.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/locations/{locationId}/clusters",
+      "symbols": [
+        "Locations.CreateCluster"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/nqe-executions",
+      "symbols": [
+        "NQE.Start",
+        "NQE.StartOperation"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/performance",
+      "symbols": [
+        "Performance.UploadWithIdentity",
+        "Performance.Upload"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/proxies",
+      "symbols": [
+        "Proxies.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/rapid7-sources",
+      "symbols": [
+        "Integrations.CreateRapid7"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/snapshots",
+      "symbols": [
+        "Snapshots.Upload",
+        "Snapshots.UploadMergeCompatibility",
+        "Snapshots.StartUploadOperation"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/snmpCredentials",
+      "symbols": [
+        "Credentials.CreateSNMP",
+        "Credentials.CreateSNMPCredential"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/unhealthy-interfaces",
+      "symbols": [
+        "Performance.UnhealthyInterfaces"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/networks/{networkId}/workspaces",
+      "symbols": [
+        "Networks.CreateWorkspace"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/nqe",
+      "symbols": [
+        "NQE.Run"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/nqe-diffs/{before}/{after}",
+      "symbols": [
+        "NQE.Diff"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/nqe/doc-assists",
+      "symbols": [
+        "AIAssist.AskNQEDocs"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/nqe/doc-assists/{docAssistId}/followup",
+      "symbols": [
+        "AIAssist.SuggestNQEDocFollowups"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/nqe/query-assists",
+      "symbols": [
+        "AIAssist.GenerateNQEQuery"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/nqe/repos/org/commits",
+      "symbols": [
+        "NQERepository.Commit"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/nqe/summary-assists",
+      "symbols": [
+        "AIAssist.SummarizeNQEQuery"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/orgs/{orgId}/licenses/{licenseId}",
+      "symbols": [
+        "Licensing.InvalidateForOrg"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/orgs/{orgId}/users",
+      "symbols": [
+        "Admin.CreateOrganizationUser"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/snapshots/{snapshotId}",
+      "symbols": [
+        "Snapshots.Reprocess",
+        "Snapshots.Invalidate",
+        "Snapshots.ExportSubset",
+        "Snapshots.ExportSubsetCompatibility"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/snapshots/{snapshotId}/checks",
+      "symbols": [
+        "Checks.CreatePersistent",
+        "Checks.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/snapshots/{snapshotId}/topology/overrides",
+      "symbols": [
+        "Topology.EditOverrides"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/trusted-certificates",
+      "symbols": [
+        "TrustedCertificates.Add",
+        "TrustedCertificates.Apply",
+        "TrustedCertificates.ApplyOperations"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/users/current/nqe/changes",
+      "symbols": [
+        "NQERepository.DeleteDirectory",
+        "NQERepository.AddDirectory",
+        "NQERepository.AddQuery",
+        "NQERepository.DeleteQuery"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/users/current/password",
+      "symbols": [
+        "Users.ResetPassword"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/users/current/tokens",
+      "symbols": [
+        "Users.CreateToken"
       ],
       "coverage": "COVERED"
     },
@@ -1264,148 +1903,135 @@
       "coverage": "COVERED"
     },
     {
+      "method": "POST",
+      "route": "/api/webhooks",
+      "symbols": [
+        "Webhooks.Create",
+        "Webhooks.TestNew"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/login",
+      "symbols": [
+        "Browser.LoginLegacy",
+        "Browser.Login"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/auth/saml-settings",
+      "symbols": [
+        "SAML.PutSettings"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/config/{property}",
+      "symbols": [
+        "Properties.SetCurrent"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/custom-banners/{bannerId}",
+      "symbols": [
+        "Banners.Replace"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/cve-index",
+      "symbols": [
+        "CVEIndex.Put"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/deployment-config/{property}",
+      "symbols": [
+        "Configuration.SetDeployment"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/global-config/{property}",
+      "symbols": [
+        "Properties.SetGlobal"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands",
+      "symbols": [
+        "Predict.StageCommands"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/networks/{networkId}/classic-devices/{deviceName}",
+      "symbols": [
+        "ClassicDevices.Put"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/networks/{networkId}/collector",
+      "symbols": [
+        "Collectors.Attach"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/networks/{networkId}/internet-node",
+      "symbols": [
+        "SyntheticNodes.PutInternetNode",
+        "SyntheticNodes.Put"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/networks/{networkId}/intranet-nodes/{nodeName}",
+      "symbols": [
+        "SyntheticNodes.PutIntranetNode",
+        "SyntheticNodes.Put"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/networks/{networkId}/l3-vpns/{l3VpnName}",
+      "symbols": [
+        "SyntheticNodes.PutL3VPN",
+        "SyntheticNodes.Put"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "PUT",
+      "route": "/api/orgs/{orgId}/config/{property}",
+      "symbols": [
+        "Properties.SetOrganization"
+      ],
+      "coverage": "COVERED"
+    },
+    {
       "method": "PUT",
       "route": "/api/users/{userId}/supported-orgs",
       "symbols": [
         "Admin.SetSupportedOrganizations"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/api/version",
-      "symbols": [
-        "Version.Get",
-        "Version.Reachable"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/api/webhooks",
-      "symbols": [
-        "Webhooks.List"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/webhooks",
-      "symbols": [
-        "Webhooks.Create"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/webhooks/{name}",
-      "symbols": [
-        "Webhooks.Update"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/api/backup-settings",
-      "symbols": [
-        "Backups.GetSettings"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/backup-settings",
-      "symbols": [
-        "Backups.UpdateSettings"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/backup-settings",
-      "symbols": [
-        "Backups.SetS3BucketOwnership"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/api/backup-settings/storage",
-      "symbols": [
-        "Backups.GetS3Storage"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "PATCH",
-      "route": "/api/backup-settings/storage",
-      "symbols": [
-        "Backups.UpdateS3Storage"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/api/backups",
-      "symbols": [
-        "Backups.Last"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/backups",
-      "symbols": [
-        "Backups.Trigger"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/login",
-      "symbols": [
-        "Browser.LoginPageCSRF"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/login",
-      "symbols": [
-        "Browser.LoginLegacy"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/api/trusted-certificates",
-      "symbols": [
-        "TrustedCertificates.List"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/trusted-certificates",
-      "symbols": [
-        "TrustedCertificates.Add",
-        "TrustedCertificates.Apply"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "DELETE",
-      "route": "/api/trusted-certificates/{name}",
-      "symbols": [
-        "TrustedCertificates.Delete"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/change-sets/{changeSetId}/commits",
-      "symbols": [
-        "Predict.Commit"
       ],
       "coverage": "COVERED"
     }

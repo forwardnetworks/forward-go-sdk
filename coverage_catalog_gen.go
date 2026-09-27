@@ -2,204 +2,938 @@
 
 package forward
 
-var sdkCoverageCatalog = map[string]CoverageOperation{
-	"AccessControl.DeleteGroup":                  {Method: "DELETE", Route: "/api/access-control-groups/{groupId}"},
-	"Organizations.Delete":                       {Method: "DELETE", Route: "/api/admin/orgs/{orgId}"},
-	"Collectors.Delete":                          {Method: "DELETE", Route: "/api/collectors/{collectorIdOrName}"},
-	"CVEIndex.Delete":                            {Method: "DELETE", Route: "/api/cve-index"},
-	"AccessControl.DeleteDeviceAccessLabel":      {Method: "DELETE", Route: "/api/device-access-labels/{labelId}"},
-	"Properties.ClearGlobal":                     {Method: "DELETE", Route: "/api/global-config/{property}"},
-	"Integrations.DeleteServiceNow":              {Method: "DELETE", Route: "/api/integrations/servicenow"},
-	"Networks.Delete":                            {Method: "DELETE", Route: "/api/networks/{networkId}"},
-	"ControllerManagedSetups.Delete":             {Method: "DELETE", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
-	"Endpoints.Delete":                           {Method: "DELETE", Route: "/api/networks/{networkId}/endpoints/{name}"},
-	"SyntheticNodes.DeleteIntranetNode":          {Method: "DELETE", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
-	"SyntheticNodes.DeleteL3VPN":                 {Method: "DELETE", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
-	"Properties.ClearOrganization":               {Method: "DELETE", Route: "/api/orgs/{orgId}/config/software_central"},
-	"TrustedCertificates.Delete":                 {Method: "DELETE", Route: "/api/trusted-certificates/{name}"},
-	"Users.DeleteToken":                          {Method: "DELETE", Route: "/api/users/current/tokens/{tokenName}"},
-	"Admin.DeleteUser":                           {Method: "DELETE", Route: "/api/users/{userId}"},
-	"AccessControl.ListGroups":                   {Method: "GET", Route: "/api/access-control-groups"},
-	"Browser.Impersonate":                        {Method: "GET", Route: "/api/admin/impersonate"},
-	"Browser.ImpersonateWithServiceCredential":   {Method: "GET", Route: "/api/admin/impersonate"},
-	"Admin.ListNetworks":                         {Method: "GET", Route: "/api/admin/networks"},
-	"Organizations.List":                         {Method: "GET", Route: "/api/admin/orgs"},
-	"Admin.ListUsers":                            {Method: "GET", Route: "/api/admin/users"},
-	"Admin.LookupUser":                           {Method: "GET", Route: "/api/admin/users/{idOrUsername}"},
-	"AI.GetChat":                                 {Method: "GET", Route: "/api/ai-chats/{chatId}"},
-	"AI.ListMessages":                            {Method: "GET", Route: "/api/ai-chats/{chatId}/messages"},
-	"SAML.GetSettings":                           {Method: "GET", Route: "/api/auth/saml-settings"},
-	"Backups.GetSettings":                        {Method: "GET", Route: "/api/backup-settings"},
-	"Backups.GetS3Storage":                       {Method: "GET", Route: "/api/backup-settings/storage"},
-	"Backups.Last":                               {Method: "GET", Route: "/api/backups"},
-	"CollectorTasks.List":                        {Method: "GET", Route: "/api/collector-tasks"},
-	"CollectorTasks.Progress":                    {Method: "GET", Route: "/api/collector-tasks"},
-	"Collectors.List":                            {Method: "GET", Route: "/api/collectors"},
-	"Banners.List":                               {Method: "GET", Route: "/api/custom-banners"},
-	"CVEIndex.Download":                          {Method: "GET", Route: "/api/cve-index"},
-	"CVEIndex.Metadata":                          {Method: "GET", Route: "/api/cve-index"},
-	"SoftwareCentral.ListDeploymentArtifacts":    {Method: "GET", Route: "/api/deployment-artifacts"},
-	"SoftwareCentral.DeploymentArtifactURL":      {Method: "GET", Route: "/api/deployment-artifacts/{artifactId}"},
-	"Configuration.GetDeployment":                {Method: "GET", Route: "/api/deployment-config/{property}"},
-	"AccessControl.ListDeviceAccessLabels":       {Method: "GET", Route: "/api/device-access-labels"},
-	"Endpoints.ListProfiles":                     {Method: "GET", Route: "/api/endpoint-profiles"},
-	"Properties.Global":                          {Method: "GET", Route: "/api/global-config"},
-	"Integrations.ListInfobloxLegacy":            {Method: "GET", Route: "/api/integrations/infoblox"},
-	"Integrations.ListInfoblox":                  {Method: "GET", Route: "/api/integrations/infoblox/instances"},
-	"Integrations.GetServiceNow":                 {Method: "GET", Route: "/api/integrations/servicenow"},
-	"Networks.List":                              {Method: "GET", Route: "/api/networks"},
-	"Networks.CheckAccess":                       {Method: "GET", Route: "/api/networks"},
-	"Predict.ListPredictedSnapshots":             {Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/predicted-snapshots"},
-	"ClassicDevices.List":                        {Method: "GET", Route: "/api/networks/{networkId}/classic-devices"},
-	"ClassicDevices.ListTestStatuses":            {Method: "GET", Route: "/api/networks/{networkId}/classic-devices"},
-	"CloudAccounts.List":                         {Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
-	"Collectors.Attachment":                      {Method: "GET", Route: "/api/networks/{networkId}/collector"},
-	"ControllerManagedSetups.List":               {Method: "GET", Route: "/api/networks/{networkId}/controller-managed-setups"},
-	"Performance.DeviceMetrics":                  {Method: "GET", Route: "/api/networks/{networkId}/device-metrics"},
-	"Performance.DeviceMetricsDocument":          {Method: "GET", Route: "/api/networks/{networkId}/device-metrics"},
-	"Collections.DeviceStatuses":                 {Method: "GET", Route: "/api/networks/{networkId}/device-statuses"},
-	"DeviceTags.List":                            {Method: "GET", Route: "/api/networks/{networkId}/device-tags"},
-	"Devices.List":                               {Method: "GET", Route: "/api/networks/{networkId}/devices"},
-	"Integrations.ListRapid7":                    {Method: "GET", Route: "/api/networks/{networkId}/end-host-scanners"},
-	"Endpoints.List":                             {Method: "GET", Route: "/api/networks/{networkId}/endpoints"},
-	"Endpoints.ListTestStatuses":                 {Method: "GET", Route: "/api/networks/{networkId}/endpoints"},
-	"Credentials.ListHTTP":                       {Method: "GET", Route: "/api/networks/{networkId}/http-credentials"},
-	"Performance.InterfaceMetrics":               {Method: "GET", Route: "/api/networks/{networkId}/interface-metrics"},
-	"Performance.InterfaceMetricsDocument":       {Method: "GET", Route: "/api/networks/{networkId}/interface-metrics"},
-	"SyntheticNodes.GetInternetNode":             {Method: "GET", Route: "/api/networks/{networkId}/internet-node"},
-	"SyntheticNodes.ListIntranetNodes":           {Method: "GET", Route: "/api/networks/{networkId}/intranet-nodes"},
-	"SyntheticNodes.GetIntranetNode":             {Method: "GET", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
-	"SyntheticNodes.ListL3VPNs":                  {Method: "GET", Route: "/api/networks/{networkId}/l3-vpns"},
-	"SyntheticNodes.GetL3VPN":                    {Method: "GET", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
-	"Locations.List":                             {Method: "GET", Route: "/api/networks/{networkId}/locations"},
-	"Locations.ListClusters":                     {Method: "GET", Route: "/api/networks/{networkId}/locations/{locationId}/clusters"},
-	"Networks.Paths":                             {Method: "GET", Route: "/api/networks/{networkId}/paths"},
-	"Proxies.List":                               {Method: "GET", Route: "/api/networks/{networkId}/proxies"},
-	"Snapshots.List":                             {Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
-	"Snapshots.ListDocument":                     {Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
-	"Compatibility.ListSnapshots":                {Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
-	"Credentials.ListSNMP":                       {Method: "GET", Route: "/api/networks/{networkId}/snmpCredentials"},
-	"Performance.UnhealthyDevices":               {Method: "GET", Route: "/api/networks/{networkId}/unhealthy-devices"},
-	"NQE.ListQueries":                            {Method: "GET", Route: "/api/nqe/repos/fwd/commits/head/queries"},
-	"NQERepository.Head":                         {Method: "GET", Route: "/api/nqe/repos/org/commits/head"},
-	"NQERepository.ListHeadQueries":              {Method: "GET", Route: "/api/nqe/repos/org/commits/head/queries"},
-	"NQERepository.GetQuery":                     {Method: "GET", Route: "/api/nqe/repos/org/commits/{commitId}/queries"},
-	"Organizations.Current":                      {Method: "GET", Route: "/api/orgs/current"},
-	"Properties.Organization":                    {Method: "GET", Route: "/api/orgs/{orgId}/config"},
-	"Properties.DescribeOrganization":            {Method: "GET", Route: "/api/orgs/{orgId}/config"},
-	"Browser.PublicCSRFAPI":                      {Method: "GET", Route: "/api/public/csrf"},
-	"Snapshots.Download":                         {Method: "GET", Route: "/api/snapshots/{snapshotId}"},
-	"Checks.List":                                {Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
-	"Compatibility.Checks":                       {Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
-	"Topology.List":                              {Method: "GET", Route: "/api/snapshots/{snapshotId}/topology"},
-	"Topology.Overrides":                         {Method: "GET", Route: "/api/snapshots/{snapshotId}/topology/overrides"},
-	"TrustedCertificates.List":                   {Method: "GET", Route: "/api/trusted-certificates"},
-	"Users.Current":                              {Method: "GET", Route: "/api/users/current"},
-	"Browser.CurrentUser":                        {Method: "GET", Route: "/api/users/current"},
-	"Users.ListTokens":                           {Method: "GET", Route: "/api/users/current/tokens"},
-	"Users.Roles":                                {Method: "GET", Route: "/api/users/{userId}/roles"},
-	"Version.Get":                                {Method: "GET", Route: "/api/version"},
-	"Version.Reachable":                          {Method: "GET", Route: "/api/version"},
-	"Webhooks.List":                              {Method: "GET", Route: "/api/webhooks"},
-	"Browser.LoginPageCSRF":                      {Method: "GET", Route: "/login"},
-	"Backups.UpdateSettings":                     {Method: "PATCH", Route: "/api/backup-settings"},
-	"Backups.UpdateS3Storage":                    {Method: "PATCH", Route: "/api/backup-settings/storage"},
-	"Collectors.PatchOrganizationSettings":       {Method: "PATCH", Route: "/api/collection-settings"},
-	"Collectors.PatchSettings":                   {Method: "PATCH", Route: "/api/collectors/{collectorId}/collection-settings"},
-	"AccessControl.UpdateDeviceAccessLabel":      {Method: "PATCH", Route: "/api/device-access-labels/{labelId}"},
-	"Integrations.PatchServiceNow":               {Method: "PATCH", Route: "/api/integrations/servicenow"},
-	"Locations.Assign":                           {Method: "PATCH", Route: "/api/networks/{networkId}/atlas"},
-	"CloudAccounts.Update":                       {Method: "PATCH", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}"},
-	"ControllerManagedSetups.Patch":              {Method: "PATCH", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
-	"Endpoints.Patch":                            {Method: "PATCH", Route: "/api/networks/{networkId}/endpoints/{name}"},
-	"Credentials.UpdateHTTPWithResult":           {Method: "PATCH", Route: "/api/networks/{networkId}/http-credentials/{credentialId}"},
-	"Locations.PatchCluster":                     {Method: "PATCH", Route: "/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}"},
-	"Collectors.SetPerformanceCollection":        {Method: "PATCH", Route: "/api/networks/{networkId}/performance/settings"},
-	"Proxies.Update":                             {Method: "PATCH", Route: "/api/networks/{networkId}/proxies/{proxyId}"},
-	"Integrations.UpdateRapid7":                  {Method: "PATCH", Route: "/api/networks/{networkId}/rapid7-sources/{sourceName}"},
-	"Snapshots.Favorite":                         {Method: "PATCH", Route: "/api/snapshots/{snapshotId}"},
-	"Admin.PatchUser":                            {Method: "PATCH", Route: "/api/users/{userId}"},
-	"Webhooks.Update":                            {Method: "PATCH", Route: "/api/webhooks/{name}"},
-	"AccessControl.CreateGroup":                  {Method: "POST", Route: "/api/access-control-groups"},
-	"AccessControl.UpdateGroup":                  {Method: "POST", Route: "/api/access-control-groups/{groupId}"},
-	"Organizations.Create":                       {Method: "POST", Route: "/api/admin/orgs"},
-	"AI.StartChat":                               {Method: "POST", Route: "/api/ai-chats"},
-	"AI.AddMessage":                              {Method: "POST", Route: "/api/ai-chats/{chatId}/messages"},
-	"Backups.SetS3BucketOwnership":               {Method: "POST", Route: "/api/backup-settings"},
-	"Backups.Trigger":                            {Method: "POST", Route: "/api/backups"},
-	"CollectorTasks.Start":                       {Method: "POST", Route: "/api/collector-tasks"},
-	"Compatibility.StartCollectorTask":           {Method: "POST", Route: "/api/collector-tasks"},
-	"Collectors.Register":                        {Method: "POST", Route: "/api/collectors"},
-	"Banners.Create":                             {Method: "POST", Route: "/api/custom-banners"},
-	"AccessControl.CreateDeviceAccessLabel":      {Method: "POST", Route: "/api/device-access-labels"},
-	"Endpoints.CreateProfile":                    {Method: "POST", Route: "/api/endpoint-profiles"},
-	"Integrations.CreateInfoblox":                {Method: "POST", Route: "/api/integrations/infoblox/instances"},
-	"Integrations.ServiceNowCMDBSchema":          {Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
-	"Integrations.EnableServiceNowCMDB":          {Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
-	"Integrations.SaveServiceNowCMDB":            {Method: "POST", Route: "/api/integrations/servicenow-cmdb/configuration"},
-	"Performance.GenerateSynthetic":              {Method: "POST", Route: "/api/internal/networks/{networkId}/performance"},
-	"Networks.Create":                            {Method: "POST", Route: "/api/networks"},
-	"Predict.CreateChangeSet":                    {Method: "POST", Route: "/api/networks/{networkId}/change-sets"},
-	"Predict.Run":                                {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
-	"Predict.Commit":                             {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits"},
-	"AIAssist.GeneratePredictCLI":                {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/cli-assists"},
-	"Predict.StageBGPAdvertisement":              {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
-	"AIAssist.GeneratePredictOverview":           {Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/overview-assists"},
-	"ClassicDevices.PutBatch":                    {Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
-	"Credentials.CreateCLI":                      {Method: "POST", Route: "/api/networks/{networkId}/cli-credentials"},
-	"CloudAccounts.Create":                       {Method: "POST", Route: "/api/networks/{networkId}/cloudAccounts"},
-	"CloudAccounts.Test":                         {Method: "POST", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}/test"},
-	"ControllerManagedSetups.Create":             {Method: "POST", Route: "/api/networks/{networkId}/controller-managed-setups"},
-	"Performance.DeviceMetricHistory":            {Method: "POST", Route: "/api/networks/{networkId}/device-metrics-history"},
-	"Performance.DeviceMetricHistoryDocument":    {Method: "POST", Route: "/api/networks/{networkId}/device-metrics-history"},
-	"DeviceTags.AddBatch":                        {Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
-	"DeviceTags.AddBatchTo":                      {Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
-	"Endpoints.AddBatch":                         {Method: "POST", Route: "/api/networks/{networkId}/endpoints"},
-	"Credentials.CreateHTTP":                     {Method: "POST", Route: "/api/networks/{networkId}/http-credentials"},
-	"Performance.InterfaceMetricHistory":         {Method: "POST", Route: "/api/networks/{networkId}/interface-metrics-history"},
-	"Performance.InterfaceMetricHistoryDocument": {Method: "POST", Route: "/api/networks/{networkId}/interface-metrics-history"},
-	"JumpServers.Create":                         {Method: "POST", Route: "/api/networks/{networkId}/jumpServers"},
-	"JumpServers.CreateLegacy":                   {Method: "POST", Route: "/api/networks/{networkId}/jumpServers"},
-	"Locations.Create":                           {Method: "POST", Route: "/api/networks/{networkId}/locations"},
-	"Locations.CreateCluster":                    {Method: "POST", Route: "/api/networks/{networkId}/locations/{locationId}/clusters"},
-	"Performance.UploadWithIdentity":             {Method: "POST", Route: "/api/networks/{networkId}/performance"},
-	"Proxies.Create":                             {Method: "POST", Route: "/api/networks/{networkId}/proxies"},
-	"Integrations.CreateRapid7":                  {Method: "POST", Route: "/api/networks/{networkId}/rapid7-sources"},
-	"Snapshots.Upload":                           {Method: "POST", Route: "/api/networks/{networkId}/snapshots"},
-	"Snapshots.UploadMergeCompatibility":         {Method: "POST", Route: "/api/networks/{networkId}/snapshots"},
-	"Credentials.CreateSNMP":                     {Method: "POST", Route: "/api/networks/{networkId}/snmpCredentials"},
-	"Performance.UnhealthyInterfaces":            {Method: "POST", Route: "/api/networks/{networkId}/unhealthy-interfaces"},
-	"Networks.CreateWorkspace":                   {Method: "POST", Route: "/api/networks/{networkId}/workspaces"},
-	"NQE.Run":                                    {Method: "POST", Route: "/api/nqe"},
-	"NQERepository.Commit":                       {Method: "POST", Route: "/api/nqe/repos/org/commits"},
-	"Admin.CreateOrganizationUser":               {Method: "POST", Route: "/api/orgs/{orgId}/users"},
-	"Snapshots.Reprocess":                        {Method: "POST", Route: "/api/snapshots/{snapshotId}"},
-	"Snapshots.Invalidate":                       {Method: "POST", Route: "/api/snapshots/{snapshotId}"},
-	"Snapshots.ExportSubset":                     {Method: "POST", Route: "/api/snapshots/{snapshotId}"},
-	"Snapshots.ExportSubsetCompatibility":        {Method: "POST", Route: "/api/snapshots/{snapshotId}"},
-	"Checks.CreatePersistent":                    {Method: "POST", Route: "/api/snapshots/{snapshotId}/checks"},
-	"Topology.EditOverrides":                     {Method: "POST", Route: "/api/snapshots/{snapshotId}/topology/overrides"},
-	"TrustedCertificates.Add":                    {Method: "POST", Route: "/api/trusted-certificates"},
-	"TrustedCertificates.Apply":                  {Method: "POST", Route: "/api/trusted-certificates"},
-	"NQERepository.DeleteDirectory":              {Method: "POST", Route: "/api/users/current/nqe/changes"},
-	"NQERepository.AddDirectory":                 {Method: "POST", Route: "/api/users/current/nqe/changes"},
-	"NQERepository.AddQuery":                     {Method: "POST", Route: "/api/users/current/nqe/changes"},
-	"Users.ResetPassword":                        {Method: "POST", Route: "/api/users/current/password"},
-	"Users.CreateToken":                          {Method: "POST", Route: "/api/users/current/tokens"},
-	"Admin.GrantOrganizationAdmin":               {Method: "POST", Route: "/api/users/{userId}/roles/org/ADMIN"},
-	"Admin.AddSupportedOrganization":             {Method: "POST", Route: "/api/users/{userId}/supported-orgs"},
-	"Webhooks.Create":                            {Method: "POST", Route: "/api/webhooks"},
-	"Browser.LoginLegacy":                        {Method: "POST", Route: "/login"},
-	"SAML.PutSettings":                           {Method: "PUT", Route: "/api/auth/saml-settings"},
-	"Banners.Replace":                            {Method: "PUT", Route: "/api/custom-banners/{bannerId}"},
-	"CVEIndex.Put":                               {Method: "PUT", Route: "/api/cve-index"},
-	"Configuration.SetDeployment":                {Method: "PUT", Route: "/api/deployment-config/{property}"},
-	"Properties.SetGlobal":                       {Method: "PUT", Route: "/api/global-config/{property}"},
-	"Predict.StageCommands":                      {Method: "PUT", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands"},
-	"Collectors.Attach":                          {Method: "PUT", Route: "/api/networks/{networkId}/collector"},
-	"SyntheticNodes.PutInternetNode":             {Method: "PUT", Route: "/api/networks/{networkId}/internet-node"},
-	"SyntheticNodes.PutIntranetNode":             {Method: "PUT", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
-	"SyntheticNodes.PutL3VPN":                    {Method: "PUT", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
-	"Properties.SetOrganization":                 {Method: "PUT", Route: "/api/orgs/{orgId}/config/{property}"},
-	"Admin.SetSupportedOrganizations":            {Method: "PUT", Route: "/api/users/{userId}/supported-orgs"},
+var sdkCoverageCatalog = map[string][]CoverageOperation{
+	"AI.AddMessage": {
+		{Method: "POST", Route: "/api/ai-chats/{chatId}/messages"},
+	},
+	"AI.DeleteChat": {
+		{Method: "DELETE", Route: "/api/ai-chats/{chatId}"},
+	},
+	"AI.GetChat": {
+		{Method: "GET", Route: "/api/ai-chats/{chatId}"},
+	},
+	"AI.ListChats": {
+		{Method: "GET", Route: "/api/ai-chats"},
+	},
+	"AI.ListMessages": {
+		{Method: "GET", Route: "/api/ai-chats/{chatId}/messages"},
+	},
+	"AI.RenameChat": {
+		{Method: "PATCH", Route: "/api/ai-chats/{chatId}"},
+	},
+	"AI.StartChat": {
+		{Method: "POST", Route: "/api/ai-chats"},
+	},
+	"AI.StartChatOperation": {
+		{Method: "GET", Route: "/api/ai-chats/{chatId}"},
+		{Method: "POST", Route: "/api/ai-chats"},
+	},
+	"AIAssist.AskNQEDocs": {
+		{Method: "POST", Route: "/api/nqe/doc-assists"},
+	},
+	"AIAssist.GenerateNQEQuery": {
+		{Method: "POST", Route: "/api/nqe/query-assists"},
+	},
+	"AIAssist.GeneratePredictCLI": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/cli-assists"},
+	},
+	"AIAssist.GeneratePredictOverview": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/overview-assists"},
+	},
+	"AIAssist.SuggestNQEDocFollowups": {
+		{Method: "POST", Route: "/api/nqe/doc-assists/{docAssistId}/followup"},
+	},
+	"AIAssist.SummarizeChangeImpact": {
+		{Method: "POST", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/impact-summary-assists"},
+	},
+	"AIAssist.SummarizeConfigDiff": {
+		{Method: "POST", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/config-summary-assists"},
+	},
+	"AIAssist.SummarizeNQEQuery": {
+		{Method: "POST", Route: "/api/nqe/summary-assists"},
+	},
+	"AccessControl.CreateDeviceAccessLabel": {
+		{Method: "POST", Route: "/api/device-access-labels"},
+	},
+	"AccessControl.CreateGroup": {
+		{Method: "POST", Route: "/api/access-control-groups"},
+	},
+	"AccessControl.DeleteDeviceAccessLabel": {
+		{Method: "DELETE", Route: "/api/device-access-labels/{labelId}"},
+	},
+	"AccessControl.DeleteGroup": {
+		{Method: "DELETE", Route: "/api/access-control-groups/{groupId}"},
+	},
+	"AccessControl.ListDeviceAccessLabels": {
+		{Method: "GET", Route: "/api/device-access-labels"},
+	},
+	"AccessControl.ListGroups": {
+		{Method: "GET", Route: "/api/access-control-groups"},
+	},
+	"AccessControl.UpdateDeviceAccessLabel": {
+		{Method: "PATCH", Route: "/api/device-access-labels/{labelId}"},
+	},
+	"AccessControl.UpdateGroup": {
+		{Method: "POST", Route: "/api/access-control-groups/{groupId}"},
+	},
+	"Admin.AddSupportedOrganization": {
+		{Method: "POST", Route: "/api/users/{userId}/supported-orgs"},
+	},
+	"Admin.CreateOrganizationUser": {
+		{Method: "POST", Route: "/api/orgs/{orgId}/users"},
+	},
+	"Admin.DeleteUser": {
+		{Method: "DELETE", Route: "/api/users/{userId}"},
+	},
+	"Admin.GrantOrganizationAdmin": {
+		{Method: "POST", Route: "/api/users/{userId}/roles/org/ADMIN"},
+	},
+	"Admin.ListNetworks": {
+		{Method: "GET", Route: "/api/admin/networks"},
+	},
+	"Admin.ListUsers": {
+		{Method: "GET", Route: "/api/admin/users"},
+	},
+	"Admin.LookupUser": {
+		{Method: "GET", Route: "/api/admin/users/{idOrUsername}"},
+	},
+	"Admin.PatchUser": {
+		{Method: "PATCH", Route: "/api/users/{userId}"},
+	},
+	"Admin.SetSupportedOrganizations": {
+		{Method: "PUT", Route: "/api/users/{userId}/supported-orgs"},
+	},
+	"Backups.GetS3Storage": {
+		{Method: "GET", Route: "/api/backup-settings/storage"},
+	},
+	"Backups.GetSettings": {
+		{Method: "GET", Route: "/api/backup-settings"},
+	},
+	"Backups.Last": {
+		{Method: "GET", Route: "/api/backups"},
+	},
+	"Backups.SetS3BucketOwnership": {
+		{Method: "POST", Route: "/api/backup-settings"},
+	},
+	"Backups.Trigger": {
+		{Method: "POST", Route: "/api/backups"},
+	},
+	"Backups.UpdateS3Storage": {
+		{Method: "PATCH", Route: "/api/backup-settings/storage"},
+	},
+	"Backups.UpdateSettings": {
+		{Method: "PATCH", Route: "/api/backup-settings"},
+	},
+	"Banners.Create": {
+		{Method: "POST", Route: "/api/custom-banners"},
+	},
+	"Banners.List": {
+		{Method: "GET", Route: "/api/custom-banners"},
+	},
+	"Banners.Replace": {
+		{Method: "PUT", Route: "/api/custom-banners/{bannerId}"},
+	},
+	"Browser.CurrentUser": {
+		{Method: "GET", Route: "/api/users/current"},
+	},
+	"Browser.Impersonate": {
+		{Method: "GET", Route: "/api/admin/impersonate"},
+	},
+	"Browser.ImpersonateWithServiceCredential": {
+		{Method: "GET", Route: "/api/admin/impersonate"},
+	},
+	"Browser.Login": {
+		{Method: "GET", Route: "/api/public/csrf"},
+		{Method: "GET", Route: "/login"},
+		{Method: "POST", Route: "/login"},
+	},
+	"Browser.LoginLegacy": {
+		{Method: "POST", Route: "/login"},
+	},
+	"Browser.LoginPageCSRF": {
+		{Method: "GET", Route: "/login"},
+	},
+	"Browser.PublicCSRFAPI": {
+		{Method: "GET", Route: "/api/public/csrf"},
+	},
+	"CVEIndex.Delete": {
+		{Method: "DELETE", Route: "/api/cve-index"},
+	},
+	"CVEIndex.Download": {
+		{Method: "GET", Route: "/api/cve-index"},
+	},
+	"CVEIndex.Metadata": {
+		{Method: "GET", Route: "/api/cve-index"},
+	},
+	"CVEIndex.Put": {
+		{Method: "PUT", Route: "/api/cve-index"},
+	},
+	"Checks.Create": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
+	"Checks.CreatePersistent": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
+	"Checks.Deactivate": {
+		{Method: "DELETE", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
+	},
+	"Checks.DeactivateAll": {
+		{Method: "DELETE", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
+	"Checks.ExistingNames": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
+	"Checks.ForScoring": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
+	"Checks.Get": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
+	},
+	"Checks.List": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
+	"ClassicDevices.Create": {
+		{Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
+	},
+	"ClassicDevices.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/classic-devices/{deviceName}"},
+	},
+	"ClassicDevices.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/classic-devices/{deviceName}"},
+	},
+	"ClassicDevices.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/classic-devices"},
+	},
+	"ClassicDevices.ListTestStatuses": {
+		{Method: "GET", Route: "/api/networks/{networkId}/classic-devices"},
+	},
+	"ClassicDevices.Patch": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/classic-devices/{deviceName}"},
+	},
+	"ClassicDevices.Put": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/classic-devices/{deviceName}"},
+	},
+	"ClassicDevices.PutBatch": {
+		{Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
+	},
+	"CloudAccounts.AWSAssumeRoleExternalID": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts/aws/assumeRole/externalId"},
+	},
+	"CloudAccounts.Create": {
+		{Method: "POST", Route: "/api/networks/{networkId}/cloudAccounts"},
+	},
+	"CloudAccounts.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}"},
+	},
+	"CloudAccounts.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
+	},
+	"CloudAccounts.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
+	},
+	"CloudAccounts.Test": {
+		{Method: "POST", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}/test"},
+	},
+	"CloudAccounts.Update": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}"},
+	},
+	"CloudAccounts.UpdateCredential": {
+		{Method: "POST", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}/credential"},
+	},
+	"CloudManagedSetups.CreateMist": {
+		{Method: "POST", Route: "/api/networks/{networkId}/cloud-managed-setups"},
+	},
+	"CloudManagedSetups.DeleteMist": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/cloud-managed-setups/{setupName}"},
+	},
+	"CloudManagedSetups.DiscoverMist": {
+		{Method: "POST", Route: "/api/networks/{networkId}/cloud-managed-setups/{setupName}"},
+	},
+	"CloudManagedSetups.ListMist": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cloud-managed-setups"},
+	},
+	"Collections.DeviceStatuses": {
+		{Method: "GET", Route: "/api/networks/{networkId}/device-statuses"},
+	},
+	"CollectorTasks.Get": {
+		{Method: "GET", Route: "/api/collector-tasks/{taskId}"},
+	},
+	"CollectorTasks.List": {
+		{Method: "GET", Route: "/api/collector-tasks"},
+	},
+	"CollectorTasks.Progress": {
+		{Method: "GET", Route: "/api/collector-tasks"},
+	},
+	"CollectorTasks.Start": {
+		{Method: "POST", Route: "/api/collector-tasks"},
+	},
+	"CollectorTasks.StartCollectionOperation": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+		{Method: "POST", Route: "/api/collector-tasks"},
+	},
+	"CollectorTasks.StartOperation": {
+		{Method: "GET", Route: "/api/collector-tasks/{taskId}"},
+		{Method: "POST", Route: "/api/collector-tasks"},
+	},
+	"CollectorTasks.Stop": {
+		{Method: "POST", Route: "/api/collector-tasks/{taskId}"},
+	},
+	"Collectors.Attach": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/collector"},
+	},
+	"Collectors.Attachment": {
+		{Method: "GET", Route: "/api/networks/{networkId}/collector"},
+	},
+	"Collectors.Delete": {
+		{Method: "DELETE", Route: "/api/collectors/{collectorIdOrName}"},
+	},
+	"Collectors.List": {
+		{Method: "GET", Route: "/api/collectors"},
+	},
+	"Collectors.PatchOrganizationSettings": {
+		{Method: "PATCH", Route: "/api/collection-settings"},
+	},
+	"Collectors.PatchSettings": {
+		{Method: "PATCH", Route: "/api/collectors/{collectorId}/collection-settings"},
+	},
+	"Collectors.Register": {
+		{Method: "POST", Route: "/api/collectors"},
+	},
+	"Collectors.SetPerformanceCollection": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/performance/settings"},
+	},
+	"Compatibility.Checks": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
+	"Compatibility.ListSnapshots": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Compatibility.StartCollectorTask": {
+		{Method: "POST", Route: "/api/collector-tasks"},
+	},
+	"Configuration.GetDeployment": {
+		{Method: "GET", Route: "/api/deployment-config/{property}"},
+	},
+	"Configuration.SetDeployment": {
+		{Method: "PUT", Route: "/api/deployment-config/{property}"},
+	},
+	"ControllerManagedSetups.Create": {
+		{Method: "POST", Route: "/api/networks/{networkId}/controller-managed-setups"},
+	},
+	"ControllerManagedSetups.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
+	},
+	"ControllerManagedSetups.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/controller-managed-setups"},
+	},
+	"ControllerManagedSetups.Patch": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
+	},
+	"Credentials.CreateCLI": {
+		{Method: "POST", Route: "/api/networks/{networkId}/cli-credentials"},
+	},
+	"Credentials.CreateHTTP": {
+		{Method: "POST", Route: "/api/networks/{networkId}/http-credentials"},
+	},
+	"Credentials.CreateSNMP": {
+		{Method: "POST", Route: "/api/networks/{networkId}/snmpCredentials"},
+	},
+	"Credentials.CreateSNMPCredential": {
+		{Method: "POST", Route: "/api/networks/{networkId}/snmpCredentials"},
+	},
+	"Credentials.DeleteCLI": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/cli-credentials/{credentialId}"},
+	},
+	"Credentials.DeleteHTTP": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/http-credentials/{credentialId}"},
+	},
+	"Credentials.DeleteSNMP": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},
+	},
+	"Credentials.GetCLI": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cli-credentials/{credentialId}"},
+	},
+	"Credentials.GetHTTP": {
+		{Method: "GET", Route: "/api/networks/{networkId}/http-credentials/{credentialId}"},
+	},
+	"Credentials.ListCLI": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cli-credentials"},
+	},
+	"Credentials.ListHTTP": {
+		{Method: "GET", Route: "/api/networks/{networkId}/http-credentials"},
+	},
+	"Credentials.ListSNMP": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snmpCredentials"},
+	},
+	"Credentials.ListSNMPCredentials": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snmpCredentials"},
+	},
+	"Credentials.UpdateCLI": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/cli-credentials/{credentialId}"},
+	},
+	"Credentials.UpdateHTTP": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/http-credentials/{credentialId}"},
+	},
+	"Credentials.UpdateHTTPWithResult": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/http-credentials/{credentialId}"},
+	},
+	"Credentials.UpdateSNMP": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},
+	},
+	"DeviceTags.AddBatch": {
+		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
+	},
+	"DeviceTags.AddBatchTo": {
+		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
+	},
+	"DeviceTags.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/device-tags"},
+	},
+	"Devices.DownloadFile": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/files/{fileName}"},
+	},
+	"Devices.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceIdOrName}"},
+	},
+	"Devices.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices"},
+	},
+	"Devices.ListFiles": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceIdOrName}/files"},
+	},
+	"Diffs.ChecksCount": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/checks"},
+	},
+	"Diffs.Count": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/acl"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/cloud-acl"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/cloud-objects"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/devices"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/interfaces"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/l2"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/routing-loop/count"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/topology"},
+	},
+	"Diffs.Devices": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/devices"},
+	},
+	"Diffs.FilesCount": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/files"},
+	},
+	"Diffs.MaterialSummary": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/acl"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/checks"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/cloud-acl"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/cloud-objects"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/devices"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/files"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/interfaces"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/l2"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/routing-loop/count"},
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/topology"},
+	},
+	"Endpoints.AddBatch": {
+		{Method: "POST", Route: "/api/networks/{networkId}/endpoints"},
+	},
+	"Endpoints.CreateProfile": {
+		{Method: "POST", Route: "/api/endpoint-profiles"},
+	},
+	"Endpoints.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/endpoints/{name}"},
+	},
+	"Endpoints.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/endpoints"},
+	},
+	"Endpoints.ListProfiles": {
+		{Method: "GET", Route: "/api/endpoint-profiles"},
+	},
+	"Endpoints.ListTestStatuses": {
+		{Method: "GET", Route: "/api/networks/{networkId}/endpoints"},
+	},
+	"Endpoints.Patch": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/endpoints/{name}"},
+	},
+	"Integrations.CreateInfoblox": {
+		{Method: "POST", Route: "/api/integrations/infoblox/instances"},
+	},
+	"Integrations.CreateRapid7": {
+		{Method: "POST", Route: "/api/networks/{networkId}/rapid7-sources"},
+	},
+	"Integrations.DeleteServiceNow": {
+		{Method: "DELETE", Route: "/api/integrations/servicenow"},
+	},
+	"Integrations.EnableServiceNowCMDB": {
+		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
+	},
+	"Integrations.GetServiceNow": {
+		{Method: "GET", Route: "/api/integrations/servicenow"},
+	},
+	"Integrations.ListInfoblox": {
+		{Method: "GET", Route: "/api/integrations/infoblox/instances"},
+	},
+	"Integrations.ListInfobloxLegacy": {
+		{Method: "GET", Route: "/api/integrations/infoblox"},
+	},
+	"Integrations.ListRapid7": {
+		{Method: "GET", Route: "/api/networks/{networkId}/end-host-scanners"},
+	},
+	"Integrations.PatchServiceNow": {
+		{Method: "PATCH", Route: "/api/integrations/servicenow"},
+	},
+	"Integrations.SaveServiceNowCMDB": {
+		{Method: "POST", Route: "/api/integrations/servicenow-cmdb/configuration"},
+	},
+	"Integrations.ServiceNowCMDBSchema": {
+		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
+	},
+	"Integrations.UpdateRapid7": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/rapid7-sources/{sourceName}"},
+	},
+	"JumpServers.Create": {
+		{Method: "POST", Route: "/api/networks/{networkId}/jumpServers"},
+	},
+	"JumpServers.CreateLegacy": {
+		{Method: "POST", Route: "/api/networks/{networkId}/jumpServers"},
+	},
+	"JumpServers.CreateWithPassword": {
+		{Method: "POST", Route: "/api/networks/{networkId}/jumpServers"},
+	},
+	"JumpServers.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/jumpServers"},
+	},
+	"Licensing.Apply": {
+		{Method: "POST", Route: "/api/licenses"},
+	},
+	"Licensing.Decode": {
+		{Method: "POST", Route: "/api/licenses"},
+	},
+	"Licensing.Fingerprint": {
+		{Method: "GET", Route: "/api/vm/instanceId"},
+	},
+	"Licensing.InvalidateForOrg": {
+		{Method: "POST", Route: "/api/orgs/{orgId}/licenses/{licenseId}"},
+	},
+	"Licensing.ListForOrg": {
+		{Method: "GET", Route: "/api/orgs/{orgId}/licenses"},
+	},
+	"Licensing.RemoveAllForOrg": {
+		{Method: "DELETE", Route: "/api/orgs/{orgId}/licenses"},
+	},
+	"Locations.Assign": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/atlas"},
+	},
+	"Locations.Create": {
+		{Method: "POST", Route: "/api/networks/{networkId}/locations"},
+	},
+	"Locations.CreateCluster": {
+		{Method: "POST", Route: "/api/networks/{networkId}/locations/{locationId}/clusters"},
+	},
+	"Locations.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/locations"},
+	},
+	"Locations.ListClusters": {
+		{Method: "GET", Route: "/api/networks/{networkId}/locations/{locationId}/clusters"},
+	},
+	"Locations.PatchCluster": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}"},
+	},
+	"NQE.Diff": {
+		{Method: "POST", Route: "/api/nqe-diffs/{before}/{after}"},
+	},
+	"NQE.ListQueries": {
+		{Method: "GET", Route: "/api/nqe/repos/fwd/commits/head/queries"},
+	},
+	"NQE.Result": {
+		{Method: "GET", Route: "/api/networks/{networkId}/nqe-executions/{executionKey}/result"},
+	},
+	"NQE.ResultJSONLines": {
+		{Method: "GET", Route: "/api/networks/{networkId}/nqe-executions/{executionKey}/result"},
+	},
+	"NQE.Run": {
+		{Method: "POST", Route: "/api/nqe"},
+	},
+	"NQE.Start": {
+		{Method: "POST", Route: "/api/networks/{networkId}/nqe-executions"},
+	},
+	"NQE.StartOperation": {
+		{Method: "GET", Route: "/api/networks/{networkId}/nqe-executions/{executionKey}"},
+		{Method: "POST", Route: "/api/networks/{networkId}/nqe-executions"},
+	},
+	"NQE.Status": {
+		{Method: "GET", Route: "/api/networks/{networkId}/nqe-executions/{executionKey}"},
+	},
+	"NQERepository.AddDirectory": {
+		{Method: "POST", Route: "/api/users/current/nqe/changes"},
+	},
+	"NQERepository.AddQuery": {
+		{Method: "POST", Route: "/api/users/current/nqe/changes"},
+	},
+	"NQERepository.Commit": {
+		{Method: "POST", Route: "/api/nqe/repos/org/commits"},
+	},
+	"NQERepository.DeleteDirectory": {
+		{Method: "POST", Route: "/api/users/current/nqe/changes"},
+	},
+	"NQERepository.DeleteQuery": {
+		{Method: "POST", Route: "/api/users/current/nqe/changes"},
+	},
+	"NQERepository.GetQuery": {
+		{Method: "GET", Route: "/api/nqe/repos/org/commits/{commitId}/queries"},
+	},
+	"NQERepository.Head": {
+		{Method: "GET", Route: "/api/nqe/repos/org/commits/head"},
+	},
+	"NQERepository.ListHeadQueries": {
+		{Method: "GET", Route: "/api/nqe/repos/org/commits/head/queries"},
+	},
+	"Networks.CheckAccess": {
+		{Method: "GET", Route: "/api/networks"},
+	},
+	"Networks.Create": {
+		{Method: "POST", Route: "/api/networks"},
+	},
+	"Networks.CreateWorkspace": {
+		{Method: "POST", Route: "/api/networks/{networkId}/workspaces"},
+	},
+	"Networks.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}"},
+	},
+	"Networks.List": {
+		{Method: "GET", Route: "/api/networks"},
+	},
+	"Networks.Paths": {
+		{Method: "GET", Route: "/api/networks/{networkId}/paths"},
+	},
+	"Networks.Update": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}"},
+	},
+	"Organizations.Create": {
+		{Method: "POST", Route: "/api/admin/orgs"},
+	},
+	"Organizations.Current": {
+		{Method: "GET", Route: "/api/orgs/current"},
+	},
+	"Organizations.Delete": {
+		{Method: "DELETE", Route: "/api/admin/orgs/{orgId}"},
+	},
+	"Organizations.List": {
+		{Method: "GET", Route: "/api/admin/orgs"},
+	},
+	"Organizations.SetEnabled": {
+		{Method: "POST", Route: "/api/admin/orgs/{orgId}"},
+	},
+	"Organizations.Update": {
+		{Method: "PATCH", Route: "/api/admin/orgs/{orgId}"},
+	},
+	"Performance.DeviceMetricHistory": {
+		{Method: "POST", Route: "/api/networks/{networkId}/device-metrics-history"},
+	},
+	"Performance.DeviceMetricHistoryDocument": {
+		{Method: "POST", Route: "/api/networks/{networkId}/device-metrics-history"},
+	},
+	"Performance.DeviceMetrics": {
+		{Method: "GET", Route: "/api/networks/{networkId}/device-metrics"},
+	},
+	"Performance.DeviceMetricsDocument": {
+		{Method: "GET", Route: "/api/networks/{networkId}/device-metrics"},
+	},
+	"Performance.GenerateSynthetic": {
+		{Method: "POST", Route: "/api/internal/networks/{networkId}/performance"},
+	},
+	"Performance.InterfaceMetricHistory": {
+		{Method: "POST", Route: "/api/networks/{networkId}/interface-metrics-history"},
+	},
+	"Performance.InterfaceMetricHistoryDocument": {
+		{Method: "POST", Route: "/api/networks/{networkId}/interface-metrics-history"},
+	},
+	"Performance.InterfaceMetrics": {
+		{Method: "GET", Route: "/api/networks/{networkId}/interface-metrics"},
+	},
+	"Performance.InterfaceMetricsDocument": {
+		{Method: "GET", Route: "/api/networks/{networkId}/interface-metrics"},
+	},
+	"Performance.UnhealthyDevices": {
+		{Method: "GET", Route: "/api/networks/{networkId}/unhealthy-devices"},
+	},
+	"Performance.UnhealthyInterfaces": {
+		{Method: "POST", Route: "/api/networks/{networkId}/unhealthy-interfaces"},
+	},
+	"Performance.Upload": {
+		{Method: "POST", Route: "/api/networks/{networkId}/performance"},
+	},
+	"Performance.UploadWithIdentity": {
+		{Method: "POST", Route: "/api/networks/{networkId}/performance"},
+	},
+	"Predict.AddSecurityRule": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules"},
+	},
+	"Predict.Commit": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits"},
+	},
+	"Predict.CreateChangeSet": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets"},
+	},
+	"Predict.DeleteChangeSet": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{id}"},
+	},
+	"Predict.ListChangeSets": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets"},
+	},
+	"Predict.ListPredictedSnapshots": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/predicted-snapshots"},
+	},
+	"Predict.RemoveSecurityRule": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
+	},
+	"Predict.Run": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	},
+	"Predict.RunOperation": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots/{snapshotId}"},
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	},
+	"Predict.SecurityRulesDiff": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/security-rules-diff"},
+	},
+	"Predict.StageBGPAdvertisement": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
+	},
+	"Predict.StageCommands": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands"},
+	},
+	"Properties.ClearCurrent": {
+		{Method: "DELETE", Route: "/api/config/{property}"},
+	},
+	"Properties.ClearGlobal": {
+		{Method: "DELETE", Route: "/api/global-config/{property}"},
+	},
+	"Properties.ClearOrganization": {
+		{Method: "DELETE", Route: "/api/orgs/{orgId}/config/software_central"},
+	},
+	"Properties.Current": {
+		{Method: "GET", Route: "/api/config"},
+	},
+	"Properties.DescribeOrganization": {
+		{Method: "GET", Route: "/api/global-config"},
+		{Method: "GET", Route: "/api/orgs/{orgId}/config"},
+	},
+	"Properties.Global": {
+		{Method: "GET", Route: "/api/global-config"},
+	},
+	"Properties.Organization": {
+		{Method: "GET", Route: "/api/orgs/{orgId}/config"},
+	},
+	"Properties.SetCurrent": {
+		{Method: "PUT", Route: "/api/config/{property}"},
+	},
+	"Properties.SetGlobal": {
+		{Method: "PUT", Route: "/api/global-config/{property}"},
+	},
+	"Properties.SetOrganization": {
+		{Method: "PUT", Route: "/api/orgs/{orgId}/config/{property}"},
+	},
+	"Proxies.Create": {
+		{Method: "POST", Route: "/api/networks/{networkId}/proxies"},
+	},
+	"Proxies.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/proxies"},
+	},
+	"Proxies.Update": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/proxies/{proxyId}"},
+	},
+	"SAML.GetSettings": {
+		{Method: "GET", Route: "/api/auth/saml-settings"},
+	},
+	"SAML.PutSettings": {
+		{Method: "PUT", Route: "/api/auth/saml-settings"},
+	},
+	"Snapshots.Collect": {
+		{Method: "GET", Route: "/api/collector-tasks/{taskId}"},
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+		{Method: "POST", Route: "/api/collector-tasks"},
+	},
+	"Snapshots.Delete": {
+		{Method: "DELETE", Route: "/api/snapshots/{snapshotId}"},
+	},
+	"Snapshots.Download": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}"},
+	},
+	"Snapshots.ExportSubset": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
+	},
+	"Snapshots.ExportSubsetCompatibility": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
+	},
+	"Snapshots.Favorite": {
+		{Method: "PATCH", Route: "/api/snapshots/{snapshotId}"},
+	},
+	"Snapshots.ForCollectionTask": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots/{snapshotId}"},
+	},
+	"Snapshots.Invalidate": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
+	},
+	"Snapshots.LatestCollected": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.LatestProcessed": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.ListDocument": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.Operation": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots/{snapshotId}"},
+	},
+	"Snapshots.Reprocess": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
+	},
+	"Snapshots.ResolveID": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.SetNote": {
+		{Method: "PATCH", Route: "/api/snapshots/{snapshotId}"},
+	},
+	"Snapshots.StartUploadOperation": {
+		{Method: "POST", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.Upload": {
+		{Method: "POST", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.UploadMergeCompatibility": {
+		{Method: "POST", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"SoftwareCentral.DeploymentArtifactURL": {
+		{Method: "GET", Route: "/api/deployment-artifacts/{artifactId}"},
+	},
+	"SoftwareCentral.DownloadDeploymentArtifact": {
+		{Method: "GET", Route: "/api/deployment-artifacts/{artifactId}"},
+	},
+	"SoftwareCentral.ListDeploymentArtifacts": {
+		{Method: "GET", Route: "/api/deployment-artifacts"},
+	},
+	"SoftwareCentral.ListForwardApplianceOVAs": {
+		{Method: "GET", Route: "/api/deployment-artifacts"},
+	},
+	"SyntheticNodes.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
+		{Method: "DELETE", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
+	},
+	"SyntheticNodes.DeleteIntranetNode": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
+	},
+	"SyntheticNodes.DeleteL3VPN": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
+	},
+	"SyntheticNodes.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/internet-node"},
+		{Method: "GET", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
+		{Method: "GET", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
+	},
+	"SyntheticNodes.GetInternetNode": {
+		{Method: "GET", Route: "/api/networks/{networkId}/internet-node"},
+	},
+	"SyntheticNodes.GetIntranetNode": {
+		{Method: "GET", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
+	},
+	"SyntheticNodes.GetL3VPN": {
+		{Method: "GET", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
+	},
+	"SyntheticNodes.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/intranet-nodes"},
+		{Method: "GET", Route: "/api/networks/{networkId}/l3-vpns"},
+	},
+	"SyntheticNodes.ListIntranetNodes": {
+		{Method: "GET", Route: "/api/networks/{networkId}/intranet-nodes"},
+	},
+	"SyntheticNodes.ListL3VPNs": {
+		{Method: "GET", Route: "/api/networks/{networkId}/l3-vpns"},
+	},
+	"SyntheticNodes.Put": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/internet-node"},
+		{Method: "PUT", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
+		{Method: "PUT", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
+	},
+	"SyntheticNodes.PutInternetNode": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/internet-node"},
+	},
+	"SyntheticNodes.PutIntranetNode": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
+	},
+	"SyntheticNodes.PutL3VPN": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
+	},
+	"Topology.EditOverrides": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}/topology/overrides"},
+	},
+	"Topology.List": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/topology"},
+	},
+	"Topology.Overrides": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/topology/overrides"},
+	},
+	"TrustedCertificates.Add": {
+		{Method: "POST", Route: "/api/trusted-certificates"},
+	},
+	"TrustedCertificates.Apply": {
+		{Method: "POST", Route: "/api/trusted-certificates"},
+	},
+	"TrustedCertificates.ApplyOperations": {
+		{Method: "GET", Route: "/api/collector-tasks/{taskId}"},
+		{Method: "POST", Route: "/api/trusted-certificates"},
+	},
+	"TrustedCertificates.Delete": {
+		{Method: "DELETE", Route: "/api/trusted-certificates/{name}"},
+	},
+	"TrustedCertificates.List": {
+		{Method: "GET", Route: "/api/trusted-certificates"},
+	},
+	"Users.CreateToken": {
+		{Method: "POST", Route: "/api/users/current/tokens"},
+	},
+	"Users.Current": {
+		{Method: "GET", Route: "/api/users/current"},
+	},
+	"Users.DeleteToken": {
+		{Method: "DELETE", Route: "/api/users/current/tokens/{tokenName}"},
+	},
+	"Users.ListTokens": {
+		{Method: "GET", Route: "/api/users/current/tokens"},
+	},
+	"Users.ResetPassword": {
+		{Method: "POST", Route: "/api/users/current/password"},
+	},
+	"Users.Roles": {
+		{Method: "GET", Route: "/api/users/{userId}/roles"},
+	},
+	"Version.Get": {
+		{Method: "GET", Route: "/api/version"},
+	},
+	"Version.Reachable": {
+		{Method: "GET", Route: "/api/version"},
+	},
+	"Webhooks.Create": {
+		{Method: "POST", Route: "/api/webhooks"},
+	},
+	"Webhooks.Delete": {
+		{Method: "DELETE", Route: "/api/webhooks/{webhookName}"},
+	},
+	"Webhooks.List": {
+		{Method: "GET", Route: "/api/webhooks"},
+	},
+	"Webhooks.TestNew": {
+		{Method: "POST", Route: "/api/webhooks"},
+	},
+	"Webhooks.Update": {
+		{Method: "PATCH", Route: "/api/webhooks/{name}"},
+	},
 }
