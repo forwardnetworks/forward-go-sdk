@@ -96,7 +96,7 @@ func TestCoverageManifest(t *testing.T) {
 
 	// Positive controls: prove the reflection check finds established methods
 	// in addition to the newly added coverage families.
-	for _, symbol := range []string{"Checks.List", "Predict.StageBGPAdvertisement", "Collectors.Register", "Browser.LoginAPI"} {
+	for _, symbol := range []string{"Checks.List", "Predict.StageBGPAdvertisement", "Collectors.Register", "Browser.LoginLegacy"} {
 		if _, ok := seenSymbols[symbol]; !ok {
 			t.Errorf("positive-control SDK symbol %s is absent from the manifest", symbol)
 		}

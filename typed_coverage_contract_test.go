@@ -93,16 +93,19 @@ func TestBrowserSessionAndUnauthenticatedReachability(t *testing.T) {
 				t.Error("CSRF request carried authorization")
 			}
 			_, _ = io.WriteString(w, `{"headerName":"X-CSRF-TOKEN","parameterName":"_csrf","token":"csrf-value"}`)
-		case "/api/auth/login":
-			if got := r.Header.Get("X-CSRF-TOKEN"); got != "csrf-value" {
-				t.Errorf("CSRF header = %q", got)
+		case "/login":
+			if r.Method != http.MethodPost {
+				http.NotFound(w, r)
+				return
 			}
-			var input BrowserLoginRequest
-			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			if err := r.ParseForm(); err != nil {
 				t.Error(err)
 			}
-			if input.Username != "alice" || input.Password != "password" {
-				t.Errorf("login = %#v", input)
+			if got := r.PostForm.Get("_csrf"); got != "csrf-value" {
+				t.Errorf("CSRF form field = %q", got)
+			}
+			if r.PostForm.Get("username") != "alice" || r.PostForm.Get("password") != "password" {
+				t.Errorf("login = %v", r.PostForm)
 			}
 			http.SetCookie(w, &http.Cookie{Name: "SESSION", Value: "session-value", Path: "/"})
 			_, _ = io.WriteString(w, `{"location":"/"}`)
@@ -131,7 +134,7 @@ func TestBrowserSessionAndUnauthenticatedReachability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	login, _, err := browser.Browser.LoginAPI(context.Background(), BrowserLoginRequest{}, csrf)
+	login, _, err := browser.Browser.LoginLegacy(context.Background(), BrowserLoginRequest{}, *csrf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +159,14 @@ func TestBrowserSessionAndUnauthenticatedReachability(t *testing.T) {
 	}
 }
 
-func TestBackupRootRoutesAndServicePrincipal(t *testing.T) {
+// TestBackupAPIRoutesAndServicePrincipal: Forward's CBR routes live under the
+// /api servlet like every other controller. ClusterBackupRestoreController
+// maps /backups and /backup-settings with no servlet of its own, and the
+// DispatcherServlet is registered at /api/* (ServletInitializer, both primary
+// 15398425a69 and stable 67e89c87124). The root paths this test used to
+// assert were never served; the old fake answered them, so the test passed
+// while every real call missed.
+func TestBackupAPIRoutesAndServicePrincipal(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
@@ -164,19 +174,28 @@ func TestBackupRootRoutesAndServicePrincipal(t *testing.T) {
 			t.Errorf("backup auth = %q/%q/%v", username, password, ok)
 		}
 		switch r.Method + " " + r.URL.Path {
-		case "GET /backup-settings":
+		case "GET /api/backup-settings":
 			if r.URL.Query().Get("storageType") != "S3" {
 				t.Errorf("settings query = %s", r.URL.RawQuery)
 			}
 			_, _ = io.WriteString(w, `{"enabled":true,"backupTime":"01:00"}`)
-		case "POST /backup-settings":
+		case "POST /api/backup-settings":
 			if r.URL.Query().Get("storageType") != "S3" || r.URL.Query().Get("action") != "chown" {
 				t.Errorf("ownership query = %s", r.URL.RawQuery)
 			}
 			w.WriteHeader(http.StatusNoContent)
-		case "GET /backup-settings/storage":
+		case "GET /api/backup-settings/storage":
 			w.WriteHeader(http.StatusNoContent)
-		case "GET /backups":
+		case "PATCH /api/backup-settings":
+			_, _ = io.WriteString(w, `{"enabled":true}`)
+		case "PATCH /api/backup-settings/storage":
+			_, _ = io.WriteString(w, `{"bucketName":"bucket"}`)
+		case "POST /api/backups":
+			if r.URL.Query().Get("storageType") != "S3" || r.URL.Query().Get("name") != "sf-primary" {
+				t.Errorf("trigger query = %s", r.URL.RawQuery)
+			}
+			w.WriteHeader(http.StatusAccepted)
+		case "GET /api/backups":
 			if r.URL.Query().Get("view") != "lastBackupResult" {
 				t.Errorf("last query = %s", r.URL.RawQuery)
 			}
@@ -204,6 +223,15 @@ func TestBackupRootRoutesAndServicePrincipal(t *testing.T) {
 	last, _, err := client.Backups.Last(context.Background(), StorageTypeS3, BackupTriggerManual)
 	if err != nil || last != nil {
 		t.Fatalf("empty last=%#v err=%v", last, err)
+	}
+	if _, err := client.Backups.Trigger(context.Background(), BackupTriggerRequest{StorageType: StorageTypeS3, Name: "sf-primary"}); err != nil {
+		t.Fatalf("trigger: %v", err)
+	}
+	if _, _, err := client.Backups.UpdateSettings(context.Background(), StorageTypeS3, BackupSettingsPatch{}); err != nil {
+		t.Fatalf("update settings: %v", err)
+	}
+	if _, _, err := client.Backups.UpdateS3Storage(context.Background(), S3StorageSettingsPatch{}); err != nil {
+		t.Fatalf("update s3 storage: %v", err)
 	}
 
 	userClient, err := NewClient(Config{BaseURL: server.URL, Username: "user", Password: "secret"})

@@ -9,8 +9,13 @@ import (
 	"strings"
 )
 
-// BackupsService implements Forward CBR endpoints. These routes intentionally
-// live at the appliance root rather than beneath /api.
+// BackupsService implements Forward CBR endpoints
+// (ClusterBackupRestoreController). They are ordinary /api routes: the
+// controller has no servlet of its own and Forward's DispatcherServlet is
+// registered at /api/*. This service used to send them to the appliance root
+// (/backup-settings, /backups), which Forward never served -- verified against
+// ServletInitializer.getServletMappings at primary 15398425a69 and stable
+// 67e89c87124.
 type BackupsService service
 
 type StorageType string
@@ -79,7 +84,7 @@ func (s *BackupsService) GetSettings(ctx context.Context, storageType StorageTyp
 	if err := s.requireService(); err != nil {
 		return nil, nil, err
 	}
-	path := "/backup-settings?" + storageTypeQuery(storageType).Encode()
+	path := "/api/backup-settings?" + storageTypeQuery(storageType).Encode()
 	req, err := s.client.newScopedRequest(ctx, http.MethodGet, path, nil, pathScopeBackup, nil)
 	if err != nil {
 		return nil, nil, err
@@ -94,7 +99,7 @@ func (s *BackupsService) UpdateSettings(ctx context.Context, storageType Storage
 	if err := s.requireService(); err != nil {
 		return nil, nil, err
 	}
-	path := "/backup-settings?" + storageTypeQuery(storageType).Encode()
+	path := "/api/backup-settings?" + storageTypeQuery(storageType).Encode()
 	req, err := s.client.newScopedJSONRequest(ctx, http.MethodPatch, path, patch, pathScopeBackup, nil)
 	if err != nil {
 		return nil, nil, err
@@ -109,7 +114,7 @@ func (s *BackupsService) GetS3Storage(ctx context.Context) (*S3StorageSettings, 
 	if err := s.requireService(); err != nil {
 		return nil, nil, err
 	}
-	req, err := s.client.newScopedRequest(ctx, http.MethodGet, "/backup-settings/storage?storageType=S3", nil, pathScopeBackup, nil)
+	req, err := s.client.newScopedRequest(ctx, http.MethodGet, "/api/backup-settings/storage?storageType=S3", nil, pathScopeBackup, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,7 +131,7 @@ func (s *BackupsService) UpdateS3Storage(ctx context.Context, patch S3StorageSet
 	if err := s.requireService(); err != nil {
 		return nil, nil, err
 	}
-	req, err := s.client.newScopedJSONRequest(ctx, http.MethodPatch, "/backup-settings/storage?storageType=S3", patch, pathScopeBackup, nil)
+	req, err := s.client.newScopedJSONRequest(ctx, http.MethodPatch, "/api/backup-settings/storage?storageType=S3", patch, pathScopeBackup, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -140,7 +145,7 @@ func (s *BackupsService) SetS3BucketOwnership(ctx context.Context, settings S3St
 	if err := s.requireService(); err != nil {
 		return nil, err
 	}
-	req, err := s.client.newScopedJSONRequest(ctx, http.MethodPost, "/backup-settings?storageType=S3&action=chown", settings, pathScopeBackup, nil)
+	req, err := s.client.newScopedJSONRequest(ctx, http.MethodPost, "/api/backup-settings?storageType=S3&action=chown", settings, pathScopeBackup, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +162,7 @@ func (s *BackupsService) Trigger(ctx context.Context, input BackupTriggerRequest
 	if name := strings.TrimSpace(input.Name); name != "" {
 		query.Set("name", name)
 	}
-	req, err := s.client.newScopedRequest(ctx, http.MethodPost, "/backups?"+query.Encode(), nil, pathScopeBackup, nil)
+	req, err := s.client.newScopedRequest(ctx, http.MethodPost, "/api/backups?"+query.Encode(), nil, pathScopeBackup, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +177,7 @@ func (s *BackupsService) Last(ctx context.Context, storageType StorageType, trig
 	query := storageTypeQuery(storageType)
 	query.Set("view", "lastBackupResult")
 	query.Set("triggerType", strings.TrimSpace(string(triggerType)))
-	req, err := s.client.newScopedRequest(ctx, http.MethodGet, "/backups?"+query.Encode(), nil, pathScopeBackup, nil)
+	req, err := s.client.newScopedRequest(ctx, http.MethodGet, "/api/backups?"+query.Encode(), nil, pathScopeBackup, nil)
 	if err != nil {
 		return nil, nil, err
 	}

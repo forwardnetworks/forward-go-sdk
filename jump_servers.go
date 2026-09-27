@@ -15,13 +15,27 @@ type JumpServer struct {
 	Port     int        `json:"port,omitempty"`
 	Username string     `json:"username,omitempty"`
 }
+
+// JumpServerRequest is a key-authenticated jump server, in the shape of
+// Forward's NewJumpServer (api/schemas/jump-servers/NewJumpServer.yaml):
+// sshKey is the private key, sshCert the optional user certificate, and port
+// defaults to 22 server-side when omitted.
 type JumpServerRequest struct {
-	Host        string `json:"host"`
-	Port        int    `json:"port,omitempty"`
-	Username    string `json:"username"`
-	PrivateKey  string `json:"privateKey,omitempty"`
-	Certificate string `json:"certificate,omitempty"`
+	Host     string `json:"host"`
+	Port     int    `json:"port,omitempty"`
+	Username string `json:"username"`
+	SSHKey   string `json:"sshKey"`
+	SSHCert  string `json:"sshCert,omitempty"`
 }
+
+// jumpServerKeyWire is what Create sends. NewJumpServer requires
+// supportsPortForwarding to be true whenever sshKey is set; Forward defaults
+// it to true, but the key lane states it rather than depend on that default.
+type jumpServerKeyWire struct {
+	JumpServerRequest
+	SupportsPortForwarding bool `json:"supportsPortForwarding"`
+}
+
 type LegacyJumpServerRequest struct {
 	Host                   string `json:"host"`
 	Username               string `json:"username"`
@@ -70,9 +84,29 @@ func (s *JumpServersService) CreateWithPassword(ctx context.Context, networkID s
 	return s.create(ctx, networkID, "/jumpServers", input, "JumpServers.CreateWithPassword")
 }
 
+// Create adds a key-authenticated jump server
+// (POST /api/networks/{networkId}/jumpServers).
+//
+// It used to POST /jump-servers with privateKey/certificate fields. Forward
+// has no such route on any build this SDK targets -- NetworkSetupController
+// maps only /jumpServers -- so every call 404'd.
 func (s *JumpServersService) Create(ctx context.Context, networkID string, input JumpServerRequest) (*JumpServer, *Response, error) {
-	return s.create(ctx, networkID, "/jump-servers", input, "JumpServers.Create")
+	input.Host = strings.TrimSpace(input.Host)
+	input.Username = strings.TrimSpace(input.Username)
+	input.SSHKey = strings.TrimSpace(input.SSHKey)
+	input.SSHCert = strings.TrimSpace(input.SSHCert)
+	for _, value := range []string{input.Host, input.Username, input.SSHKey} {
+		if err := validateJumpValue(value); err != nil {
+			return nil, nil, err
+		}
+	}
+	return s.create(ctx, networkID, "/jumpServers", jumpServerKeyWire{JumpServerRequest: input, SupportsPortForwarding: true}, "JumpServers.Create")
 }
+
+// CreateLegacy posts a caller-built legacy body to the same route as Create.
+//
+// Deprecated: use Create, which targets the same route with a validated
+// NewJumpServer body.
 func (s *JumpServersService) CreateLegacy(ctx context.Context, networkID string, input LegacyJumpServerRequest) (*JumpServer, *Response, error) {
 	return s.create(ctx, networkID, "/jumpServers", input, "JumpServers.CreateLegacy")
 }

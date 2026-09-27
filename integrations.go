@@ -202,9 +202,6 @@ func (s *IntegrationsService) DeleteServiceNow(ctx context.Context) (*Response, 
 func (s *IntegrationsService) PatchServiceNow(ctx context.Context, input ServiceNowIntegrationRequest) (*Response, error) {
 	return s.writeServiceNow(ctx, http.MethodPatch, input, "Integrations.PatchServiceNow")
 }
-func (s *IntegrationsService) PutServiceNow(ctx context.Context, input ServiceNowIntegrationRequest) (*Response, error) {
-	return s.writeServiceNow(ctx, http.MethodPut, input, "Integrations.PutServiceNow")
-}
 func (s *IntegrationsService) writeServiceNow(ctx context.Context, method string, input ServiceNowIntegrationRequest, operation string) (*Response, error) {
 	req, err := s.client.newJSONRequest(ctx, method, "/api/integrations/servicenow", input)
 	if err != nil {

@@ -2,9 +2,9 @@
   "schema_version": 1,
   "consumer": "skyforge/components/server",
   "consumer_go_sha256": "e2e42a61f806617b44b957ec74e4e3959580e4067b616c3be23f75ca512a9fd4",
-  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.",
+  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.; 2026-09-27: dead routes removed after checking every route against the Spring mappings at primary 15398425a69 and stable 67e89c87124 -- JumpServers.Create onto /jumpServers (NewJumpServer body), Backups onto /api/backup-settings + /api/backups, and deleted: Collections.List/Progress, Collectors.Get, Collectors.StartLegacy, Browser.LoginAPI/PublicCSRFLegacy, Integrations.PutServiceNow.",
   "semantic_call_sites": 234,
-  "distinct_method_routes": 180,
+  "distinct_method_routes": 172,
   "endpoints": [
     {
       "method": "GET",
@@ -128,14 +128,6 @@
       "coverage": "COVERED"
     },
     {
-      "method": "POST",
-      "route": "/api/auth/login",
-      "symbols": [
-        "Browser.LoginAPI"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "GET",
       "route": "/api/auth/saml-settings",
       "symbols": [
@@ -198,14 +190,6 @@
       "route": "/api/collectors/{collectorIdOrName}",
       "symbols": [
         "Collectors.Delete"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/api/collectors/{collectorIdOrName}",
-      "symbols": [
-        "Collectors.Get"
       ],
       "coverage": "COVERED"
     },
@@ -419,14 +403,6 @@
       "coverage": "COVERED"
     },
     {
-      "method": "PUT",
-      "route": "/api/integrations/servicenow",
-      "symbols": [
-        "Integrations.PutServiceNow"
-      ],
-      "coverage": "COVERED"
-    },
-    {
       "method": "POST",
       "route": "/api/integrations/servicenow-cmdb",
       "symbols": [
@@ -594,22 +570,6 @@
       "route": "/api/networks/{networkId}/cloudAccounts/{accountName}/test",
       "symbols": [
         "CloudAccounts.Test"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/api/networks/{networkId}/collectionProgress",
-      "symbols": [
-        "Collections.Progress"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/api/networks/{networkId}/collections",
-      "symbols": [
-        "Collections.List"
       ],
       "coverage": "COVERED"
     },
@@ -845,16 +805,9 @@
     },
     {
       "method": "POST",
-      "route": "/api/networks/{networkId}/jump-servers",
-      "symbols": [
-        "JumpServers.Create"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
       "route": "/api/networks/{networkId}/jumpServers",
       "symbols": [
+        "JumpServers.Create",
         "JumpServers.CreateLegacy"
       ],
       "coverage": "COVERED"
@@ -1027,14 +980,6 @@
       "route": "/api/networks/{networkId}/snmpCredentials",
       "symbols": [
         "Credentials.CreateSNMP"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "POST",
-      "route": "/api/networks/{networkId}/startcollection",
-      "symbols": [
-        "Collectors.StartLegacy"
       ],
       "coverage": "COVERED"
     },
@@ -1361,7 +1306,7 @@
     },
     {
       "method": "GET",
-      "route": "/backup-settings",
+      "route": "/api/backup-settings",
       "symbols": [
         "Backups.GetSettings"
       ],
@@ -1369,7 +1314,7 @@
     },
     {
       "method": "PATCH",
-      "route": "/backup-settings",
+      "route": "/api/backup-settings",
       "symbols": [
         "Backups.UpdateSettings"
       ],
@@ -1377,7 +1322,7 @@
     },
     {
       "method": "POST",
-      "route": "/backup-settings",
+      "route": "/api/backup-settings",
       "symbols": [
         "Backups.SetS3BucketOwnership"
       ],
@@ -1385,7 +1330,7 @@
     },
     {
       "method": "GET",
-      "route": "/backup-settings/storage",
+      "route": "/api/backup-settings/storage",
       "symbols": [
         "Backups.GetS3Storage"
       ],
@@ -1393,7 +1338,7 @@
     },
     {
       "method": "PATCH",
-      "route": "/backup-settings/storage",
+      "route": "/api/backup-settings/storage",
       "symbols": [
         "Backups.UpdateS3Storage"
       ],
@@ -1401,7 +1346,7 @@
     },
     {
       "method": "GET",
-      "route": "/backups",
+      "route": "/api/backups",
       "symbols": [
         "Backups.Last"
       ],
@@ -1409,7 +1354,7 @@
     },
     {
       "method": "POST",
-      "route": "/backups",
+      "route": "/api/backups",
       "symbols": [
         "Backups.Trigger"
       ],
@@ -1428,14 +1373,6 @@
       "route": "/login",
       "symbols": [
         "Browser.LoginLegacy"
-      ],
-      "coverage": "COVERED"
-    },
-    {
-      "method": "GET",
-      "route": "/public/csrf",
-      "symbols": [
-        "Browser.PublicCSRFLegacy"
       ],
       "coverage": "COVERED"
     },

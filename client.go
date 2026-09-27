@@ -534,7 +534,7 @@ func (c *Client) resolveScoped(path string, scope pathScope) (*url.URL, error) {
 	allowed := strings.HasPrefix(rel.Path, "/api/") || rel.Path == "/api"
 	switch scope {
 	case pathScopeBackup:
-		allowed = rel.Path == "/backup-settings" || rel.Path == "/backup-settings/storage" || rel.Path == "/backups"
+		allowed = rel.Path == "/api/backup-settings" || rel.Path == "/api/backup-settings/storage" || rel.Path == "/api/backups"
 	case pathScopeBrowser:
 		allowed = allowed || rel.Path == "/login" || rel.Path == "/public/csrf"
 	}

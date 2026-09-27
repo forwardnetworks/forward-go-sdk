@@ -99,21 +99,6 @@ func (s *CollectorsService) List(ctx context.Context) ([]Collector, *Response, e
 	return result.Items, response, err
 }
 
-func (s *CollectorsService) Get(ctx context.Context, collectorIDOrName string) (*Collector, *Response, error) {
-	value := strings.TrimSpace(collectorIDOrName)
-	if value == "" {
-		return nil, nil, errors.New("forward: collector ID or name is required")
-	}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/collectors/"+url.PathEscape(value), nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	req = markOperation(req, "Collectors.Get")
-	out := new(Collector)
-	response, err := s.client.doRequired(req, out)
-	return out, response, err
-}
-
 func (s *CollectorsService) Register(ctx context.Context, input CollectorRegistrationRequest) (*CollectorRegistration, *Response, error) {
 	input.CollectorName = strings.TrimSpace(input.CollectorName)
 	if input.CollectorName == "" {
@@ -185,33 +170,6 @@ func (s *CollectorsService) Attach(ctx context.Context, networkID string, input 
 	}
 	req = markOperation(req, "Collectors.Attach")
 	return s.client.Do(req, nil)
-}
-
-// StartLegacy starts the legacy network collection route. A typed conflict
-// for an already-running collection is returned as success, matching the
-// call sites that treat the operation as idempotent.
-//
-// Deprecated: POST /networks/{id}/startcollection is retiring in Forward
-// 26.10. Use CollectorTasks.Start (POST /api/collector-tasks), which returns
-// a durable task ID and classifies the same conflict as
-// ErrCollectionAlreadyInProgress via errors.Is. No caller in this repo uses
-// StartLegacy any more (retargeted 2026-09-23); kept only so a caller pinned
-// to an older SDK build does not break.
-func (s *CollectorsService) StartLegacy(ctx context.Context, networkID string) (*Response, error) {
-	path, err := s.networkPath(networkID, "/startcollection")
-	if err != nil {
-		return nil, err
-	}
-	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil)
-	if err != nil {
-		return nil, err
-	}
-	req = markOperation(req, "Collectors.StartLegacy")
-	response, err := s.client.Do(req, nil)
-	if errors.Is(err, ErrCollectionAlreadyInProgress) {
-		return response, nil
-	}
-	return response, err
 }
 
 func (s *CollectorsService) SetPerformanceCollection(ctx context.Context, networkID string, settings PerformanceCollectionSettings) (*Response, error) {

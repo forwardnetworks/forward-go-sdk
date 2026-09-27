@@ -1,8 +1,8 @@
 # Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030..
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.; 2026-09-27: dead routes removed after checking every route against the Spring mappings at primary 15398425a69 and stable 67e89c87124 -- JumpServers.Create onto /jumpServers (NewJumpServer body), Backups onto /api/backup-settings + /api/backups, and deleted: Collections.List/Progress, Collectors.Get, Collectors.StartLegacy, Browser.LoginAPI/PublicCSRFLegacy, Integrations.PutServiceNow..
 
-Current inventory: **234 semantic call sites**, **180 distinct normalized method+route pairs**, **180 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **234 semantic call sites**, **172 distinct normalized method+route pairs**, **172 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when the consumer adds, removes, or changes a Forward wire call. Run `go run ./cmd/coverage-audit -audit /path/to/consumer/api-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -33,9 +33,11 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/ai-chats/{chatId}` | `AI.GetChat` | COVERED |
 | GET | `/api/ai-chats/{chatId}/messages` | `AI.ListMessages` | COVERED |
 | GET | `/api/auth/saml-settings` | `SAML.GetSettings` | COVERED |
+| GET | `/api/backup-settings` | `Backups.GetSettings` | COVERED |
+| GET | `/api/backup-settings/storage` | `Backups.GetS3Storage` | COVERED |
+| GET | `/api/backups` | `Backups.Last` | COVERED |
 | GET | `/api/collector-tasks` | `CollectorTasks.List`, `CollectorTasks.Progress` | COVERED |
 | GET | `/api/collectors` | `Collectors.List` | COVERED |
-| GET | `/api/collectors/{collectorIdOrName}` | `Collectors.Get` | COVERED |
 | GET | `/api/custom-banners` | `Banners.List` | COVERED |
 | GET | `/api/cve-index` | `CVEIndex.Download`, `CVEIndex.Metadata` | COVERED |
 | GET | `/api/deployment-artifacts` | `SoftwareCentral.ListDeploymentArtifacts` | COVERED |
@@ -51,8 +53,6 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/networks/{networkId}/change-sets/{changeSetId}/predicted-snapshots` | `Predict.ListPredictedSnapshots` | COVERED |
 | GET | `/api/networks/{networkId}/classic-devices` | `ClassicDevices.List`, `ClassicDevices.ListTestStatuses` | COVERED |
 | GET | `/api/networks/{networkId}/cloudAccounts` | `CloudAccounts.List` | COVERED |
-| GET | `/api/networks/{networkId}/collectionProgress` | `Collections.Progress` | COVERED |
-| GET | `/api/networks/{networkId}/collections` | `Collections.List` | COVERED |
 | GET | `/api/networks/{networkId}/collector` | `Collectors.Attachment` | COVERED |
 | GET | `/api/networks/{networkId}/controller-managed-setups` | `ControllerManagedSetups.List` | COVERED |
 | GET | `/api/networks/{networkId}/device-metrics` | `Performance.DeviceMetrics`, `Performance.DeviceMetricsDocument` | COVERED |
@@ -92,11 +92,9 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/users/{userId}/roles` | `Users.Roles` | COVERED |
 | GET | `/api/version` | `Version.Get`, `Version.Reachable` | COVERED |
 | GET | `/api/webhooks` | `Webhooks.List` | COVERED |
-| GET | `/backup-settings` | `Backups.GetSettings` | COVERED |
-| GET | `/backup-settings/storage` | `Backups.GetS3Storage` | COVERED |
-| GET | `/backups` | `Backups.Last` | COVERED |
 | GET | `/login` | `Browser.LoginPageCSRF` | COVERED |
-| GET | `/public/csrf` | `Browser.PublicCSRFLegacy` | COVERED |
+| PATCH | `/api/backup-settings` | `Backups.UpdateSettings` | COVERED |
+| PATCH | `/api/backup-settings/storage` | `Backups.UpdateS3Storage` | COVERED |
 | PATCH | `/api/collection-settings` | `Collectors.PatchOrganizationSettings` | COVERED |
 | PATCH | `/api/collectors/{collectorId}/collection-settings` | `Collectors.PatchSettings` | COVERED |
 | PATCH | `/api/device-access-labels/{labelId}` | `AccessControl.UpdateDeviceAccessLabel` | COVERED |
@@ -113,14 +111,13 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | PATCH | `/api/snapshots/{snapshotId}` | `Snapshots.Favorite` | COVERED |
 | PATCH | `/api/users/{userId}` | `Admin.PatchUser` | COVERED |
 | PATCH | `/api/webhooks/{name}` | `Webhooks.Update` | COVERED |
-| PATCH | `/backup-settings` | `Backups.UpdateSettings` | COVERED |
-| PATCH | `/backup-settings/storage` | `Backups.UpdateS3Storage` | COVERED |
 | POST | `/api/access-control-groups` | `AccessControl.CreateGroup` | COVERED |
 | POST | `/api/access-control-groups/{groupId}` | `AccessControl.UpdateGroup` | COVERED |
 | POST | `/api/admin/orgs` | `Organizations.Create` | COVERED |
 | POST | `/api/ai-chats` | `AI.StartChat` | COVERED |
 | POST | `/api/ai-chats/{chatId}/messages` | `AI.AddMessage` | COVERED |
-| POST | `/api/auth/login` | `Browser.LoginAPI` | COVERED |
+| POST | `/api/backup-settings` | `Backups.SetS3BucketOwnership` | COVERED |
+| POST | `/api/backups` | `Backups.Trigger` | COVERED |
 | POST | `/api/collector-tasks` | `CollectorTasks.Start`, `Compatibility.StartCollectorTask` | COVERED |
 | POST | `/api/collectors` | `Collectors.Register` | COVERED |
 | POST | `/api/custom-banners` | `Banners.Create` | COVERED |
@@ -147,8 +144,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/networks/{networkId}/endpoints` | `Endpoints.AddBatch` | COVERED |
 | POST | `/api/networks/{networkId}/http-credentials` | `Credentials.CreateHTTP` | COVERED |
 | POST | `/api/networks/{networkId}/interface-metrics-history` | `Performance.InterfaceMetricHistory`, `Performance.InterfaceMetricHistoryDocument` | COVERED |
-| POST | `/api/networks/{networkId}/jump-servers` | `JumpServers.Create` | COVERED |
-| POST | `/api/networks/{networkId}/jumpServers` | `JumpServers.CreateLegacy` | COVERED |
+| POST | `/api/networks/{networkId}/jumpServers` | `JumpServers.Create`, `JumpServers.CreateLegacy` | COVERED |
 | POST | `/api/networks/{networkId}/locations` | `Locations.Create` | COVERED |
 | POST | `/api/networks/{networkId}/locations/{locationId}/clusters` | `Locations.CreateCluster` | COVERED |
 | POST | `/api/networks/{networkId}/performance` | `Performance.UploadWithIdentity` | COVERED |
@@ -156,7 +152,6 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/networks/{networkId}/rapid7-sources` | `Integrations.CreateRapid7` | COVERED |
 | POST | `/api/networks/{networkId}/snapshots` | `Snapshots.Upload`, `Snapshots.UploadMergeCompatibility` | COVERED |
 | POST | `/api/networks/{networkId}/snmpCredentials` | `Credentials.CreateSNMP` | COVERED |
-| POST | `/api/networks/{networkId}/startcollection` | `Collectors.StartLegacy` | COVERED |
 | POST | `/api/networks/{networkId}/unhealthy-interfaces` | `Performance.UnhealthyInterfaces` | COVERED |
 | POST | `/api/networks/{networkId}/workspaces` | `Networks.CreateWorkspace` | COVERED |
 | POST | `/api/nqe` | `NQE.Run` | COVERED |
@@ -172,15 +167,12 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/users/{userId}/roles/org/ADMIN` | `Admin.GrantOrganizationAdmin` | COVERED |
 | POST | `/api/users/{userId}/supported-orgs` | `Admin.AddSupportedOrganization` | COVERED |
 | POST | `/api/webhooks` | `Webhooks.Create` | COVERED |
-| POST | `/backup-settings` | `Backups.SetS3BucketOwnership` | COVERED |
-| POST | `/backups` | `Backups.Trigger` | COVERED |
 | POST | `/login` | `Browser.LoginLegacy` | COVERED |
 | PUT | `/api/auth/saml-settings` | `SAML.PutSettings` | COVERED |
 | PUT | `/api/custom-banners/{bannerId}` | `Banners.Replace` | COVERED |
 | PUT | `/api/cve-index` | `CVEIndex.Put` | COVERED |
 | PUT | `/api/deployment-config/{property}` | `Configuration.SetDeployment` | COVERED |
 | PUT | `/api/global-config/{property}` | `Properties.SetGlobal` | COVERED |
-| PUT | `/api/integrations/servicenow` | `Integrations.PutServiceNow` | COVERED |
 | PUT | `/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands` | `Predict.StageCommands` | COVERED |
 | PUT | `/api/networks/{networkId}/collector` | `Collectors.Attach` | COVERED |
 | PUT | `/api/networks/{networkId}/internet-node` | `SyntheticNodes.PutInternetNode` | COVERED |

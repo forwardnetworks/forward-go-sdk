@@ -71,10 +71,6 @@ func (s *BrowserService) PublicCSRFAPI(ctx context.Context) (*BrowserCSRFToken, 
 	return s.publicCSRF(ctx, "/api/public/csrf", "Browser.PublicCSRFAPI")
 }
 
-func (s *BrowserService) PublicCSRFLegacy(ctx context.Context) (*BrowserCSRFToken, *Response, error) {
-	return s.publicCSRF(ctx, "/public/csrf", "Browser.PublicCSRFLegacy")
-}
-
 func (s *BrowserService) publicCSRF(ctx context.Context, path, operation string) (*BrowserCSRFToken, *Response, error) {
 	if err := s.requireBrowserOrNone(); err != nil {
 		return nil, nil, err
@@ -116,30 +112,6 @@ func (s *BrowserService) LoginPageCSRF(ctx context.Context) (*BrowserCSRFToken, 
 	return token, response, err
 }
 
-func (s *BrowserService) LoginAPI(ctx context.Context, input BrowserLoginRequest, csrf *BrowserCSRFToken) (*BrowserLoginResult, *Response, error) {
-	if err := s.requireBrowser(); err != nil {
-		return nil, nil, err
-	}
-	input, err := s.loginInput(input)
-	if err != nil {
-		return nil, nil, err
-	}
-	req, err := s.client.newScopedJSONRequest(ctx, http.MethodPost, "/api/auth/login", input, pathScopeBrowser, &requestAuth{mode: AuthModeBrowser})
-	if err != nil {
-		return nil, nil, err
-	}
-	if csrf != nil && strings.TrimSpace(csrf.Token) != "" {
-		header := strings.TrimSpace(csrf.HeaderName)
-		if header == "" {
-			header = "X-CSRF-TOKEN"
-		}
-		req.Header.Set(header, strings.TrimSpace(csrf.Token))
-	}
-	req.Header.Set("Accept", "application/json,text/html;q=0.9,*/*;q=0.8")
-	req = markOperation(req, "Browser.LoginAPI")
-	return s.finishLogin(req)
-}
-
 func (s *BrowserService) LoginLegacy(ctx context.Context, input BrowserLoginRequest, csrf BrowserCSRFToken) (*BrowserLoginResult, *Response, error) {
 	if err := s.requireBrowser(); err != nil {
 		return nil, nil, err
@@ -163,9 +135,14 @@ func (s *BrowserService) LoginLegacy(ctx context.Context, input BrowserLoginRequ
 	return s.finishLogin(req)
 }
 
-// Login performs the measured fallback order: public API CSRF,
-// legacy public CSRF, login-page CSRF, JSON login, then legacy form login only
-// when the JSON route is unsupported or unauthorized.
+// Login performs Forward's browser login: a CSRF token from the public API
+// endpoint (GET /api/public/csrf), falling back to the token embedded in the
+// login page, then the Spring Security form login (POST /login).
+//
+// It used to try a JSON POST /api/auth/login and a root GET /public/csrf
+// first. Neither route exists on any Forward build this SDK targets (checked
+// at primary 15398425a69 and stable 67e89c87124): every login spent two
+// requests on 404s before reaching the form login that actually works.
 func (s *BrowserService) Login(ctx context.Context) (*BrowserLoginResult, error) {
 	input, err := s.loginInput(BrowserLoginRequest{})
 	if err != nil {
@@ -173,22 +150,12 @@ func (s *BrowserService) Login(ctx context.Context) (*BrowserLoginResult, error)
 	}
 	csrf, _, csrfErr := s.PublicCSRFAPI(ctx)
 	if csrfErr != nil {
-		csrf, _, csrfErr = s.PublicCSRFLegacy(ctx)
-	}
-	if csrfErr != nil {
 		csrf, _, csrfErr = s.LoginPageCSRF(ctx)
 	}
-	result, response, err := s.LoginAPI(ctx, input, csrf)
-	if err == nil {
-		return result, nil
+	if csrfErr != nil || csrf == nil {
+		return nil, fmt.Errorf("forward: browser login has no CSRF token: %w", csrfErr)
 	}
-	if response == nil || (response.StatusCode != http.StatusNotFound && response.StatusCode != http.StatusMethodNotAllowed && response.StatusCode != http.StatusUnauthorized && response.StatusCode != http.StatusForbidden) {
-		return nil, err
-	}
-	if csrf == nil {
-		return nil, fmt.Errorf("forward: legacy browser login has no CSRF token: %w", csrfErr)
-	}
-	result, _, err = s.LoginLegacy(ctx, input, *csrf)
+	result, _, err := s.LoginLegacy(ctx, input, *csrf)
 	return result, err
 }
 

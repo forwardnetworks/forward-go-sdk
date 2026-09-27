@@ -6,28 +6,15 @@ import (
 	"net/url"
 )
 
+// CollectionsService reads per-device collection status.
+//
+// It also carried List (GET /networks/{id}/collections) and Progress
+// (GET /networks/{id}/collectionProgress). Neither route exists on the
+// primary 15398425a69 or stable 67e89c87124 builds; both 404'd for every
+// network. Collection progress is CollectorTasks.List / CollectorTasks.Progress
+// (GET /api/collector-tasks).
 type CollectionsService service
 
-type LegacyCollectionOperation struct {
-	ID               Identifier `json:"id,omitempty"`
-	NetworkID        Identifier `json:"networkId,omitempty"`
-	Type             string     `json:"type,omitempty"`
-	Devices          []string   `json:"devices,omitempty"`
-	StartUnixMillis  int64      `json:"startUnixMillis,omitempty"`
-	FinishUnixMillis int64      `json:"finishUnixMillis,omitempty"`
-}
-type LegacyCollectionProgress struct {
-	NetworkID    Identifier     `json:"networkId,omitempty"`
-	Total        int            `json:"total"`
-	Finished     int            `json:"finished"`
-	Active       int            `json:"active"`
-	InProgress   bool           `json:"inProgress,omitempty"`
-	DevicesDone  int            `json:"devicesDone,omitempty"`
-	TotalDevices int            `json:"totalDevices,omitempty"`
-	ByType       map[string]int `json:"byType,omitempty"`
-	ActiveByType map[string]int `json:"activeByType,omitempty"`
-	SampleActive []string       `json:"sampleActive,omitempty"`
-}
 type DeviceCollectionStatus struct {
 	Name             string `json:"name,omitempty"`
 	DeviceName       string `json:"deviceName,omitempty"`
@@ -38,34 +25,6 @@ type DeviceCollectionStatus struct {
 	CollectionError  string `json:"collectionError,omitempty"`
 }
 
-func (s *CollectionsService) List(ctx context.Context, networkID string) ([]LegacyCollectionOperation, *Response, error) {
-	path, err := collectionsPath(s.client, networkID, "/collections")
-	if err != nil {
-		return nil, nil, err
-	}
-	result := listResponse[LegacyCollectionOperation]{Keys: []string{"collections", "items", "data", "results"}}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	req = markOperation(req, "Collections.List")
-	response, err := s.client.doRequired(req, &result)
-	return result.Items, response, err
-}
-func (s *CollectionsService) Progress(ctx context.Context, networkID string) (*LegacyCollectionProgress, *Response, error) {
-	path, err := collectionsPath(s.client, networkID, "/collectionProgress")
-	if err != nil {
-		return nil, nil, err
-	}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	req = markOperation(req, "Collections.Progress")
-	out := new(LegacyCollectionProgress)
-	response, err := s.client.doRequired(req, out)
-	return out, response, err
-}
 func (s *CollectionsService) DeviceStatuses(ctx context.Context, networkID string) ([]DeviceCollectionStatus, *Response, error) {
 	path, err := collectionsPath(s.client, networkID, "/device-statuses")
 	if err != nil {
