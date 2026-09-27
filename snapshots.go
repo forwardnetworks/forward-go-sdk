@@ -151,20 +151,22 @@ func (s *SnapshotsService) List(
 // ErrSnapshotNotFound reports that a network holds no snapshot of that ID.
 var ErrSnapshotNotFound = errors.New("forward: snapshot not found")
 
-// snapshotSearchLimit bounds the fallback listing in Get. Large enough to cover
+// snapshotSearchLimit bounds the listing Get searches. Large enough to cover
 // any recent snapshot, bounded so a network with a long history cannot make one
 // lookup unbounded.
 const snapshotSearchLimit = 1000
 
-// Get returns snapshot metadata.
+// Get returns snapshot metadata by searching the network's snapshot listing
+// (archived snapshots included).
 //
-// It tries the network-scoped metadata route first and falls back to searching
-// the listing, because that route is absent from some appserver builds -- it
-// answers "No endpoint GET ..." rather than serving the snapshot. The bare
-// /api/snapshots/{id} route is not an alternative: it returns the snapshot's
-// exported ZIP, not its metadata.
-//
-// Preview: the metadata route is not in the published OpenAPI description.
+// Forward has no per-snapshot metadata route: GET
+// /api/networks/{networkId}/snapshots/{snapshotId} is not mapped at primary
+// 15398425a69 or stable 67e89c87124 (SnapshotController.java maps only
+// /networks/{networkId}/snapshots and .../snapshots/latestProcessed there), and
+// an appserver answers it "No endpoint GET ...". Get used to try it first and
+// fall back on the 404, which cost every call -- and every poll of Operation --
+// a dead request. The bare /api/snapshots/{id} route is not an alternative: it
+// returns the snapshot's exported ZIP, not its metadata.
 func (s *SnapshotsService) Get(ctx context.Context, networkID, snapshotID string) (*Snapshot, *Response, error) {
 	networkID, err := s.client.resolveNetworkID(networkID)
 	if err != nil {
@@ -172,22 +174,6 @@ func (s *SnapshotsService) Get(ctx context.Context, networkID, snapshotID string
 	}
 	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
 		return nil, nil, errors.New("forward: snapshot ID is required")
-	}
-	path, err := snapshotsPath(networkID)
-	if err != nil {
-		return nil, nil, err
-	}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/"+url.PathEscape(snapshotID), nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	snapshot := new(Snapshot)
-	resp, err := s.client.Do(req, snapshot)
-	if err == nil {
-		return snapshot, resp, nil
-	}
-	if !IsStatus(err, http.StatusNotFound) {
-		return nil, resp, err
 	}
 	return s.findInListing(ctx, networkID, snapshotID)
 }

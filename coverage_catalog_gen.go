@@ -690,7 +690,6 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.RunOperation": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
-		{Method: "GET", Route: "/api/networks/{networkId}/snapshots/{snapshotId}"},
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
 	},
 	"Predict.SecurityRulesDiff": {
@@ -773,7 +772,6 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Snapshots.Get": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
-		{Method: "GET", Route: "/api/networks/{networkId}/snapshots/{snapshotId}"},
 	},
 	"Snapshots.Invalidate": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
@@ -792,7 +790,6 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Snapshots.Operation": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
-		{Method: "GET", Route: "/api/networks/{networkId}/snapshots/{snapshotId}"},
 	},
 	"Snapshots.Reprocess": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
