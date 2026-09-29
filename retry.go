@@ -20,13 +20,16 @@ type RetryPolicy struct {
 	Delay time.Duration
 	// MaxDelay caps any single wait, including one a server asks for with
 	// Retry-After. A server asking for longer than this gets its answer
-	// returned to the caller instead of a silent sleep. Zero means 30s.
+	// returned to the caller instead of a silent sleep. Zero means five
+	// minutes: long enough that a schedule written before the cap existed
+	// (Skyforge's BusyRetry waits out Forward's one-active-chat 429 with 5s
+	// doubling to 160s) keeps every wait it asked for.
 	MaxDelay time.Duration
 }
 
 const (
 	defaultRetryDelay    = 500 * time.Millisecond
-	defaultRetryMaxDelay = 30 * time.Second
+	defaultRetryMaxDelay = 5 * time.Minute
 )
 
 // send performs one request, retrying while the policy allows and the failure

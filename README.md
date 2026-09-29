@@ -291,7 +291,7 @@ when doing so cannot duplicate a mutation:
 - 501 (the route is absent from this build) is never retried.
 
 Backoff doubles from `Delay` (default 500ms) and is capped at `MaxDelay`
-(default 30s). A `Retry-After` header is honored; when it asks for longer than
+(default 5 minutes). A `Retry-After` header is honored; when it asks for longer than
 `MaxDelay`, the 429 or 503 is returned to the caller instead of sleeping. A
 request body that cannot be rewound is never resent. Applications with other
 requirements can still supply an `http.Client` with their own transport.

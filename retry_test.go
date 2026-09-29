@@ -274,3 +274,17 @@ func TestRetryWaitHonorsRetryAfterAndCapsBackoff(t *testing.T) {
 		t.Fatalf("unparseable Retry-After falls back to backoff: wait = %s", wait)
 	}
 }
+
+// A policy written before MaxDelay existed must keep its schedule: Skyforge's
+// BusyRetry waits out a busy AI chat with 5s doubling to 160s, about five
+// minutes in all, and a shorter default cap would quietly give up early.
+func TestRetryDefaultMaxDelayKeepsExistingSchedules(t *testing.T) {
+	t.Parallel()
+
+	want := []time.Duration{5, 10, 20, 40, 80, 160}
+	for i, seconds := range want {
+		if wait, ok := retryWait(nil, 5*time.Second, i+1, defaultRetryMaxDelay); !ok || wait != seconds*time.Second {
+			t.Fatalf("attempt %d: wait = %s, want %ds", i+1, wait, seconds)
+		}
+	}
+}
