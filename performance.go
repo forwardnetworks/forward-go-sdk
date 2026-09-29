@@ -84,7 +84,13 @@ type InterfaceMetricHistoryResponse struct {
 type InterfaceMetricHistoryRequest struct {
 	Interfaces []InterfaceWithDirection `json:"interfaces"`
 }
-type JSONDocument json.RawMessage
+
+// JSONDocument is a Forward response body kept verbatim, for consumers whose
+// contract is Forward's own JSON. It is an alias, not a defined type: a type
+// defined from json.RawMessage loses RawMessage's (Un)MarshalJSON, so
+// encoding/json decodes it as []byte (a base64 string, failing on any object)
+// and encodes it as base64 too.
+type JSONDocument = json.RawMessage
 type UnhealthyInterfacesRequest struct{ Devices []string }
 
 func (s *PerformanceService) GenerateSynthetic(ctx context.Context, networkID string, input SyntheticPerformanceRequest) (SyntheticPerformanceResult, *Response, error) {
