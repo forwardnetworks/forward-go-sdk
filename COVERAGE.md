@@ -1,8 +1,8 @@
 # Forward API typed coverage
 
-This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030..
+This file is generated from `coverage_manifest.json`; run `go generate ./...` to refresh it. The manifest was derived from Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.; 2026-09-29: org-admin user lifecycle for workshop seat provisioning -- POST/GET /api/users (Users.Create/List; /api/orgs/{orgId}/users is support-admin only), per-network roles /api/users/{userId}/roles/network/{networkId}[/{role}], another user's tokens /api/users/{userId}/tokens[/{tokenName}], and GET /api/software/client for the headless collector, from UserController and ReadOnlyClientSoftwareController..
 
-Current inventory: **234 semantic call sites**, **180 distinct normalized method+route pairs**, **180 COVERED**, **0 PARTIAL**, **0 MISSING**.
+Current inventory: **243 semantic call sites**, **189 distinct normalized method+route pairs**, **189 COVERED**, **0 PARTIAL**, **0 MISSING**.
 
 The inventory becomes stale when the consumer adds, removes, or changes a Forward wire call. Run `go run ./cmd/coverage-audit -audit /path/to/consumer/api-audit.md` to diff the audited route set. The command fails when its audit input is missing.
 
@@ -24,6 +24,9 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | DELETE | `/api/trusted-certificates/{name}` | `TrustedCertificates.Delete` | COVERED |
 | DELETE | `/api/users/current/tokens/{tokenName}` | `Users.DeleteToken` | COVERED |
 | DELETE | `/api/users/{userId}` | `Admin.DeleteUser` | COVERED |
+| DELETE | `/api/users/{userId}/roles/network/{networkId}` | `Users.ClearNetworkRoles` | COVERED |
+| DELETE | `/api/users/{userId}/roles/network/{networkId}/{role}` | `Users.RemoveNetworkRole` | COVERED |
+| DELETE | `/api/users/{userId}/tokens/{tokenName}` | `Users.DeleteTokenFor` | COVERED |
 | GET | `/api/access-control-groups` | `AccessControl.ListGroups` | COVERED |
 | GET | `/api/admin/impersonate` | `Browser.Impersonate`, `Browser.ImpersonateWithServiceCredential` | COVERED |
 | GET | `/api/admin/networks` | `Admin.ListNetworks` | COVERED |
@@ -86,10 +89,13 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | GET | `/api/snapshots/{snapshotId}/checks` | `Checks.List`, `Compatibility.Checks` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/topology` | `Topology.List` | COVERED |
 | GET | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.Overrides` | COVERED |
+| GET | `/api/software/client` | `SoftwareCentral.DownloadClientPackage` | COVERED |
 | GET | `/api/trusted-certificates` | `TrustedCertificates.List` | COVERED |
+| GET | `/api/users` | `Users.List` | COVERED |
 | GET | `/api/users/current` | `Users.Current`, `Browser.CurrentUser` | COVERED |
 | GET | `/api/users/current/tokens` | `Users.ListTokens` | COVERED |
 | GET | `/api/users/{userId}/roles` | `Users.Roles` | COVERED |
+| GET | `/api/users/{userId}/tokens` | `Users.ListTokensFor` | COVERED |
 | GET | `/api/version` | `Version.Get`, `Version.Reachable` | COVERED |
 | GET | `/api/webhooks` | `Webhooks.List` | COVERED |
 | GET | `/backup-settings` | `Backups.GetSettings` | COVERED |
@@ -166,9 +172,12 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/snapshots/{snapshotId}/checks` | `Checks.CreatePersistent` | COVERED |
 | POST | `/api/snapshots/{snapshotId}/topology/overrides` | `Topology.EditOverrides` | COVERED |
 | POST | `/api/trusted-certificates` | `TrustedCertificates.Add`, `TrustedCertificates.Apply` | COVERED |
+| POST | `/api/users` | `Users.Create` | COVERED |
 | POST | `/api/users/current/nqe/changes` | `NQERepository.DeleteDirectory`, `NQERepository.AddDirectory`, `NQERepository.AddQuery` | COVERED |
 | POST | `/api/users/current/password` | `Users.ResetPassword` | COVERED |
 | POST | `/api/users/current/tokens` | `Users.CreateToken` | COVERED |
+| POST | `/api/users/{userId}/roles/network/{networkId}` | `Users.SetNetworkRole` | COVERED |
+| POST | `/api/users/{userId}/roles/network/{networkId}/{role}` | `Users.AddNetworkRole` | COVERED |
 | POST | `/api/users/{userId}/roles/org/ADMIN` | `Admin.GrantOrganizationAdmin` | COVERED |
 | POST | `/api/users/{userId}/supported-orgs` | `Admin.AddSupportedOrganization` | COVERED |
 | POST | `/api/webhooks` | `Webhooks.Create` | COVERED |

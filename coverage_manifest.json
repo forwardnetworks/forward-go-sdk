@@ -2,9 +2,9 @@
   "schema_version": 1,
   "consumer": "skyforge/components/server",
   "consumer_go_sha256": "e2e42a61f806617b44b957ec74e4e3959580e4067b616c3be23f75ca512a9fd4",
-  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.",
-  "semantic_call_sites": 234,
-  "distinct_method_routes": 180,
+  "derived_from": "Skyforge docs/forward-api-sdk-migration-audit.md plus the corrections appended there on 2026-08-05; 2026-09-06: access control, SAML settings and user roles added after diffing every route Skyforge sends against this manifest; 2026-09-07: controller-managed setup guests -- ManagedDevice plus the setup PATCH that declares them; 2026-09-11: Software Central deployment artifacts for the vSphere Forward-VM lane; 2026-09-12: /api/cve-index (GET body + view=metadata, PUT ?sha=, DELETE) from CveIndexCloudController, for the CVE index sync that used to be curl.; 2026-09-13: trusted-certificates List/Add/Apply/Delete added for forwardEnsureCollectorCATrust (cloud-proxy MITM CA trust + per-collector apply dispatch), replacing the disabled org-global-apply belief in forward_client_cloud.go.; 2026-09-14: change-set commits (Predict.Commit) for the cloud-predict change loop.; 2026-09-23: org-property surface for the live Experimental card -- GET /api/orgs/{orgId}/config (Organization, DescribeOrganization), PUT/DELETE /api/global-config/{property}. Audit rows C028-C030.; 2026-09-29: org-admin user lifecycle for workshop seat provisioning -- POST/GET /api/users (Users.Create/List; /api/orgs/{orgId}/users is support-admin only), per-network roles /api/users/{userId}/roles/network/{networkId}[/{role}], another user's tokens /api/users/{userId}/tokens[/{tokenName}], and GET /api/software/client for the headless collector, from UserController and ReadOnlyClientSoftwareController.",
+  "semantic_call_sites": 243,
+  "distinct_method_routes": 189,
   "endpoints": [
     {
       "method": "GET",
@@ -1469,6 +1469,78 @@
       "route": "/api/networks/{networkId}/change-sets/{changeSetId}/commits",
       "symbols": [
         "Predict.Commit"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/software/client",
+      "symbols": [
+        "SoftwareCentral.DownloadClientPackage"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/users",
+      "symbols": [
+        "Users.List"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/users",
+      "symbols": [
+        "Users.Create"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/users/{userId}/roles/network/{networkId}",
+      "symbols": [
+        "Users.SetNetworkRole"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/users/{userId}/roles/network/{networkId}",
+      "symbols": [
+        "Users.ClearNetworkRoles"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "POST",
+      "route": "/api/users/{userId}/roles/network/{networkId}/{role}",
+      "symbols": [
+        "Users.AddNetworkRole"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/users/{userId}/roles/network/{networkId}/{role}",
+      "symbols": [
+        "Users.RemoveNetworkRole"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "GET",
+      "route": "/api/users/{userId}/tokens",
+      "symbols": [
+        "Users.ListTokensFor"
+      ],
+      "coverage": "COVERED"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/users/{userId}/tokens/{tokenName}",
+      "symbols": [
+        "Users.DeleteTokenFor"
       ],
       "coverage": "COVERED"
     }
