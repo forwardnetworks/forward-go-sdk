@@ -83,6 +83,42 @@ func (s *NQERepositoryService) GetQuery(ctx context.Context, commitID, path stri
 	return out, response, err
 }
 
+// NQEQuerySourceAtCommit is a committed query's source and doc-comment
+// metadata as Forward returns it from /api/nqe/queries/{queryId}/source-code
+// (com.forwardnetworks.cv.nqe.lib.NqeQuery: sourceCode plus the unwrapped
+// doc comment's intent/description).
+type NQEQuerySourceAtCommit struct {
+	SourceCode  string `json:"sourceCode"`
+	Intent      string `json:"intent,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// GetQueryByID reads a query's source by its STABLE query id ("Q_<sha>" for
+// the org repository, "FQ_<sha>" for the Forward Library) at an immutable
+// commit: GET /api/nqe/queries/{queryId}/source-code?commitId=.
+// NqeLibController.getQuerySourceCode, mapped at primary 15398425a69 and
+// stable 67e89c87124. The id survives a query being moved or renamed, which
+// a path does not; GetQuery is the by-path read. A committed query with empty
+// source is ErrNQEEmptySource, never an empty success.
+func (s *NQERepositoryService) GetQueryByID(ctx context.Context, commitID, queryID string) (*NQEQuerySourceAtCommit, *Response, error) {
+	commitID, queryID = strings.TrimSpace(commitID), strings.TrimSpace(queryID)
+	if commitID == "" || queryID == "" {
+		return nil, nil, errors.New("forward: NQE commit ID and query ID are required")
+	}
+	query := url.Values{"commitId": []string{commitID}}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/nqe/queries/"+url.PathEscape(queryID)+"/source-code?"+query.Encode(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "NQERepository.GetQueryByID")
+	out := new(NQEQuerySourceAtCommit)
+	response, err := s.client.doRequired(req, out)
+	if err == nil && strings.TrimSpace(out.SourceCode) == "" {
+		err = ErrNQEEmptySource
+	}
+	return out, response, err
+}
+
 func (s *NQERepositoryService) DeleteDirectory(ctx context.Context, path string) (*Response, error) {
 	return s.change(ctx, "deleteDir", path, nil, http.StatusNotFound, http.StatusConflict)
 }

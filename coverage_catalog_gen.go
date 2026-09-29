@@ -604,6 +604,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"NQERepository.GetQuery": {
 		{Method: "GET", Route: "/api/nqe/repos/org/commits/{commitId}/queries"},
 	},
+	"NQERepository.GetQueryByID": {
+		{Method: "GET", Route: "/api/nqe/queries/{queryId}/source-code"},
+	},
 	"NQERepository.Head": {
 		{Method: "GET", Route: "/api/nqe/repos/org/commits/head"},
 	},
