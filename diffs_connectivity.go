@@ -94,7 +94,9 @@ func (e *ConnectivityDiffPartialError) Error() string {
 		ErrConnectivityDiffPartial, e.BeforeSnapshotID, e.AfterSnapshotID, e.Waited, evaluated, total)
 }
 
-func (e *ConnectivityDiffPartialError) Is(target error) bool { return target == ErrConnectivityDiffPartial }
+func (e *ConnectivityDiffPartialError) Is(target error) bool {
+	return target == ErrConnectivityDiffPartial
+}
 
 // ConnectivityWaitOptions bounds WaitForSubnetConnectivity. Zero values mean a
 // five-minute timeout and a two-second poll interval.

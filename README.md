@@ -279,10 +279,22 @@ This lets consumers migrate incrementally without blocking on complete API
 generation or forcing a generated transport abstraction on Terraform and
 Encore.
 
-Automatic retries are intentionally not part of the default client. Retrying a
-POST, PATCH, or DELETE can duplicate a mutation. Applications that know their
-idempotency and backoff requirements can supply an `http.Client` with an
-appropriate transport.
+Retries are opt-in. The zero `Config.Retry` retries nothing. With a
+`RetryPolicy{MaxAttempts, Delay, MaxDelay}`, the client repeats a request only
+when doing so cannot duplicate a mutation:
+
+- 429 and 503 mean the request was turned away before it was processed, so any
+  method is repeated;
+- a transport error, a 502, a 504 or another 5xx leaves the outcome unknown, so
+  only GET, HEAD, OPTIONS, PUT and DELETE are repeated. A proxy that gave up
+  waiting says nothing about whether the appserver finished a POST;
+- 501 (the route is absent from this build) is never retried.
+
+Backoff doubles from `Delay` (default 500ms) and is capped at `MaxDelay`
+(default 30s). A `Retry-After` header is honored; when it asks for longer than
+`MaxDelay`, the 429 or 503 is returned to the caller instead of sleeping. A
+request body that cannot be rewound is never resent. Applications with other
+requirements can still supply an `http.Client` with their own transport.
 
 ## Development
 
@@ -290,8 +302,8 @@ appropriate transport.
 go generate ./...
 go test ./...
 go vet ./...
-go run ./cmd/coverage-audit \
-  -audit /path/to/consumer/api-audit.md
+go run ./cmd/skyforge-coverage \
+  -audit /path/to/skyforge/docs/forward-api-sdk-migration-audit.md
 ```
 
 The complete Forward controller surface is larger than the audited inventory.
