@@ -264,3 +264,40 @@ func (s *DiffsService) MaterialSummary(ctx context.Context, snapshotA, snapshotB
 	}
 	return out, nil
 }
+
+// CheckDiffEntry is one check compared between two snapshots: diffType is
+// ADDED, DELETED, MODIFIED, UNCHANGED, or PROCESSING (NQE-type diffs evaluate
+// asynchronously and report PROCESSING until Forward finishes). A is the check
+// on the older snapshot, B on the newer; either is nil when absent there.
+type CheckDiffEntry struct {
+	DiffType string `json:"diffType"`
+	A        *Check `json:"a,omitempty"`
+	B        *Check `json:"b,omitempty"`
+}
+
+// Checks returns the per-check diff rows of one check type between two
+// snapshots (GET /api/diffs/{a}/{b}/checks?type=). checkType is a Forward
+// CheckType such as PREDEFINED, EXISTS, ISOLATION, REACHABILITY or NQE. Bare
+// arrays and {"checks": [...]} are both accepted.
+func (s *DiffsService) Checks(ctx context.Context, snapshotA, snapshotB, checkType string) ([]CheckDiffEntry, *Response, error) {
+	checkType = strings.TrimSpace(checkType)
+	if checkType == "" {
+		return nil, nil, errors.New("forward: check type is required for a check diff")
+	}
+	path, err := diffsPath(snapshotA, snapshotB, "checks")
+	if err != nil {
+		return nil, nil, err
+	}
+	path += "?" + url.Values{"type": []string{checkType}}.Encode()
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Diffs.Checks")
+	result := listResponse[CheckDiffEntry]{Keys: []string{"checks", "items"}}
+	resp, err := s.client.Do(req, &result)
+	if err != nil {
+		return nil, resp, err
+	}
+	return result.Items, resp, nil
+}

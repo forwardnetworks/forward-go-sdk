@@ -410,8 +410,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Devices.ListFiles": {
 		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceIdOrName}/files"},
 	},
+	"Diffs.Checks": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/checks"},
+	},
 	"Diffs.ChecksCount": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/checks"},
+	},
+	"Diffs.ConnectivityDiffLocationPair": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
+	},
+	"Diffs.ConnectivityDiffLocations": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
 	},
 	"Diffs.Count": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/acl"},
@@ -440,6 +449,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/l2"},
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/routing-loop/count"},
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/topology"},
+	},
+	"Diffs.SubnetConnectivity": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
+	},
+	"Diffs.WaitForSubnetConnectivity": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
 	},
 	"Endpoints.AddBatch": {
 		{Method: "POST", Route: "/api/networks/{networkId}/endpoints"},
@@ -685,6 +700,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.DeleteChangeSet": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{id}"},
 	},
+	"Predict.ListChangeSetChecks": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/checks"},
+	},
 	"Predict.ListChangeSets": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets"},
 	},
@@ -707,8 +725,14 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.StageBGPAdvertisement": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
 	},
+	"Predict.StageBGPAdvertisements": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
+	},
 	"Predict.StageCommands": {
 		{Method: "PUT", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands"},
+	},
+	"Predict.ValidateCommands": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/commands"},
 	},
 	"Properties.ClearCurrent": {
 		{Method: "DELETE", Route: "/api/config/{property}"},
