@@ -45,9 +45,11 @@ go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-mig
 
 ## Coverage manifest (enforced by tests)
 
-`coverage_manifest.json` maps each method+route to the typed SDK symbol(s) that send it. `go generate` produces `coverage_catalog_gen.go` and `COVERAGE.md` from it. Never hand-edit either file. Two tests enforce the manifest:
+`coverage_manifest.json` maps each method+route to the typed SDK symbol(s) that send it. `go generate` produces `coverage_catalog_gen.go` and `COVERAGE.md` from it. Never hand-edit either file. Three tests enforce the manifest:
 - `TestCoverageManifest` (`coverage_manifest_test.go`) fails if any entry isn't `COVERED`, if `distinct_method_routes` doesn't match the entry count, if a symbol isn't an exported method on an exported `Client` service field, if a symbol is `Raw.*` or takes `RawRequest`, or if the generated catalog disagrees with the manifest (fix: `go generate ./...`).
 - `TestCoverageManifestIsComplete` (`coverage_completeness_test.go`) fails if any exported service method that issues a request (directly or through helpers) has no manifest route. A composite method must also list its callees' routes (e.g. `Diffs.MaterialSummary`), and a manifest symbol that sends nothing is flagged. Skyforge's route-liveness gate can only check calls it can map through this manifest.
+
+- `TestCoverageManifestRoutesMatchTheWire` (`coverage_routes_test.go`) calls every manifest symbol against a recording server, with arguments synthesized by reflection and each auth mode tried in turn. It fails on any request the manifest doesn't declare for that symbol. If a method validates an argument against an enum, or the manifest pins a dynamic segment, add it to `wireArgOverrides`. `minExercised` is a floor on how many symbols actually reach the wire; raise it when you improve coverage, and never lower it just to get a new method past the check.
 
 So every new request-issuing method needs a manifest entry: add it, bump `distinct_method_routes` and `semantic_call_sites`, append a dated note to `derived_from`, then run `go generate ./...`. `consumer_go_sha256` pins Skyforge's Go tree on purpose, so any consumer change forces a reviewed refresh through `cmd/skyforge-coverage`. The source of truth for corrections is the Skyforge audit document's Part 5 table, not that command's code.
 

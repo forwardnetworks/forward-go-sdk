@@ -565,7 +565,7 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "POST", Route: "/api/nqe-diffs/{before}/{after}"},
 	},
 	"NQE.ListQueries": {
-		{Method: "GET", Route: "/api/nqe/repos/fwd/commits/head/queries"},
+		{Method: "GET", Route: "/api/nqe/queries"},
 	},
 	"NQE.Result": {
 		{Method: "GET", Route: "/api/networks/{networkId}/nqe-executions/{executionKey}/result"},
