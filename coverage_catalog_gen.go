@@ -845,6 +845,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"SoftwareCentral.DeploymentArtifactURL": {
 		{Method: "GET", Route: "/api/deployment-artifacts/{artifactId}"},
 	},
+	"SoftwareCentral.DownloadClientPackage": {
+		{Method: "GET", Route: "/api/software/client"},
+	},
 	"SoftwareCentral.DownloadDeploymentArtifact": {
 		{Method: "GET", Route: "/api/deployment-artifacts/{artifactId}"},
 	},
@@ -927,6 +930,15 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"TrustedCertificates.List": {
 		{Method: "GET", Route: "/api/trusted-certificates"},
 	},
+	"Users.AddNetworkRole": {
+		{Method: "POST", Route: "/api/users/{userId}/roles/network/{networkId}/{role}"},
+	},
+	"Users.ClearNetworkRoles": {
+		{Method: "DELETE", Route: "/api/users/{userId}/roles/network/{networkId}"},
+	},
+	"Users.Create": {
+		{Method: "POST", Route: "/api/users"},
+	},
 	"Users.CreateToken": {
 		{Method: "POST", Route: "/api/users/current/tokens"},
 	},
@@ -936,14 +948,29 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Users.DeleteToken": {
 		{Method: "DELETE", Route: "/api/users/current/tokens/{tokenName}"},
 	},
+	"Users.DeleteTokenFor": {
+		{Method: "DELETE", Route: "/api/users/{userId}/tokens/{tokenName}"},
+	},
+	"Users.List": {
+		{Method: "GET", Route: "/api/users"},
+	},
 	"Users.ListTokens": {
 		{Method: "GET", Route: "/api/users/current/tokens"},
+	},
+	"Users.ListTokensFor": {
+		{Method: "GET", Route: "/api/users/{userId}/tokens"},
+	},
+	"Users.RemoveNetworkRole": {
+		{Method: "DELETE", Route: "/api/users/{userId}/roles/network/{networkId}/{role}"},
 	},
 	"Users.ResetPassword": {
 		{Method: "POST", Route: "/api/users/current/password"},
 	},
 	"Users.Roles": {
 		{Method: "GET", Route: "/api/users/{userId}/roles"},
+	},
+	"Users.SetNetworkRole": {
+		{Method: "POST", Route: "/api/users/{userId}/roles/network/{networkId}"},
 	},
 	"Version.Get": {
 		{Method: "GET", Route: "/api/version"},

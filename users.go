@@ -1,7 +1,9 @@
 package forward
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -125,6 +127,52 @@ func (s *UsersService) CreateToken(ctx context.Context, tokenName, password stri
 type UserRoles struct {
 	Org     []string            `json:"org"`
 	Network map[string][]string `json:"network"`
+}
+
+// UnmarshalJSON accepts both network-role shapes. Forward's UserRoles maps
+// each network to a single NetworkRole ("ADMIN"); a list form is kept for
+// builds that return one. Decoding the single form into []string used to fail
+// the whole response as soon as a user held any network role.
+func (r *UserRoles) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Org     []string                   `json:"org"`
+		Network map[string]json.RawMessage `json:"network"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	r.Org = raw.Org
+	r.Network = nil
+	if raw.Network == nil {
+		return nil
+	}
+	r.Network = make(map[string][]string, len(raw.Network))
+	for networkID, value := range raw.Network {
+		value = bytes.TrimSpace(value)
+		if len(value) == 0 || bytes.Equal(value, []byte("null")) {
+			r.Network[networkID] = nil
+			continue
+		}
+		if value[0] == '[' {
+			var roles []string
+			if err := json.Unmarshal(value, &roles); err != nil {
+				return fmt.Errorf("forward: network %s roles: %w", networkID, err)
+			}
+			r.Network[networkID] = roles
+			continue
+		}
+		var role string
+		if err := json.Unmarshal(value, &role); err != nil {
+			return fmt.Errorf("forward: network %s role: %w", networkID, err)
+		}
+		r.Network[networkID] = []string{role}
+	}
+	return nil
+}
+
+// NetworkRoles returns the roles held on networkID (usually one), or nil.
+func (r UserRoles) NetworkRoles(networkID string) []string {
+	return r.Network[strings.TrimSpace(networkID)]
 }
 
 // HasOrgAdmin reports whether Org carries ADMIN (case-insensitive).
