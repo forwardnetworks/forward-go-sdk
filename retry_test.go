@@ -86,8 +86,8 @@ func TestRetryDoesNotReplayPostOnServerError(t *testing.T) {
 	}
 }
 
-// A gateway status is different: the appserver never saw the request, so even
-// a POST is safe to repeat.
+// A 503 is different: the request was turned away before it was processed, so
+// even a POST is safe to repeat.
 func TestRetryReplaysPostOnGatewayStatus(t *testing.T) {
 	t.Parallel()
 
@@ -186,5 +186,91 @@ func TestNoRetryByDefault(t *testing.T) {
 	}
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("calls = %d, want 1", got)
+	}
+}
+
+// A 504 is a proxy that stopped waiting, not an appserver that refused: the
+// change set may already exist, so a POST is not repeated.
+func TestRetryDoesNotReplayPostOnGatewayTimeout(t *testing.T) {
+	t.Parallel()
+
+	for _, status := range []int{http.StatusBadGateway, http.StatusGatewayTimeout} {
+		var calls atomic.Int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls.Add(1)
+			w.WriteHeader(status)
+		}))
+		_, _, err := retryClient(t, server.URL).Predict.CreateChangeSet(
+			context.Background(), "net-1", ChangeSetCreateRequest{Name: "nightly", SnapshotID: "539"},
+		)
+		server.Close()
+		if !IsStatus(err, status) || calls.Load() != 1 {
+			t.Fatalf("status %d: err = %v after %d calls, want the %d back after one", status, err, calls.Load(), status)
+		}
+	}
+}
+
+// The same 504 on a GET is safe to ride out.
+func TestRetryReplaysGetOnGatewayTimeout(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Add(1) < 2 {
+			w.WriteHeader(http.StatusGatewayTimeout)
+			return
+		}
+		_, _ = io.WriteString(w, `{"build":"26.9.0-18","release":"26.9"}`)
+	}))
+	defer server.Close()
+
+	if _, _, err := retryClient(t, server.URL).Version.Get(context.Background()); err != nil || calls.Load() != 2 {
+		t.Fatalf("Version.Get() err = %v after %d calls", err, calls.Load())
+	}
+}
+
+// A server that asks for longer than MaxDelay gets its 429 handed back rather
+// than a call that silently hangs for however long it named.
+func TestRetryReturnsWhenRetryAfterExceedsMaxDelay(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Retry-After", "3600")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	started := time.Now()
+	_, _, err := retryClient(t, server.URL).Version.Get(context.Background())
+	if !IsStatus(err, http.StatusTooManyRequests) || calls.Load() != 1 || time.Since(started) > 5*time.Second {
+		t.Fatalf("err = %v after %d calls in %s", err, calls.Load(), time.Since(started))
+	}
+}
+
+func TestRetryWaitHonorsRetryAfterAndCapsBackoff(t *testing.T) {
+	t.Parallel()
+
+	withHeader := func(value string) *http.Response {
+		return &http.Response{Header: http.Header{"Retry-After": []string{value}}}
+	}
+	if wait, ok := retryWait(withHeader("2"), time.Millisecond, 1, time.Minute); !ok || wait != 2*time.Second {
+		t.Fatalf("Retry-After 2: wait = %s, ok = %v", wait, ok)
+	}
+	date := time.Now().Add(10 * time.Second).UTC().Format(http.TimeFormat)
+	if wait, ok := retryWait(withHeader(date), time.Millisecond, 1, time.Minute); !ok || wait <= 0 || wait > 10*time.Second {
+		t.Fatalf("Retry-After date: wait = %s, ok = %v", wait, ok)
+	}
+	if _, ok := retryWait(withHeader("99999999999999999"), time.Millisecond, 1, time.Minute); ok {
+		t.Fatal("an absurd Retry-After must not be slept on")
+	}
+	// Doubling past the cap used to overflow the shift into a zero or
+	// negative wait, which turned a long retry budget into a hot loop.
+	if wait, ok := retryWait(nil, 500*time.Millisecond, 200, 30*time.Second); !ok || wait != 30*time.Second {
+		t.Fatalf("attempt 200: wait = %s, ok = %v", wait, ok)
+	}
+	if wait, _ := retryWait(withHeader("soon"), 500*time.Millisecond, 3, 30*time.Second); wait != 2*time.Second {
+		t.Fatalf("unparseable Retry-After falls back to backoff: wait = %s", wait)
 	}
 }
