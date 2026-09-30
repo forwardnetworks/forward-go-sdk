@@ -103,6 +103,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Admin.SetSupportedOrganizations": {
 		{Method: "PUT", Route: "/api/users/{userId}/supported-orgs"},
 	},
+	"Aliases.List": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/aliases"},
+	},
 	"Backups.GetS3Storage": {
 		{Method: "GET", Route: "/api/backup-settings/storage"},
 	},
@@ -200,6 +203,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Checks.List": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
+	"Checks.ListPredefined": {
+		{Method: "GET", Route: "/api/predefinedChecks"},
 	},
 	"ClassicDevices.Create": {
 		{Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
@@ -401,6 +407,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Devices.DownloadFile": {
 		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/files/{fileName}"},
 	},
+	"Devices.DownloadFileHead": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/files/{fileName}"},
+	},
 	"Devices.Get": {
 		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceIdOrName}"},
 	},
@@ -437,6 +446,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Diffs.Devices": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/devices"},
+	},
+	"Diffs.Files": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/files"},
 	},
 	"Diffs.FilesCount": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/files"},
@@ -627,6 +639,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Networks.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}"},
+	},
+	"Networks.L7Applications": {
+		{Method: "GET", Route: "/api/l7-applications"},
 	},
 	"Networks.List": {
 		{Method: "GET", Route: "/api/networks"},

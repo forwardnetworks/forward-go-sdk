@@ -297,6 +297,11 @@ Backoff doubles from `Delay` (default 500ms) and is capped at `MaxDelay`
 request body that cannot be rewound is never resent. Applications with other
 requirements can still supply an `http.Client` with their own transport.
 
+`RefusedOnly: true` narrows this to 429 and 503 alone, for callers that want a
+bounded read rather than one that rides out an unhealthy appserver. `Jitter`
+(a fraction in [0, 1]) randomizes each backoff wait downward so clients refused
+together do not retry together; `Retry-After` is always honored exactly.
+
 ## Development
 
 ```sh

@@ -388,3 +388,23 @@ func networkPath(networkID string) (string, error) {
 	}
 	return fmt.Sprintf("/api/networks/%s", url.PathEscape(networkID)), nil
 }
+
+// L7Application is an application name path search can filter on.
+type L7Application struct {
+	ID string `json:"id"`
+}
+
+// L7Applications returns the application names path search recognizes. GET
+// /api/l7-applications (getL7Applications, published; PathSearchController on
+// primary 15398425a69 and stable 67e89c87124). The list is the appserver's,
+// not a network's, so no network is named.
+func (s *NetworksService) L7Applications(ctx context.Context) ([]L7Application, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/l7-applications", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Networks.L7Applications")
+	var out []L7Application
+	resp, err := s.client.doRequired(req, &out)
+	return out, resp, err
+}

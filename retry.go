@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"math"
+	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"strings"
@@ -25,6 +26,17 @@ type RetryPolicy struct {
 	// (Skyforge's BusyRetry waits out Forward's one-active-chat 429 with 5s
 	// doubling to 160s) keeps every wait it asked for.
 	MaxDelay time.Duration
+	// RefusedOnly retries only 429 and 503 -- the two statuses that say the
+	// request was turned away unprocessed -- and hands every other failure
+	// (transport errors, 500, 502, 504) straight back, even for an idempotent
+	// method. For callers that want a bounded, predictable read rather than
+	// one that rides out an unhealthy appserver.
+	RefusedOnly bool
+	// Jitter randomizes each backoff wait downward by up to this fraction
+	// (0.5: somewhere in [wait/2, wait]), so clients refused together do not
+	// retry together. Clamped to [0, 1]; zero keeps the exact schedule. A
+	// server's Retry-After is honored exactly, never shortened.
+	Jitter float64
 }
 
 const (
@@ -58,10 +70,10 @@ func (c *Client) send(req *http.Request) (*http.Response, error) {
 
 	for attempt := 1; ; attempt++ {
 		resp, err := c.httpClient.Do(req)
-		if attempt >= attempts || !retryable(req, resp, err) {
+		if attempt >= attempts || !retryable(req, resp, err, c.retry.RefusedOnly) {
 			return resp, err
 		}
-		wait, ok := retryWait(resp, delay, attempt, maxDelay)
+		wait, ok := retryWait(resp, delay, attempt, maxDelay, c.retry.Jitter)
 		if !ok {
 			return resp, err
 		}
@@ -83,7 +95,7 @@ func (c *Client) send(req *http.Request) (*http.Response, error) {
 	}
 }
 
-func retryable(req *http.Request, resp *http.Response, err error) bool {
+func retryable(req *http.Request, resp *http.Response, err error, refusedOnly bool) bool {
 	// A body that cannot be rewound cannot be sent twice.
 	if req.Body != nil && req.GetBody == nil {
 		return false
@@ -92,11 +104,16 @@ func retryable(req *http.Request, resp *http.Response, err error) bool {
 		return false
 	}
 	if err != nil {
-		return idempotent(req.Method)
+		return !refusedOnly && idempotent(req.Method)
 	}
 	switch resp.StatusCode {
 	case http.StatusTooManyRequests, http.StatusServiceUnavailable:
 		return true
+	}
+	if refusedOnly {
+		return false
+	}
+	switch resp.StatusCode {
 	case http.StatusNotImplemented:
 		// Permanent: the route is absent from this build, not overloaded.
 		return false
@@ -105,11 +122,12 @@ func retryable(req *http.Request, resp *http.Response, err error) bool {
 }
 
 // retryWait is the wait before the next attempt: the server's Retry-After when
-// it sent one, otherwise the doubled backoff, both capped at maxDelay. It
+// it sent one, otherwise the doubled backoff less up to jitter of itself, both
+// capped at maxDelay. It
 // reports false when the server asked for longer than maxDelay, because
 // sleeping that long inside a call the caller thinks is ordinary is worse than
 // handing them the 429 or 503 to decide on.
-func retryWait(resp *http.Response, delay time.Duration, attempt int, maxDelay time.Duration) (time.Duration, bool) {
+func retryWait(resp *http.Response, delay time.Duration, attempt int, maxDelay time.Duration, jitter float64) (time.Duration, bool) {
 	if resp != nil {
 		if after, ok := retryAfter(resp.Header.Get("Retry-After"), time.Now()); ok {
 			return after, after <= maxDelay
@@ -118,7 +136,11 @@ func retryWait(resp *http.Response, delay time.Duration, attempt int, maxDelay t
 	for i := 1; i < attempt && delay < maxDelay; i++ {
 		delay *= 2
 	}
-	return min(delay, maxDelay), true
+	wait := min(delay, maxDelay)
+	if jitter = min(max(jitter, 0), 1); jitter > 0 {
+		wait -= time.Duration(rand.Float64() * jitter * float64(wait))
+	}
+	return wait, true
 }
 
 // retryAfter parses a Retry-After value: delay-seconds or an HTTP date.

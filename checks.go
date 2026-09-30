@@ -464,3 +464,26 @@ func checkPath(snapshotID, checkID string) (string, error) {
 	}
 	return base + "/" + url.PathEscape(checkID), nil
 }
+
+// PredefinedCheck is a built-in check Forward offers (AvailablePredefinedCheck):
+// PredefinedCheckType is what a check definition names to use it.
+type PredefinedCheck struct {
+	Name                string `json:"name"`
+	Description         string `json:"description"`
+	PredefinedCheckType string `json:"predefinedCheckType"`
+}
+
+// ListPredefined returns the built-in checks this appserver offers. GET
+// /api/predefinedChecks (getAvailablePredefinedChecks, published;
+// CheckController on primary 15398425a69 and stable 67e89c87124). It needs the
+// VIEW_PREDEFINED_CHECKS org permission.
+func (s *ChecksService) ListPredefined(ctx context.Context) ([]PredefinedCheck, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/predefinedChecks", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Checks.ListPredefined")
+	var out []PredefinedCheck
+	resp, err := s.client.doRequired(req, &out)
+	return out, resp, err
+}

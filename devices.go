@@ -165,6 +165,37 @@ func (s *DevicesService) ListFiles(ctx context.Context, networkID, deviceName, s
 
 // DownloadFile streams a raw collected device file.
 func (s *DevicesService) DownloadFile(ctx context.Context, networkID, deviceName, fileName, snapshotID string, dst io.Writer) (*Response, error) {
+	req, err := s.fileRequest(ctx, networkID, deviceName, fileName, snapshotID, dst)
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Do(req, dst)
+}
+
+// DownloadFileHead writes at most maxBytes of a collected device file to dst
+// and stops, reporting whether the file was longer. Forward does not honor
+// Range on this route (its handler returns an InputStreamResource, which
+// Spring MVC serves whole), so the cap is applied here: the response body is
+// closed once maxBytes have arrived, which stops the transfer rather than
+// discarding the rest. A truncated read is not an error.
+func (s *DevicesService) DownloadFileHead(ctx context.Context, networkID, deviceName, fileName, snapshotID string, maxBytes int64, dst io.Writer) (written int64, truncated bool, resp *Response, err error) {
+	if maxBytes <= 0 {
+		return 0, false, nil, errors.New("forward: maxBytes must be positive")
+	}
+	req, err := s.fileRequest(ctx, networkID, deviceName, fileName, snapshotID, dst)
+	if err != nil {
+		return 0, false, nil, err
+	}
+	req = markOperation(req, "Devices.DownloadFileHead")
+	head := &headWriter{dst: dst, remaining: maxBytes}
+	resp, err = s.client.Do(req, head)
+	if errors.Is(err, errHeadFull) {
+		return head.written, true, resp, nil
+	}
+	return head.written, false, resp, err
+}
+
+func (s *DevicesService) fileRequest(ctx context.Context, networkID, deviceName, fileName, snapshotID string, dst io.Writer) (*http.Request, error) {
 	if strings.TrimSpace(fileName) == "" || dst == nil {
 		return nil, errors.New("forward: device file name and destination writer are required")
 	}
@@ -181,7 +212,37 @@ func (s *DevicesService) DownloadFile(ctx context.Context, networkID, deviceName
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/octet-stream, text/plain")
-	return s.client.Do(req, dst)
+	return req, nil
+}
+
+var errHeadFull = errors.New("forward: download head is full")
+
+// headWriter passes through up to remaining bytes, then fails the write so the
+// copy stops and the body is closed.
+type headWriter struct {
+	dst       io.Writer
+	remaining int64
+	written   int64
+}
+
+func (h *headWriter) Write(p []byte) (int, error) {
+	if h.remaining <= 0 {
+		return 0, errHeadFull
+	}
+	chunk := p
+	if int64(len(chunk)) > h.remaining {
+		chunk = chunk[:h.remaining]
+	}
+	n, err := h.dst.Write(chunk)
+	h.written += int64(n)
+	h.remaining -= int64(n)
+	if err != nil {
+		return n, err
+	}
+	if n < len(p) {
+		return n, errHeadFull
+	}
+	return n, nil
 }
 
 func modeledDevicePath(networkID, deviceName string) (string, error) {
