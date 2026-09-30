@@ -196,28 +196,33 @@ func (s *SnapshotsService) findInListing(ctx context.Context, networkID, snapsho
 	return nil, resp, fmt.Errorf("%w: %s", ErrSnapshotNotFound, snapshotID)
 }
 
-// LatestProcessed returns the most recent processed snapshot for a network.
+// LatestProcessed returns the newest processed snapshot that records a state
+// the network was actually in: Predict results are skipped.
 //
-// Forward's dedicated /latestProcessed route is deprecated for removal in
-// 26.12, so this is built on List, which is newest-first: PROCESSED-filtered
-// and limit-1, taking the first (and only) result, the same pattern ResolveID
-// already uses for its own "latest" resolution above.
+// Forward's snapshot listing includes predicted snapshots (Predict forks a
+// snapshot and processes it like any other), so the newest PROCESSED row on a
+// network that uses Predict is frequently a prediction. The dedicated
+// /latestProcessed route skipped forks, but it is deprecated for removal in
+// 26.12; this reads the listing instead and applies the same rule. The listing
+// has no offset, so it is read without a limit -- Forward assembles every row
+// server-side either way. A caller that does want predictions included can
+// take the first row of List with State "PROCESSED". LatestCollected is the
+// same call.
 //
-// Deprecated: call List(ctx, networkID, SnapshotListOptions{State:
-// "PROCESSED", Limit: &one}) directly and take the first result -- that is
-// all this wrapper does now that it no longer hits a dedicated route. No
-// caller in this repo uses LatestProcessed any more (retargeted 2026-09-23);
-// kept only so a caller pinned to an older SDK build does not break.
+// ErrNoSnapshots means the network has no processed, non-predicted snapshot.
 func (s *SnapshotsService) LatestProcessed(ctx context.Context, networkID string) (*Snapshot, *Response, error) {
-	one := int32(1)
-	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{State: "PROCESSED", Limit: &one})
+	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{State: "PROCESSED"})
 	if err != nil {
 		return nil, resp, err
 	}
-	if len(snapshots) == 0 {
-		return nil, resp, fmt.Errorf("%w: %s", ErrNoSnapshots, networkID)
+	// The state is re-checked here as well: a build that ignores the filter
+	// must not turn an in-progress snapshot into "latest processed".
+	for i := range snapshots {
+		if strings.EqualFold(snapshots[i].State, "PROCESSED") && !snapshots[i].Predicted() {
+			return &snapshots[i], resp, nil
+		}
 	}
-	return &snapshots[0], resp, nil
+	return nil, resp, fmt.Errorf("%w: %s has no processed snapshot outside Predict", ErrNoSnapshots, networkID)
 }
 
 // Delete removes a snapshot.
@@ -548,7 +553,7 @@ func (s *SnapshotsService) ResolveID(ctx context.Context, networkID, which strin
 		return "", response, err
 	}
 	for _, snapshot := range snapshots {
-		if strings.EqualFold(snapshot.State, "PROCESSED") && !snapshot.predicted() {
+		if strings.EqualFold(snapshot.State, "PROCESSED") && !snapshot.Predicted() {
 			return snapshot.ID, response, nil
 		}
 	}
@@ -563,11 +568,23 @@ func (s *SnapshotsService) ResolveID(ctx context.Context, networkID, which strin
 	return "", response, ErrNoSnapshots
 }
 
-// predicted reports whether a snapshot came from Predict rather than a
-// collection. ProcessingTrigger is the field Forward actually sets -- a
-// prediction reads PREDICT where a collection reads COLLECTION -- and the rest
-// are corroborating signals that older builds and other routes supply instead.
-func (s Snapshot) predicted() bool {
+// Predicted reports whether the snapshot came from Predict rather than a
+// collection or import, so it describes a state the network was never in.
+// Queries that read live state (counters, performance) come back empty on one
+// whatever the network looks like, so an empty result there is not a clean
+// network.
+//
+// ProcessingTrigger is the field Forward sets -- PREDICT where a collection
+// reads COLLECTION -- and the rest are corroborating signals older builds and
+// other routes supply instead. ParentSnapshotID is Forward's own definition of
+// a fork (SnapshotMeta.isFork), which is what its automatic snapshot choice
+// skips: NQE and other snapshot-scoped calls made without an explicit
+// snapshot ID never land on a predicted snapshot; only an ID that came from
+// one does.
+//
+// The method is not called IsPredicted because Snapshot already has a JSON
+// field of that name, which only some builds send.
+func (s Snapshot) Predicted() bool {
 	return strings.EqualFold(s.ProcessingTrigger, "PREDICT") ||
 		s.IsPredicted || s.ParentSnapshotID != "" || s.ChangeSetID != ""
 }
@@ -725,19 +742,12 @@ func (s *SnapshotsService) ForCollectionTask(
 //
 // Predict refuses to run against predicted input, and every prediction leaves
 // a snapshot behind, so "the newest snapshot" is usually the wrong baseline
-// for a change set. This is the right one.
+// for a change set. This is the right one. It is LatestProcessed under the
+// name a Predict caller looks for; it used to read only the newest 50 rows of
+// any state, so 50 recent predictions or unprocessed snapshots hid a good
+// baseline behind ErrNoSnapshots.
 func (s *SnapshotsService) LatestCollected(ctx context.Context, networkID string) (*Snapshot, *Response, error) {
-	limit := int32(50)
-	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{Limit: &limit})
-	if err != nil {
-		return nil, resp, err
-	}
-	for i := range snapshots {
-		if strings.EqualFold(snapshots[i].State, "PROCESSED") && !snapshots[i].predicted() {
-			return &snapshots[i], resp, nil
-		}
-	}
-	return nil, resp, ErrNoSnapshots
+	return s.LatestProcessed(ctx, networkID)
 }
 
 // Operation returns a handle that polls a snapshot until processing reaches a

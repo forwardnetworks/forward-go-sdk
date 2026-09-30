@@ -794,6 +794,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Snapshots.Download": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}"},
 	},
+	"Snapshots.Exceptions": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/exceptions"},
+	},
 	"Snapshots.ExportSubset": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
 	},
@@ -823,6 +826,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Snapshots.ListDocument": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.Metrics": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/metrics"},
 	},
 	"Snapshots.Operation": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},

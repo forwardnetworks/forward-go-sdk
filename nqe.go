@@ -200,6 +200,15 @@ type NQEQuery struct {
 }
 
 // Run executes an NQE query synchronously against a network or snapshot.
+//
+// With no snapshotID, Forward picks the newest processed snapshot that is not
+// a draft or a Predict fork. An explicit snapshotID is used as given, and on a
+// predicted snapshot queries over live state (counters, performance) come
+// back empty whatever the network looks like. The result carries SnapshotID;
+// a caller that needs to tell the two apart checks Snapshot.Predicted() on
+// that snapshot. A snapshot that is still processing fails with
+// ErrSnapshotNotProcessed, one whose processing failed with
+// ErrSnapshotProcessingFailed.
 func (s *NQEService) Run(
 	ctx context.Context,
 	networkID string,

@@ -16,9 +16,17 @@ const maxErrorBody = 1 << 20
 type ErrorKind string
 
 const (
-	ErrorKindUnknown                           ErrorKind = "unknown"
-	ErrorKindCollectionAlreadyInProgress       ErrorKind = "collection-already-in-progress"
-	ErrorKindSnapshotNotProcessed              ErrorKind = "snapshot-not-processed"
+	ErrorKindUnknown                     ErrorKind = "unknown"
+	ErrorKindCollectionAlreadyInProgress ErrorKind = "collection-already-in-progress"
+	ErrorKindSnapshotNotProcessed        ErrorKind = "snapshot-not-processed"
+	// ErrorKindSnapshotProcessingFailed is a snapshot whose processing ended
+	// badly: failed, canceled or timed out. Unlike SnapshotNotProcessed,
+	// waiting does not help -- the snapshot has to be reprocessed or replaced.
+	ErrorKindSnapshotProcessingFailed ErrorKind = "snapshot-processing-failed"
+	// ErrorKindNoSnapshots is a snapshot-scoped call made without a snapshot
+	// ID on a network that has no snapshot Forward can choose (none at all,
+	// or only drafts and Predict forks).
+	ErrorKindNoSnapshots                       ErrorKind = "no-snapshots"
 	ErrorKindNetworkNotFound                   ErrorKind = "network-not-found"
 	ErrorKindAuthentication                    ErrorKind = "authentication-failure"
 	ErrorKindTrustedCertificateApplyInProgress ErrorKind = "trusted-certificate-apply-in-progress"
@@ -33,6 +41,7 @@ const (
 var (
 	ErrCollectionAlreadyInProgress       = errors.New("forward: collection already in progress")
 	ErrSnapshotNotProcessed              = errors.New("forward: snapshot not processed")
+	ErrSnapshotProcessingFailed          = errors.New("forward: snapshot processing failed")
 	ErrNetworkNotFound                   = errors.New("forward: network not found")
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
@@ -76,7 +85,15 @@ type ErrorResponse struct {
 	CompletionType string          `json:"completionType,omitempty"`
 	Errors         []NQEQueryError `json:"errors,omitempty"`
 	SnapshotID     Identifier      `json:"snapshotId,omitempty"`
-	Body           []byte          `json:"-"`
+	// SnapshotState accompanies reason SNAPSHOT_UNAVAILABLE: the state the
+	// refused snapshot is in (UNPROCESSED, PROCESSING, ...).
+	SnapshotState string `json:"snapshotState,omitempty"`
+	// LatestSnapshotID and LatestSnapshotState accompany reason
+	// NO_QUALIFYING_SNAPSHOT when the network does have a snapshot, just not a
+	// processed one.
+	LatestSnapshotID    Identifier `json:"latestSnapshotId,omitempty"`
+	LatestSnapshotState string     `json:"latestSnapshotState,omitempty"`
+	Body                []byte     `json:"-"`
 }
 
 // Is lets callers use errors.Is with the stable classification sentinels.
@@ -89,6 +106,10 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindCollectionAlreadyInProgress
 	case ErrSnapshotNotProcessed:
 		return e.Kind == ErrorKindSnapshotNotProcessed
+	case ErrSnapshotProcessingFailed:
+		return e.Kind == ErrorKindSnapshotProcessingFailed
+	case ErrNoSnapshots:
+		return e.Kind == ErrorKindNoSnapshots
 	case ErrNetworkNotFound:
 		return e.Kind == ErrorKindNetworkNotFound
 	case ErrAuthentication:
@@ -213,6 +234,29 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 				(strings.Contains(detail, "progress") || strings.Contains(detail, "running") ||
 					strings.Contains(detail, "active") || strings.Contains(detail, "underway"))) {
 		return ErrorKindCollectionAlreadyInProgress
+	}
+	// Forward's own reason codes, on any snapshot-scoped route (NQE, paths,
+	// diffs, ...): SnapshotProcessingInterceptor guards every @RequiresSnapshot
+	// handler, and ForwardHandlerExceptionResolver renders its refusals.
+	if status == http.StatusConflict {
+		switch apiErr.Reason {
+		case "SNAPSHOT_UNAVAILABLE":
+			return ErrorKindSnapshotNotProcessed
+		case "NO_QUALIFYING_SNAPSHOT":
+			if apiErr.LatestSnapshotID != "" {
+				return ErrorKindSnapshotNotProcessed
+			}
+			return ErrorKindNoSnapshots
+		}
+	}
+	// FailedSnapshotAccessException, ProcessingCanceledException and
+	// ProcessingTimedOutException are 400s with no reason code, so the fixed
+	// texts ForwardHandlerExceptionResolver writes are all there is to match.
+	if status == http.StatusBadRequest &&
+		(strings.Contains(detail, "snapshot you are attempting to access failed to process") ||
+			strings.Contains(detail, "processing was canceled for snapshot") ||
+			strings.Contains(detail, "processing timed out for snapshot")) {
+		return ErrorKindSnapshotProcessingFailed
 	}
 	if strings.HasPrefix(path, "/api/snapshots/") &&
 		(status == http.StatusBadRequest || status == http.StatusConflict || status == http.StatusTooEarly) &&
