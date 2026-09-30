@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -26,7 +27,12 @@ const (
 	// ErrorKindNoSnapshots is a snapshot-scoped call made without a snapshot
 	// ID on a network that has no snapshot Forward can choose (none at all,
 	// or only drafts and Predict forks).
-	ErrorKindNoSnapshots                       ErrorKind = "no-snapshots"
+	ErrorKindNoSnapshots ErrorKind = "no-snapshots"
+	// ErrorKindFeatureGated is a route refused because an org or deployment
+	// property is not set the way the route requires -- a feature switched off
+	// (or, rarely, on) for this tenant, not a missing permission.
+	// ErrorResponse.GateProperty names the property.
+	ErrorKindFeatureGated                      ErrorKind = "feature-gated"
 	ErrorKindNetworkNotFound                   ErrorKind = "network-not-found"
 	ErrorKindAuthentication                    ErrorKind = "authentication-failure"
 	ErrorKindTrustedCertificateApplyInProgress ErrorKind = "trusted-certificate-apply-in-progress"
@@ -42,6 +48,7 @@ var (
 	ErrCollectionAlreadyInProgress       = errors.New("forward: collection already in progress")
 	ErrSnapshotNotProcessed              = errors.New("forward: snapshot not processed")
 	ErrSnapshotProcessingFailed          = errors.New("forward: snapshot processing failed")
+	ErrFeatureGated                      = errors.New("forward: feature not available for this organization or deployment")
 	ErrNetworkNotFound                   = errors.New("forward: network not found")
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
@@ -93,7 +100,14 @@ type ErrorResponse struct {
 	// processed one.
 	LatestSnapshotID    Identifier `json:"latestSnapshotId,omitempty"`
 	LatestSnapshotState string     `json:"latestSnapshotState,omitempty"`
-	Body                []byte     `json:"-"`
+
+	// For ErrorKindFeatureGated: the OrgProperty or DeploymentProperty that
+	// gated the route (e.g. LOCATION_CONNECTIVITY_DIFFS), its current value,
+	// and GateScope "organization" or "deployment".
+	GateProperty string `json:"-"`
+	GateEnabled  bool   `json:"-"`
+	GateScope    string `json:"-"`
+	Body         []byte `json:"-"`
 }
 
 // Is lets callers use errors.Is with the stable classification sentinels.
@@ -110,6 +124,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindSnapshotProcessingFailed
 	case ErrNoSnapshots:
 		return e.Kind == ErrorKindNoSnapshots
+	case ErrFeatureGated:
+		return e.Kind == ErrorKindFeatureGated
 	case ErrNetworkNotFound:
 		return e.Kind == ErrorKindNetworkNotFound
 	case ErrAuthentication:
@@ -222,6 +238,15 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 		method = apiErr.Response.Request.Method
 	}
 	detail := normalizedErrorDetail(apiErr.Code, apiErr.Reason, apiErr.Message, string(apiErr.Body))
+	// Checked before the authentication heuristics below: a property name can
+	// contain TOKEN or CREDENTIAL, and a feature switched off is not a login
+	// problem.
+	if status == http.StatusForbidden {
+		if match := featureGateMessage.FindStringSubmatch(strings.TrimSpace(apiErr.Message)); match != nil {
+			apiErr.GateProperty, apiErr.GateEnabled, apiErr.GateScope = match[1], match[2] == "on", match[3]
+			return ErrorKindFeatureGated
+		}
+	}
 	if status == http.StatusForbidden &&
 		(containsWords(detail, "auth", "fail") || containsWords(detail, "credential") || containsWords(detail, "token")) {
 		return ErrorKindAuthentication
@@ -285,6 +310,13 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	}
 	return ErrorKindUnknown
 }
+
+// featureGateMessage is the whole message AccessEnforcer's property checks
+// produce (PermissionsErrorMessages: "%s is %s for your organization" and
+// "... for your deployment") -- a 403 with no reason code, so this fixed
+// template is the only stable signal. It is anchored so only that exact
+// sentence classifies, never a message that merely contains it.
+var featureGateMessage = regexp.MustCompile(`^([A-Z][A-Z0-9_]*) is (on|off) for your (organization|deployment)$`)
 
 func requestHasQueryValue(response *http.Response, key, value string) bool {
 	if response == nil || response.Request == nil || response.Request.URL == nil {

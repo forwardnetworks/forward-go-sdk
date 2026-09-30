@@ -410,6 +410,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Devices.ListFiles": {
 		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceIdOrName}/files"},
 	},
+	"Devices.Missing": {
+		{Method: "GET", Route: "/api/networks/{networkId}/missing-devices"},
+	},
 	"Diffs.Checks": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/checks"},
 	},
