@@ -48,15 +48,16 @@ go run ./cmd/skyforge-coverage -audit /path/to/skyforge/docs/forward-api-sdk-mig
 `coverage_manifest.json` maps each method+route to the typed SDK symbol(s) that send it. `go generate` produces `coverage_catalog_gen.go` and `COVERAGE.md` from it. Never hand-edit either file. Three tests enforce the manifest:
 - `TestCoverageManifest` (`coverage_manifest_test.go`) fails if any entry isn't `COVERED`, if `distinct_method_routes` doesn't match the entry count, if a symbol isn't an exported method on an exported `Client` service field, if a symbol is `Raw.*` or takes `RawRequest`, or if the generated catalog disagrees with the manifest (fix: `go generate ./...`).
 - `TestCoverageManifestIsComplete` (`coverage_completeness_test.go`) fails if any exported service method that issues a request (directly or through helpers) has no manifest route. A composite method must also list its callees' routes (e.g. `Diffs.MaterialSummary`), and a manifest symbol that sends nothing is flagged. Skyforge's route-liveness gate can only check calls it can map through this manifest.
-
 - `TestCoverageManifestRoutesMatchTheWire` (`coverage_routes_test.go`) calls every manifest symbol against a recording server, with arguments synthesized by reflection and each auth mode tried in turn. It fails on any request the manifest doesn't declare for that symbol. If a method validates an argument against an enum, or the manifest pins a dynamic segment, add it to `wireArgOverrides`. `minExercised` is a floor on how many symbols actually reach the wire; raise it when you improve coverage, and never lower it just to get a new method past the check.
 
 So every new request-issuing method needs a manifest entry: add it, bump `distinct_method_routes` and `semantic_call_sites`, append a dated note to `derived_from`, then run `go generate ./...`. `consumer_go_sha256` pins Skyforge's Go tree on purpose, so any consumer change forces a reviewed refresh through `cmd/skyforge-coverage`. The source of truth for corrections is the Skyforge audit document's Part 5 table, not that command's code.
 
-## Where the SDK lives
+## Where the SDK lives and how it ships
 
-- `origin` (Forgejo, `skyforge/forward-go-sdk`) is where development happens. Skyforge vendors it as a git submodule at `~/src/skyforge/components/server/third_party/forward-go-sdk` (see `replace` in the server's `go.mod`), and commits are sometimes made directly in that checkout.
-- `github` (`forwardnetworks/forward-go-sdk`) is the published module. Consumers outside Skyforge pin its `vX.Y.Z` tags, so push `main` and the tag there when releasing.
+- `origin` (Forgejo, `skyforge/forward-go-sdk`) is where development happens; `github` (`forwardnetworks/forward-go-sdk`) is the published module. A release is `main` plus an annotated `vX.Y.Z` tag pushed to **both** remotes, then confirmed with `go list -m github.com/forwardnetworks/forward-go-sdk@vX.Y.Z` (it must resolve through the proxy). Pre-1.0: a breaking change bumps the minor version, anything else the patch.
+- Every consumer requires the published module, including Skyforge (`components/server/go.mod`, since 2026-09-30) and `forward-skills`. There is no vendored copy to edit in place any more: SDK changes reach Skyforge only through a tag.
+- Before adding a route, check it exists on both Forward builds Skyforge pins, in `~/src/skyforge/components/server/internal/forwardrawgate/routes/routes_{primary,stable}.tsv`. Forward's source (`~/src/fwd`) and its published spec (`~/src/fwd/api/apis/*.yaml`) are the ground truth for shapes and error bodies.
+- Skyforge's `scripts/lib/check-forward-delete-sites.py` fails when the SDK gains a destructive method missing from its `DESTRUCTIVE_SDK` catalogue, so a new delete or teardown method needs that catalogue updated in Skyforge too.
 
 ## Tests
 
