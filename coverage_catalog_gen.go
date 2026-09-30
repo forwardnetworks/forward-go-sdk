@@ -990,6 +990,15 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Version.Reachable": {
 		{Method: "GET", Route: "/api/version"},
 	},
+	"Vulnerabilities.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/vulnerabilities/{cveId}"},
+	},
+	"Vulnerabilities.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/vulnerabilities"},
+	},
+	"Vulnerabilities.ListByOS": {
+		{Method: "GET", Route: "/api/networks/{networkId}/vulnerabilities"},
+	},
 	"Webhooks.Create": {
 		{Method: "POST", Route: "/api/webhooks"},
 	},

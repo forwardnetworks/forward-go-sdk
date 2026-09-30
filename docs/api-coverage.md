@@ -41,8 +41,8 @@ The published OpenAPI families still needing dedicated services include:
 
 - additional classic-device aliases, data connectors, and collection schedules
   not exercised by Skyforge;
-- snapshot metrics, topology/overrides, advanced reachability, path
-  search, vulnerability analysis, L2/L3 VPNs, WAN circuits, endpoints, and
+- topology/overrides, advanced reachability, path
+  search, L2/L3 VPNs, WAN circuits, endpoints, and
   internet/intranet nodes;
 - complete-seed, encryptors, and additional source families.
 
