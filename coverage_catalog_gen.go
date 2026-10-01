@@ -809,6 +809,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
 		{Method: "POST", Route: "/api/collector-tasks"},
 	},
+	"Snapshots.ComputeAdvancedReachability": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
+	},
 	"Snapshots.Delete": {
 		{Method: "DELETE", Route: "/api/snapshots/{snapshotId}"},
 	},

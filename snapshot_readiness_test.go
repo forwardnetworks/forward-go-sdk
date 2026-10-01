@@ -290,3 +290,54 @@ func TestSnapshotsProcessEstimate(t *testing.T) {
 		t.Fatal("an empty snapshot ID must be refused")
 	}
 }
+
+// The trigger is fire-and-forget: 204 on acceptance. Its handler requires the
+// REACHABILITY stage, so the documented 409 is the readiness interceptor's
+// SNAPSHOT_UNAVAILABLE -- already ErrSnapshotNotProcessed -- and a snapshot
+// whose processing failed is ErrSnapshotProcessingFailed, not a bare status.
+func TestSnapshotsComputeAdvancedReachability(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		status int
+		body   string
+		want   error
+	}{
+		{name: "accepted", status: http.StatusNoContent},
+		{name: "unknown snapshot", status: http.StatusNotFound, body: `{"apiUrl":"/api/snapshots/9164","httpMethod":"POST","message":"Snapshot not found"}`},
+		{name: "reachability not finished", status: http.StatusConflict,
+			body: `{"apiUrl":"/api/snapshots/9164","httpMethod":"POST","message":"Snapshot 9164 cannot be used at the moment (currently PROCESSING)","reason":"SNAPSHOT_UNAVAILABLE","snapshotId":9164,"snapshotState":"PROCESSING"}`,
+			want: ErrSnapshotNotProcessed},
+		{name: "processing failed", status: http.StatusBadRequest,
+			body: `{"apiUrl":"/api/snapshots/9164","httpMethod":"POST","message":"The snapshot you are attempting to access failed to process successfully.\nPlease contact your Forward representative for details."}`,
+			want: ErrSnapshotProcessingFailed},
+	}
+	for _, tc := range cases {
+		var method, path, query string
+		var bodyLen int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			method, path, query = r.Method, r.URL.EscapedPath(), r.URL.RawQuery
+			b, _ := io.ReadAll(r.Body)
+			bodyLen = len(b)
+			w.WriteHeader(tc.status)
+			_, _ = io.WriteString(w, tc.body)
+		}))
+		_, err := newTestClient(t, server.URL).Snapshots.ComputeAdvancedReachability(context.Background(), " 9164 ")
+		server.Close()
+		if method != http.MethodPost || path != "/api/snapshots/9164" || query != "action=computeAdvancedReachability" || bodyLen != 0 {
+			t.Errorf("%s: sent %s %s?%s with %d body bytes", tc.name, method, path, query, bodyLen)
+		}
+		switch {
+		case tc.status == http.StatusNoContent && err != nil:
+			t.Errorf("%s: err = %v", tc.name, err)
+		case tc.status == http.StatusNotFound && !IsStatus(err, http.StatusNotFound):
+			t.Errorf("%s: err = %v, want a 404", tc.name, err)
+		case tc.want != nil && !errors.Is(err, tc.want):
+			t.Errorf("%s: err = %v, want %v", tc.name, err, tc.want)
+		}
+	}
+	if _, err := newTestClient(t, "http://127.0.0.1:1").Snapshots.ComputeAdvancedReachability(context.Background(), " "); err == nil || IsStatus(err, 0) {
+		t.Fatal("an empty snapshot ID must be refused locally")
+	}
+}

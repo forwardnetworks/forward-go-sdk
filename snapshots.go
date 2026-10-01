@@ -237,6 +237,36 @@ func (s *SnapshotsService) Delete(ctx context.Context, snapshotID string) (*Resp
 	return s.client.Do(req, nil)
 }
 
+// Snapshot.AdvancedReachabilityState values (Forward's AdvancedReachabilityState). The field stays a string, so a value a newer build adds
+// still decodes; compare it with these.
+const (
+	AdvancedReachabilityUnprocessed = "UNPROCESSED"
+	AdvancedReachabilityProcessing  = "PROCESSING"
+	AdvancedReachabilityProcessed   = "PROCESSED"
+	AdvancedReachabilityFailed      = "FAILED"
+	AdvancedReachabilityCanceled    = "CANCELED"
+	AdvancedReachabilityTimedOut    = "TIMED_OUT"
+)
+
+// ComputeAdvancedReachability asks Forward to compute advanced reachability for a snapshot -- the analysis internet-exposure and other
+// security answers need, which a reprocessed or imported snapshot can be left without (AdvancedReachabilityState UNPROCESSED). It returns
+// as soon as Forward accepts (204) and runs asynchronously; watch the snapshot's AdvancedReachabilityState or Snapshots.Progress. POST
+// /api/snapshots/{id}?action=computeAdvancedReachability (published, computeAdvancedReachability; SnapshotController on primary 15398425a69
+// and stable 67e89c87124). The handler requires the REACHABILITY stage, so a snapshot that has not finished it is ErrSnapshotNotProcessed
+// (409 SNAPSHOT_UNAVAILABLE) and one whose processing failed is ErrSnapshotProcessingFailed. Compute-heavy, but it changes no data.
+func (s *SnapshotsService) ComputeAdvancedReachability(ctx context.Context, snapshotID string) (*Response, error) {
+	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
+		return nil, errors.New("forward: snapshot ID is required")
+	}
+	path := "/api/snapshots/" + url.PathEscape(snapshotID) + "?" + url.Values{"action": []string{"computeAdvancedReachability"}}.Encode()
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Snapshots.ComputeAdvancedReachability")
+	return s.client.Do(req, nil)
+}
+
 // Reprocess invalidates and reprocesses an existing snapshot.
 //
 // Preview: this action route is used by current Forward builds but is not part
