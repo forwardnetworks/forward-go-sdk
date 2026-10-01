@@ -23,6 +23,26 @@ type SyntheticNodesService service
 type SyntheticNode struct {
 	Name        string              `json:"name"`
 	Connections []SyntheticNodeConn `json:"connections"`
+	// QueryID is the id (Q_...) of an NQE query in the organization's library whose rows Forward turns into extra, dynamic connections of
+	// this node on the latest processed snapshot. Preview: the property is not in Forward's published spec (the server marks it hidden,
+	// FWD-37393) but is live on current builds. A node READ with a QueryID and written back without it LOSES the query, so a caller that
+	// round-trips a node must keep this field.
+	QueryID string `json:"queryId,omitempty"`
+	// QueryResult is what the query produced, computed by Forward; it is read-only and never sent.
+	QueryResult *SyntheticQueryResult `json:"queryResult,omitempty"`
+}
+
+// SyntheticQueryResult is the outcome of the node's query: the connections it generated, or why it could not.
+type SyntheticQueryResult struct {
+	Connections []SyntheticNodeConn  `json:"connections,omitempty"`
+	Error       *SyntheticQueryError `json:"error,omitempty"`
+}
+
+// SyntheticQueryError says why a node's query produced no connections. Status is Forward's own code: NO_LATEST_SNAPSHOT, QUERY_RUN_ERROR,
+// COLUMN_DATATYPE_MISMATCH (the rows are not the connection type this kind needs), INVALID_IDENTIFIER or QUERY_MISSING.
+type SyntheticQueryError struct {
+	Message string `json:"errorMsg"`
+	Status  string `json:"status"`
 }
 
 // SyntheticNodeConn is one uplink into a synthetic node. Gateway, VLAN and
@@ -161,12 +181,39 @@ func (s *SyntheticNodesService) Put(ctx context.Context, networkID string, kind 
 	if err != nil {
 		return nil, err
 	}
+	node.QueryResult = nil // computed by Forward, never sent
 	req, err := s.client.newJSONRequest(ctx, http.MethodPut, path, node)
 	if err != nil {
 		return nil, err
 	}
 	req = markOperation(req, kind.opName("Put"))
 	return s.client.Do(req, nil)
+}
+
+// SetQuery points a node at an NQE query of the organization's library (queryID "Q_...") so Forward generates dynamic connections from its rows, or
+// clears it (queryID ""). It changes nothing else on the node, and returns the node as Forward now holds it, including QueryResult (check its
+// Error: a query of the wrong row type is accepted and reported there, not refused). Preview: PATCH {"queryId": ...} on the node route; the property
+// is hidden in Forward's spec (FWD-37393). Clearing sends an explicit null, which the server reads as "remove" (JsonProp).
+func (s *SyntheticNodesService) SetQuery(ctx context.Context, networkID string, kind SyntheticNodeKind, name, queryID string) (*SyntheticNode, *Response, error) {
+	path, err := s.nodePath(networkID, kind, name)
+	if err != nil {
+		return nil, nil, err
+	}
+	var value any
+	if queryID = strings.TrimSpace(queryID); queryID != "" {
+		value = queryID
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, map[string]any{"queryId": value})
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, kind.opName("SetQuery"))
+	out := new(SyntheticNode)
+	resp, err := s.client.Do(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
 }
 
 // Delete removes one synthetic node. A 404 is success. The internet node

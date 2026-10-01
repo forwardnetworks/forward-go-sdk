@@ -2,7 +2,10 @@ package forward
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -77,5 +80,59 @@ func TestSyntheticNodeListAcceptsForwardsEnvelopes(t *testing.T) {
 	got, _, err := c.SyntheticNodes.List(context.Background(), "net-1", SyntheticInternet)
 	if err != nil || got != nil {
 		t.Fatalf("internet list must be empty and non-error: %v %v", got, err)
+	}
+}
+
+// A node read with an NQE query and written back must keep it: Forward's node PUT replaces the whole node, so a client that dropped queryId on the
+// way back would silently remove the dynamic connections. The computed queryResult is read-only and must not be sent.
+func TestSyntheticNodeRoundTripKeepsTheQueryAndNeverSendsItsResult(t *testing.T) {
+	var putBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			io.WriteString(w, `{"name":"dir","connections":[],"queryId":"Q_abc","queryResult":{"connections":[{"uplinkPort":{"device":"r1","port":"e1"},"source":"NQE"}],"error":null}}`)
+		case http.MethodPut:
+			b, _ := io.ReadAll(r.Body)
+			putBody = string(b)
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL).ForNetwork("n1")
+	n, _, err := client.SyntheticNodes.Get(context.Background(), "", SyntheticL3VPN, "dir")
+	if err != nil || n == nil || n.QueryID != "Q_abc" || n.QueryResult == nil || len(n.QueryResult.Connections) != 1 {
+		t.Fatalf("Get: %+v %v", n, err)
+	}
+	if _, err := client.SyntheticNodes.Put(context.Background(), "", SyntheticL3VPN, "dir", *n); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(putBody, `"queryId":"Q_abc"`) || strings.Contains(putBody, "queryResult") {
+		t.Fatalf("the PUT must keep queryId and omit queryResult: %s", putBody)
+	}
+}
+
+// SetQuery sends only the queryId (a string to set it, an explicit null to clear it) with PATCH on the node's own route, and reports the node's query error.
+func TestSyntheticNodesSetQuerySendsOnlyTheQueryAndReturnsTheResult(t *testing.T) {
+	var method, path, body string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.Path
+		b, _ := io.ReadAll(r.Body)
+		body = string(b)
+		io.WriteString(w, `{"name":"dir","connections":[],"queryId":"Q_abc","queryResult":{"error":{"errorMsg":"wrong row type","status":"COLUMN_DATATYPE_MISMATCH"}}}`)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL).ForNetwork("n1")
+	n, _, err := client.SyntheticNodes.SetQuery(context.Background(), "", SyntheticL3VPN, "dir", " Q_abc ")
+	if err != nil || method != http.MethodPatch || path != "/api/networks/n1/l3-vpns/dir" || body != `{"queryId":"Q_abc"}` {
+		t.Fatalf("%s %s %s %v", method, path, body, err)
+	}
+	if n.QueryResult == nil || n.QueryResult.Error == nil || n.QueryResult.Error.Status != "COLUMN_DATATYPE_MISMATCH" {
+		t.Fatalf("the query error must come back: %+v", n)
+	}
+	if _, _, err := client.SyntheticNodes.SetQuery(context.Background(), "", SyntheticIntranet, "x", ""); err != nil || body != `{"queryId":null}` || path != "/api/networks/n1/intranet-nodes/x" {
+		t.Fatalf("clearing sends an explicit null: %s %s %v", path, body, err)
+	}
+	if _, _, err := client.SyntheticNodes.SetQuery(context.Background(), "", SyntheticIntranet, " ", "Q_1"); err == nil {
+		t.Fatal("an empty node name must be refused locally (it would address the collection)")
 	}
 }
