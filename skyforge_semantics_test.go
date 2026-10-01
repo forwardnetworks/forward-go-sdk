@@ -384,6 +384,19 @@ func TestDeviceTagsRemoveBatchFromSendsTheRemoveActionAndRefusesEmptyInput(t *te
 	if gotAction != "removeBatchFrom" || gotSnapshot != "" || !strings.Contains(gotBody, `"devices":["r1"]`) || !strings.Contains(gotBody, `"tags":["branch"]`) {
 		t.Fatalf("action=%q snapshotId=%q body=%s", gotAction, gotSnapshot, gotBody)
 	}
+	var op string
+	hc, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p", Hooks: []Hook{func(_ context.Context, e Event) {
+		if e.Type == EventResponse {
+			op = e.Operation
+		}
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hooked := hc.ForNetwork("n1")
+	if _, err := hooked.DeviceTags.RemoveBatchFrom(context.Background(), "", []string{"r1"}, []string{"branch"}); err != nil || op != "DeviceTags.RemoveBatchFrom" {
+		t.Fatalf("a hook must see the operation name (a POST that removes is recognised by it): %q %v", op, err)
+	}
 	before := calls
 	if _, err := client.DeviceTags.RemoveBatchFrom(context.Background(), "", nil, []string{"branch"}); err == nil || calls != before {
 		t.Fatalf("an empty device list must be refused locally (err=%v, calls %d -> %d)", err, before, calls)

@@ -78,6 +78,7 @@ func (s *DeviceTagsService) RemoveBatchFrom(ctx context.Context, networkID strin
 	if err != nil {
 		return nil, err
 	}
+	req = markOperation(req, "DeviceTags.RemoveBatchFrom") // a POST that removes: the operation name is how a hook recognises it as destructive
 	return s.client.Do(req, nil)
 }
 
