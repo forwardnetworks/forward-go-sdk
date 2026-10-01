@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 // Forward's snapshot listing includes Predict forks, processed like any
@@ -222,5 +223,70 @@ func TestSnapshotsExceptionsReadsTheJSONView(t *testing.T) {
 		if _, _, err := newTestClient(t, server.URL).Snapshots.Exceptions(context.Background(), id); err == nil {
 			t.Fatalf("Exceptions(%q) accepted a missing snapshot ID", id)
 		}
+	}
+}
+
+// The shape is Forward's SnapshotProgressReport, sampled live: a stage that
+// has not started omits startedAt and updatedAt (the record is NON_NULL) and
+// reports numObjects only once updatedAt is set, so "not started" must stay
+// distinguishable from zero. Stage and state names are open-ended strings.
+func TestSnapshotsProgress(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.EscapedPath() != "/api/snapshots/9164/progress" {
+			t.Errorf("path = %s", r.URL.EscapedPath())
+		}
+		_, _ = io.WriteString(w, `{"networkId":"3347","snapshotId":"9164","done":false,"stages":[
+		  {"stage":"CREATION","operationState":"COMPUTING","startedAt":1790859432171,"updatedAt":1790861239221,"numObjects":4025},
+		  {"stage":"TEXT_SEARCH_INDEX","operationState":"NOT_TRIGGERED"},
+		  {"stage":"SOME_FUTURE_STAGE","operationState":"A_NEW_STATE","updatedAt":1790861239221,"numObjects":0}]}`)
+	}))
+	defer server.Close()
+
+	got, _, err := newTestClient(t, server.URL).Snapshots.Progress(context.Background(), " 9164 ")
+	if err != nil || got.SnapshotID != "9164" || got.NetworkID != "3347" || got.Done || len(got.Stages) != 3 {
+		t.Fatalf("Progress() = %+v, %v", got, err)
+	}
+	creation, waiting, future := got.Stages[0], got.Stages[1], got.Stages[2]
+	if started, ok := creation.StartedAt(); !ok || started.UnixMilli() != 1790859432171 || *creation.NumObjects != 4025 {
+		t.Fatalf("creation = %+v", creation)
+	}
+	if _, ok := waiting.StartedAt(); ok || waiting.UpdatedAtMillis != nil || waiting.NumObjects != nil {
+		t.Fatalf("a stage that has not started must have no times and no count: %+v", waiting)
+	}
+	if future.Stage != "SOME_FUTURE_STAGE" || future.OperationState != "A_NEW_STATE" || future.NumObjects == nil || *future.NumObjects != 0 {
+		t.Fatalf("an unknown stage must decode as-is: %+v", future)
+	}
+}
+
+// ProcessEstimate durations are milliseconds per stage name, and a name this
+// SDK has never heard of is kept, not dropped.
+func TestSnapshotsProcessEstimate(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.EscapedPath() != "/api/snapshots/9164/processEstimate" {
+			t.Errorf("path = %s", r.URL.EscapedPath())
+		}
+		_, _ = io.WriteString(w, `{"stageToDuration":{"DEVICE_MODEL_GENERATION":6430389,"FLOWLET_COMPUTATION":0,"SOME_FUTURE_STAGE":12}}`)
+	}))
+	defer server.Close()
+
+	got, _, err := newTestClient(t, server.URL).Snapshots.ProcessEstimate(context.Background(), "9164")
+	if err != nil || len(got.StageToDurationMillis) != 3 {
+		t.Fatalf("ProcessEstimate() = %+v, %v", got, err)
+	}
+	if d, ok := got.Duration("DEVICE_MODEL_GENERATION"); !ok || d != 6430389*time.Millisecond {
+		t.Fatalf("DEVICE_MODEL_GENERATION = %s, %v", d, ok)
+	}
+	if d, ok := got.Duration("FLOWLET_COMPUTATION"); !ok || d != 0 {
+		t.Fatalf("a zero estimate is still an estimate: %s, %v", d, ok)
+	}
+	if _, ok := got.Duration("NOT_ESTIMATED"); ok {
+		t.Fatal("a stage with no estimate must report false")
+	}
+	if _, _, err := newTestClient(t, server.URL).Snapshots.ProcessEstimate(context.Background(), " "); err == nil {
+		t.Fatal("an empty snapshot ID must be refused")
 	}
 }

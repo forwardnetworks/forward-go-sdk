@@ -854,6 +854,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Snapshots.Operation": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
 	},
+	"Snapshots.ProcessEstimate": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/processEstimate"},
+	},
+	"Snapshots.Progress": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/progress"},
+	},
 	"Snapshots.Reprocess": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
 	},
