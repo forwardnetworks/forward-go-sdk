@@ -30,6 +30,19 @@ type SyntheticNode struct {
 	QueryID string `json:"queryId,omitempty"`
 	// QueryResult is what the query produced, computed by Forward; it is read-only and never sent.
 	QueryResult *SyntheticQueryResult `json:"queryResult,omitempty"`
+
+	// Translations and SubnetsToExclude exist on the INTERNET node only. They are carried so that a node read and written back with Put
+	// keeps them: Forward's internet-node PUT replaces the whole node, and an absent subnetsToExclude or translations becomes an empty one
+	// (InternetNode's JSON creator), which would silently wipe them. Change the excluded subnets on their own with
+	// SetInternetExcludedSubnets.
+	Translations     []SyntheticNatEntry `json:"translations,omitempty"`
+	SubnetsToExclude []string            `json:"subnetsToExclude,omitempty"`
+}
+
+// SyntheticNatEntry is one static NAT translation on the internet node: OutsideAddress is the public address InsideAddress appears as.
+type SyntheticNatEntry struct {
+	InsideAddress  string `json:"insideAddress"`
+	OutsideAddress string `json:"outsideAddress"`
 }
 
 // SyntheticQueryResult is the outcome of the node's query: the connections it generated, or why it could not.
@@ -311,6 +324,38 @@ func (s *SyntheticNodesService) Backdate(ctx context.Context, networkID string, 
 		}
 	}
 	return backdate(ctx, s.client, path, "op", snapshotID, kind.opName("Backdate"))
+}
+
+// SetInternetExcludedSubnets REPLACES the internet node's excluded subnets -- public CIDRs that Forward will not treat as reachable through
+// the internet node -- with subnets, and returns the node as Forward now holds it. An empty slice clears them; nil is refused, so a caller
+// cannot clear the list by forgetting to fill it (Forward reads an absent or null value as "leave unchanged"). Forward validates each entry
+// (a valid subnet with its host bits zero, public addresses only) and applies the change from the next processed snapshot. PATCH
+// /api/networks/{id}/internet-node with only {"subnetsToExclude": [...]} (published, InternetNodePatch).
+func (s *SyntheticNodesService) SetInternetExcludedSubnets(ctx context.Context, networkID string, subnets []string) (*SyntheticNode, *Response, error) {
+	if subnets == nil {
+		return nil, nil, errors.New("forward: excluded subnets are required; pass an empty slice to clear them")
+	}
+	path, err := s.nodePath(networkID, SyntheticInternet, "")
+	if err != nil {
+		return nil, nil, err
+	}
+	cleaned := make([]string, 0, len(subnets))
+	for _, subnet := range subnets {
+		if subnet = strings.TrimSpace(subnet); subnet != "" {
+			cleaned = append(cleaned, subnet)
+		}
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, map[string][]string{"subnetsToExclude": cleaned})
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "SyntheticNodes.SetInternetExcludedSubnets")
+	out := new(SyntheticNode)
+	resp, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
 }
 
 // Delete removes one synthetic node. A 404 is success. The internet node

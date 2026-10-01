@@ -961,6 +961,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"SyntheticNodes.PutL3VPN": {
 		{Method: "PUT", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
 	},
+	"SyntheticNodes.SetInternetExcludedSubnets": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/internet-node"},
+	},
 	"SyntheticNodes.SetQuery": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/adjacent-networks/{adjacentNetworkName}"},
 		{Method: "PATCH", Route: "/api/networks/{networkId}/internet-node"},

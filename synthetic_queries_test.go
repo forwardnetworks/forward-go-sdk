@@ -173,3 +173,65 @@ func TestSyntheticNodesInternetConnectionSuggestionsEmptyShapes(t *testing.T) {
 		}
 	}
 }
+
+// Forward's internet-node PUT replaces the whole node and reads an absent
+// translations or subnetsToExclude as empty, so a node read and written back
+// must carry both, or the exclusions and NAT entries are silently wiped.
+func TestInternetNodeRoundTripKeepsTranslationsAndExcludedSubnets(t *testing.T) {
+	t.Parallel()
+
+	var putBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = io.WriteString(w, `{"name":"internet","connections":[],"translations":[{"insideAddress":"10.0.0.1","outsideAddress":"1.1.1.1"}],"subnetsToExclude":["8.8.8.0/24"]}`)
+			return
+		}
+		b, _ := io.ReadAll(r.Body)
+		putBody = string(b)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL).ForNetwork("n1")
+
+	node, _, err := client.SyntheticNodes.GetInternetNode(context.Background(), "")
+	if err != nil || len(node.Translations) != 1 || node.Translations[0].OutsideAddress != "1.1.1.1" || len(node.SubnetsToExclude) != 1 {
+		t.Fatalf("GetInternetNode() = %+v, %v", node, err)
+	}
+	if _, err := client.SyntheticNodes.PutInternetNode(context.Background(), "", *node); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(putBody, `"subnetsToExclude":["8.8.8.0/24"]`) || !strings.Contains(putBody, `"insideAddress":"10.0.0.1"`) {
+		t.Fatalf("the PUT dropped internet-node fields: %s", putBody)
+	}
+}
+
+// The PATCH carries only subnetsToExclude: Forward leaves every absent field
+// alone. An empty slice sends [] (clear), because Forward reads null or absent
+// as "unchanged"; nil is refused so a clear is never an accident.
+func TestSyntheticNodesSetInternetExcludedSubnets(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		method, path = r.Method, r.URL.Path
+		b, _ := io.ReadAll(r.Body)
+		body = string(b)
+		_, _ = io.WriteString(w, `{"name":"internet","connections":[],"subnetsToExclude":["8.8.8.0/24"]}`)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL).ForNetwork("n1")
+
+	got, _, err := client.SyntheticNodes.SetInternetExcludedSubnets(context.Background(), "", []string{" 8.8.8.0/24 ", ""})
+	if err != nil || method != http.MethodPatch || path != "/api/networks/n1/internet-node" || body != `{"subnetsToExclude":["8.8.8.0/24"]}` || len(got.SubnetsToExclude) != 1 {
+		t.Fatalf("%s %s %s -> %+v, %v", method, path, body, got, err)
+	}
+	if _, _, err := client.SyntheticNodes.SetInternetExcludedSubnets(context.Background(), "", []string{}); err != nil || body != `{"subnetsToExclude":[]}` {
+		t.Fatalf("an empty slice must send []: %s %v", body, err)
+	}
+	before := calls
+	if _, _, err := client.SyntheticNodes.SetInternetExcludedSubnets(context.Background(), "", nil); err == nil || calls != before {
+		t.Fatalf("nil must be refused without a request (err=%v)", err)
+	}
+}
