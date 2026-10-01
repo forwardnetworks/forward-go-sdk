@@ -56,7 +56,18 @@ type SourceTestStatus struct {
 	ConnectivityError    string `json:"connectivityError,omitempty"`
 	ConnectivityErrorRaw string `json:"connectivityErrorRaw,omitempty"`
 	ErrorPhase           string `json:"errorPhase,omitempty"`
+	// SNMPCollectionStatus is the error type of the device's last SNMP collection when it failed (NO_RESPONSE, NOT_AUTHORIZED, ...),
+	// and empty when it succeeded or was not reported.
 	SNMPCollectionStatus string `json:"snmpCollectionStatus,omitempty"`
+	// Forward reports snmpCollectionStatus only for a device with SNMP collection enabled, as {timestamp} after a successful collection
+	// and {timestamp, errorType, error} after a failed one (SnmpCollectionStatus with SnmpErrorDetails unwrapped).
+	// SNMPCollectionReported says the status was present at all, so "SNMP collection is off or has never run" is distinguishable from
+	// "succeeded"; SNMPLastCollectedAt is the timestamp; SNMPCollectionErrorType (one of Forward's SnmpErrorType values) and
+	// SNMPCollectionError (its message) are set only after a failure.
+	SNMPCollectionReported  bool   `json:"snmpCollectionReported,omitempty"`
+	SNMPLastCollectedAt     string `json:"snmpLastCollectedAt,omitempty"`
+	SNMPCollectionErrorType string `json:"snmpCollectionErrorType,omitempty"`
+	SNMPCollectionError     string `json:"snmpCollectionError,omitempty"`
 }
 
 func (s *EndpointsService) List(ctx context.Context, networkID string) ([]Endpoint, *Response, error) {

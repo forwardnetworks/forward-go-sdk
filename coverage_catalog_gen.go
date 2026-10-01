@@ -809,6 +809,15 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
 		{Method: "POST", Route: "/api/collector-tasks"},
 	},
+	"Snapshots.CollectionExceptions": {
+		{Method: "GET", Route: "/api/collector/exceptions"},
+	},
+	"Snapshots.CollectionLog": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/collection-log"},
+	},
+	"Snapshots.CollectionMetrics": {
+		{Method: "GET", Route: "/api/networks/{networkId}/collection-metrics"},
+	},
 	"Snapshots.ComputeAdvancedReachability": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
 	},
@@ -819,6 +828,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}"},
 	},
 	"Snapshots.Exceptions": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/exceptions"},
+	},
+	"Snapshots.ExceptionsText": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/exceptions"},
 	},
 	"Snapshots.ExportSubset": {
@@ -850,6 +862,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Snapshots.ListDocument": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.Logs": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/logs"},
 	},
 	"Snapshots.Metrics": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/metrics"},

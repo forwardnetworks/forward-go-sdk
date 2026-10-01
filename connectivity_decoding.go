@@ -2,7 +2,7 @@ package forward
 
 import (
 	"encoding/json"
-	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -47,9 +47,17 @@ func (s *SourceTestStatus) UnmarshalJSON(data []byte) error {
 		s.ErrorPhase = firstAnyString(result, "errorPhase", "phase")
 	}
 	if raw := item["snmpCollectionStatus"]; raw != nil {
+		s.SNMPCollectionReported = true
 		s.SNMPCollectionStatus = anyString(raw)
 		if object, ok := raw.(map[string]any); ok {
-			s.SNMPCollectionStatus = firstAnyString(object, "status", "state", "message")
+			// Forward's shape: {timestamp} or {timestamp, errorType, error}. The status/state keys are older builds' forms.
+			s.SNMPLastCollectedAt = firstAnyString(object, "timestamp")
+			s.SNMPCollectionErrorType = firstAnyString(object, "errorType")
+			s.SNMPCollectionError = firstAnyString(object, "error")
+			s.SNMPCollectionStatus = s.SNMPCollectionErrorType
+			if s.SNMPCollectionStatus == "" {
+				s.SNMPCollectionStatus = firstAnyString(object, "status", "state")
+			}
 		}
 	}
 	return nil
@@ -95,7 +103,8 @@ func anyString(value any) string {
 	case json.Number:
 		return typed.String()
 	case float64:
-		return strings.TrimSpace(fmt.Sprintf("%v", typed))
+		// 'f' with -1 precision: an epoch timestamp prints as digits, not 1.79e+12.
+		return strconv.FormatFloat(typed, 'f', -1, 64)
 	default:
 		return ""
 	}

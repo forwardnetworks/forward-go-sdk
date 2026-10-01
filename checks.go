@@ -61,7 +61,8 @@ type CheckDetail struct {
 	Diagnosis *CheckDiagnosis `json:"diagnosis,omitempty"`
 }
 
-// CheckDiagnosis explains why a check failed.
+// CheckDiagnosis explains a check's result. For a FAIL it lists the violations; for an ERROR or TIMEOUT, Summary carries the reason when
+// Forward recorded one (CheckResult.error/timeout store their message there; some error paths record none). Only Checks.Get returns it.
 type CheckDiagnosis struct {
 	Summary string            `json:"summary,omitempty"`
 	Details []DiagnosisDetail `json:"details,omitempty"`

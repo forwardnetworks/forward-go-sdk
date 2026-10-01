@@ -71,6 +71,10 @@ type ClassicDevice struct {
 	HTTPCredentialID string `json:"httpCredentialId,omitempty"`
 	Collect          *bool  `json:"collect,omitempty"`
 	Note             string `json:"note,omitempty"`
+	// EnableSNMPCollection and SNMPCredentialID say whether Forward polls the device over SNMP, and with which credential -- whether
+	// performance data can exist for it at all. EnableSNMPCollection is nil when the read did not state it.
+	EnableSNMPCollection *bool  `json:"enableSnmpCollection,omitempty"`
+	SNMPCredentialID     string `json:"snmpCredentialId,omitempty"`
 	// Raw carries fields this SDK version does not model, so an object read
 	// from a newer appserver and written back does not silently lose them.
 	Raw map[string]json.RawMessage `json:"-"`
