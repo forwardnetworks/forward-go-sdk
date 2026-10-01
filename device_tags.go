@@ -58,6 +58,29 @@ func (s *DeviceTagsService) AddBatchTo(ctx context.Context, networkID string, de
 	return s.client.Do(req, nil)
 }
 
+// RemoveBatchFrom takes the named tags off the named devices (POST ?action=removeBatchFrom, operationId removeDeviceTagsFromDevices in
+// Forward's published device-tags spec): the undo of AddBatchTo. It sends no snapshotId, so the change applies to the network's next
+// snapshot and the devices must be collection sources, exactly as AddBatchTo behaves. Tag definitions are left in place; removing a tag
+// from a device that does not carry it is not an error on the server.
+func (s *DeviceTagsService) RemoveBatchFrom(ctx context.Context, networkID string, devices, tags []string) (*Response, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, err
+	}
+	devices = nonEmptyStrings(devices)
+	tags = nonEmptyStrings(tags)
+	if len(devices) == 0 || len(tags) == 0 {
+		return nil, errors.New("forward: device names and tag names are required")
+	}
+	path, _ := networkPath(networkID)
+	path += "/device-tags?" + url.Values{"action": []string{"removeBatchFrom"}}.Encode()
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, map[string][]string{"devices": devices, "tags": tags})
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Do(req, nil)
+}
+
 // List returns tag definitions. with is an optional appserver expansion such
 // as "devices". Bare arrays and {"tags": [...]} are both accepted.
 func (s *DeviceTagsService) List(ctx context.Context, networkID, with string) ([]DeviceTag, *Response, error) {

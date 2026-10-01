@@ -363,3 +363,29 @@ func TestNQEResultBuildShapesConvertInsideSDK(t *testing.T) {
 		t.Fatalf("RowsAny() = %#v, %v", rows, err)
 	}
 }
+
+// RemoveBatchFrom is the undo of AddBatchTo: the same body shape with action=removeBatchFrom and no snapshotId (the change applies to the
+// next snapshot), and it refuses an empty device or tag list without sending anything.
+func TestDeviceTagsRemoveBatchFromSendsTheRemoveActionAndRefusesEmptyInput(t *testing.T) {
+	var gotAction, gotSnapshot, gotBody string
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		gotAction, gotSnapshot = r.URL.Query().Get("action"), r.URL.Query().Get("snapshotId")
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL).ForNetwork("n1")
+	if _, err := client.DeviceTags.RemoveBatchFrom(context.Background(), "", []string{"r1", " "}, []string{"branch"}); err != nil {
+		t.Fatal(err)
+	}
+	if gotAction != "removeBatchFrom" || gotSnapshot != "" || !strings.Contains(gotBody, `"devices":["r1"]`) || !strings.Contains(gotBody, `"tags":["branch"]`) {
+		t.Fatalf("action=%q snapshotId=%q body=%s", gotAction, gotSnapshot, gotBody)
+	}
+	before := calls
+	if _, err := client.DeviceTags.RemoveBatchFrom(context.Background(), "", nil, []string{"branch"}); err == nil || calls != before {
+		t.Fatalf("an empty device list must be refused locally (err=%v, calls %d -> %d)", err, before, calls)
+	}
+}

@@ -404,6 +404,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DeviceTags.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/device-tags"},
 	},
+	"DeviceTags.RemoveBatchFrom": {
+		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
+	},
 	"Devices.DownloadFile": {
 		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/files/{fileName}"},
 	},
