@@ -138,3 +138,38 @@ func TestSyntheticNodesInternetConnectionSuggestions(t *testing.T) {
 		t.Fatalf("suggestions = %+v, err = %v", got, err)
 	}
 }
+
+// With nothing to suggest Forward sends {} -- its suggestions record is
+// @JsonInclude(NON_EMPTY), so the empty list is dropped with its key -- and
+// that is "no suggestions", not a decode failure (seen live on Forward
+// 1.0.0-260929). A body that is neither an object nor an array, or an object
+// carrying some other key, still fails.
+func TestSyntheticNodesInternetConnectionSuggestionsEmptyShapes(t *testing.T) {
+	t.Parallel()
+
+	for body, want := range map[string]int{
+		`{}`:                   0,
+		`{"suggestions":[]}`:   0,
+		`{"suggestions":null}`: 0,
+		`{"suggestions":[{"uplinkInterface":"edge-1 eth0"}]}`: 1,
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = io.WriteString(w, body)
+		}))
+		got, _, err := newTestClient(t, server.URL).SyntheticNodes.InternetConnectionSuggestions(context.Background(), "n1")
+		server.Close()
+		if err != nil || len(got) != want {
+			t.Errorf("%s: %d suggestions, err %v; want %d and no error", body, len(got), err, want)
+		}
+	}
+	for _, body := range []string{`"not a list"`, `{"error":"forbidden"}`} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = io.WriteString(w, body)
+		}))
+		_, _, err := newTestClient(t, server.URL).SyntheticNodes.InternetConnectionSuggestions(context.Background(), "n1")
+		server.Close()
+		if err == nil {
+			t.Errorf("%s must still fail to decode", body)
+		}
+	}
+}

@@ -436,7 +436,8 @@ func (s *SyntheticNodesService) InternetConnectionSuggestions(ctx context.Contex
 	if err != nil {
 		return nil, nil, err
 	}
-	result := listResponse[InternetConnectionSuggestion]{Keys: []string{"suggestions", "items"}}
+	// Forward's InternetConnectionSuggestions record is @JsonInclude(NON_EMPTY): with nothing to suggest it sends {}.
+	result := listResponse[InternetConnectionSuggestion]{Keys: []string{"suggestions", "items"}, AllowEmptyObject: true}
 	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"/connection-suggestions", nil)
 	if err != nil {
 		return nil, nil, err

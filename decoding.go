@@ -12,6 +12,11 @@ type listResponse[T any] struct {
 	Items       []T
 	Keys        []string
 	AllowSingle bool
+	// AllowEmptyObject reads a bare {} as an empty list. Only for envelopes
+	// Forward serializes with @JsonInclude(NON_EMPTY), which drop the list key
+	// entirely when it is empty; elsewhere an object with no known key stays an
+	// error, so an unexpected body never reads as "there are none".
+	AllowEmptyObject bool
 }
 
 type optionalValue[T any] struct {
@@ -46,6 +51,10 @@ func (r *listResponse[T]) UnmarshalJSON(data []byte) error {
 		if value, ok := object[key]; ok {
 			return json.Unmarshal(value, &r.Items)
 		}
+	}
+	if r.AllowEmptyObject && len(object) == 0 {
+		r.Items = nil
+		return nil
 	}
 	if r.AllowSingle {
 		var item T
