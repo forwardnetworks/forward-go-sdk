@@ -82,3 +82,19 @@ func topologySnapshotPath(snapshotID string) (string, error) {
 	}
 	return "/api/snapshots/" + url.PathEscape(snapshotID), nil
 }
+
+// BackdateLinkOverrides applies the network's STAGED link overrides from
+// snapshotID onward and INVALIDATES every snapshot from that one on, so they
+// reprocess and their answers are unavailable until they finish; the network
+// has no staged overrides afterwards. POST
+// /api/networks/{id}/link-overrides?action=backdate&snapshotId=
+// (LinkOverridesService.backdateStagedLinkOverridesTo; on primary 15398425a69
+// and stable 67e89c87124). Needs EDIT_TOPOLOGY_LINKS and INVALIDATE_SNAPSHOTS.
+// Preview: not in the published spec.
+func (s *TopologyService) BackdateLinkOverrides(ctx context.Context, networkID, snapshotID string) (*Response, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, err
+	}
+	return backdate(ctx, s.client, "/api/networks/"+url.PathEscape(networkID)+"/link-overrides", "action", snapshotID, "Topology.BackdateLinkOverrides")
+}

@@ -295,6 +295,24 @@ func (s *SyntheticNodesService) CompatibleQueries(ctx context.Context, networkID
 	return result.Items, resp, err
 }
 
+// Backdate applies the network's CURRENT configuration of this kind of synthetic device from snapshotID onward and INVALIDATES every
+// snapshot from that one on, so they reprocess and their answers are unavailable until they finish -- the Forward UI's "backdate". POST
+// ?op=backdate&snapshotId= on the kind's collection route, or the internet node's own route (e.g. InternetNodeService.backdateTo:
+// repo.backdateTo, then invalidateAffectedSnapshots from the snapshot's creation instant with no end). Needs MANAGE_COLLECTION_SOURCES and
+// INVALIDATE_SNAPSHOTS. Marked SyntheticNodes.Backdate<Kind> so a hook can recognise it as destructive. Preview: not in the published spec.
+func (s *SyntheticNodesService) Backdate(ctx context.Context, networkID string, kind SyntheticNodeKind, snapshotID string) (*Response, error) {
+	path, err := s.collectionPath(networkID, kind)
+	if err != nil {
+		return nil, err
+	}
+	if kind == SyntheticInternet {
+		if path, err = s.nodePath(networkID, kind, ""); err != nil {
+			return nil, err
+		}
+	}
+	return backdate(ctx, s.client, path, "op", snapshotID, kind.opName("Backdate"))
+}
+
 // Delete removes one synthetic node. A 404 is success. The internet node
 // cannot be deleted -- there is one per network and no route for it.
 func (s *SyntheticNodesService) Delete(ctx context.Context, networkID string, kind SyntheticNodeKind, name string) (*Response, error) {

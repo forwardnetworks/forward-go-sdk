@@ -887,6 +887,13 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"SoftwareCentral.ListForwardApplianceOVAs": {
 		{Method: "GET", Route: "/api/deployment-artifacts"},
 	},
+	"SyntheticNodes.Backdate": {
+		{Method: "POST", Route: "/api/networks/{networkId}/adjacent-networks"},
+		{Method: "POST", Route: "/api/networks/{networkId}/internet-node"},
+		{Method: "POST", Route: "/api/networks/{networkId}/intranet-nodes"},
+		{Method: "POST", Route: "/api/networks/{networkId}/l2-vpns"},
+		{Method: "POST", Route: "/api/networks/{networkId}/l3-vpns"},
+	},
 	"SyntheticNodes.CompatibleQueries": {
 		{Method: "GET", Route: "/api/synthetic-device-queries"},
 	},
@@ -960,6 +967,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "PATCH", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
 		{Method: "PATCH", Route: "/api/networks/{networkId}/l2-vpns/{l2VpnName}"},
 		{Method: "PATCH", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
+	},
+	"Topology.BackdateLinkOverrides": {
+		{Method: "POST", Route: "/api/networks/{networkId}/link-overrides"},
 	},
 	"Topology.EditOverrides": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}/topology/overrides"},
@@ -1042,6 +1052,27 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Vulnerabilities.ListByOS": {
 		{Method: "GET", Route: "/api/networks/{networkId}/vulnerabilities"},
+	},
+	"WanCircuits.Backdate": {
+		{Method: "POST", Route: "/api/networks/{networkId}/wan-circuits"},
+	},
+	"WanCircuits.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/wan-circuits/{wanCircuitName}"},
+	},
+	"WanCircuits.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/wan-circuits/{wanCircuitName}"},
+	},
+	"WanCircuits.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/wan-circuits"},
+	},
+	"WanCircuits.Patch": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/wan-circuits/{wanCircuitName}"},
+	},
+	"WanCircuits.Put": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/wan-circuits/{wanCircuitName}"},
+	},
+	"WanCircuits.ReplaceAll": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/wan-circuits"},
 	},
 	"Webhooks.Create": {
 		{Method: "POST", Route: "/api/webhooks"},
