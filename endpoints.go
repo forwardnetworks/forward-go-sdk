@@ -2,6 +2,7 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -34,12 +35,94 @@ type EndpointPatch struct {
 	Collect      *bool   `json:"collect,omitempty"`
 }
 
+// EndpointProfile is one endpoint profile: how Forward recognizes and collects a kind of endpoint device. Type selects which fields
+// apply -- CLI, SNMP or HTTP -- and ID always carries it as a prefix ("CLI-7", "SNMP-5", "HTTP-4"). The fields are the published
+// CliEndpointProfileDef, SnmpEndpointProfileDef and HttpEndpointProfileDef, plus attribution; Raw keeps the whole object so a field this
+// version does not model is not lost.
 type EndpointProfile struct {
-	ID             Identifier `json:"id"`
-	Name           string     `json:"name"`
-	Type           string     `json:"type"`
-	CommandSets    []string   `json:"commandSets"`
-	CustomCommands []string   `json:"customCommands"`
+	ID   Identifier `json:"id"`
+	Name string     `json:"name"`
+	Type string     `json:"type"`
+
+	// CLI profiles. CLI commands run only if the organization has approved them (Endpoints.ApprovedCLICommands).
+	CommandSets           []string `json:"commandSets"`
+	CustomCommands        []string `json:"customCommands"`
+	DetectorCommand       string   `json:"detectorCommand,omitempty"`
+	DetectorErrorPatterns []string `json:"detectorErrorPatterns,omitempty"`
+	NameDetectorCommand   string   `json:"nameDetectorCommand,omitempty"`
+	Prompt                string   `json:"prompt,omitempty"`
+	PromptResponse        string   `json:"promptResponse,omitempty"`
+	PagePrompt            string   `json:"pagePrompt,omitempty"`
+	PagePromptResponse    string   `json:"pagePromptResponse,omitempty"`
+	PtyType               string   `json:"ptyType,omitempty"`
+	PtyColumnSize         *int     `json:"ptyColumnSize,omitempty"`
+	ClearPrompt           string   `json:"clearPrompt,omitempty"`
+
+	// SNMP profiles.
+	DetectorOID     string      `json:"detectorOid,omitempty"`
+	NameDetectorOID string      `json:"nameDetectorOid,omitempty"`
+	OIDSets         []string    `json:"oidSets,omitempty"`
+	CustomOIDs      []CustomOID `json:"customOids,omitempty"`
+
+	// HTTP profiles. AuthType is NONE or BASIC_AUTH.
+	HTTPS       *bool             `json:"https,omitempty"`
+	AuthType    string            `json:"authType,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	DetectorURI string            `json:"detectorUri,omitempty"`
+	Endpoints   []HTTPEndpoint    `json:"endpoints,omitempty"`
+
+	// Shared by two or more types.
+	DetectorPatterns     []string `json:"detectorPatterns,omitempty"`
+	NameDetectorPatterns []string `json:"nameDetectorPatterns,omitempty"`
+	ResponseTimeoutSec   *int     `json:"responseTimeoutSec,omitempty"`
+
+	CreatedAt   string     `json:"createdAt,omitempty"`
+	CreatedBy   string     `json:"createdBy,omitempty"`
+	CreatedByID Identifier `json:"createdById,omitempty"`
+	UpdatedAt   string     `json:"updatedAt,omitempty"`
+	UpdatedBy   string     `json:"updatedBy,omitempty"`
+	UpdatedByID Identifier `json:"updatedById,omitempty"`
+
+	Raw map[string]json.RawMessage `json:"-"`
+}
+
+// CustomOID is one extra OID an SNMP profile collects; Name names the file the value is stored in.
+type CustomOID struct {
+	Name string `json:"name"`
+	OID  string `json:"oid"`
+}
+
+// HTTPEndpoint is one HTTP path an HTTP profile collects. PaginationModel stays raw: its shape varies by pagination type.
+type HTTPEndpoint struct {
+	Name            string          `json:"name"`
+	Path            string          `json:"path"`
+	PaginationModel json.RawMessage `json:"paginationModel,omitempty"`
+}
+
+// UnmarshalJSON decodes the modelled fields and keeps the whole object in Raw.
+func (p *EndpointProfile) UnmarshalJSON(data []byte) error {
+	type plain EndpointProfile
+	var value plain
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*p = EndpointProfile(value)
+	p.Raw = raw
+	return nil
+}
+
+// ApprovedCLICommands is the organization's list of CLI commands endpoint profiles may run (ApprovedCliProfileCommands); a profile
+// command outside it is not run. With no list uploaded, Forward returns its defaults and SignedAt and Uploaded* are empty.
+type ApprovedCLICommands struct {
+	Commands     []string   `json:"commands"`
+	SignedAt     string     `json:"signedAt,omitempty"`
+	UploadedAt   string     `json:"uploadedAt,omitempty"`
+	UploadedBy   string     `json:"uploadedBy,omitempty"`
+	UploadedByID Identifier `json:"uploadedById,omitempty"`
 }
 
 type EndpointProfileRequest struct {
@@ -158,6 +241,41 @@ func (s *EndpointsService) ListProfiles(ctx context.Context, profileType string)
 	req = markOperation(req, "Endpoints.ListProfiles")
 	response, err := s.client.doRequired(req, &result)
 	return result.Items, response, err
+}
+
+// GetProfile returns one endpoint profile by its full ID ("CLI-7"), or (nil, nil) when it does not exist. GET
+// /api/endpoint-profiles/{profileId} (published getEndpointProfile; VIEW_ENDPOINT_PROFILES).
+func (s *EndpointsService) GetProfile(ctx context.Context, profileID string) (*EndpointProfile, *Response, error) {
+	if profileID = strings.TrimSpace(profileID); profileID == "" {
+		return nil, nil, errors.New("forward: endpoint profile ID is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/endpoint-profiles/"+url.PathEscape(profileID), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Endpoints.GetProfile")
+	out := new(EndpointProfile)
+	response, err := s.client.doRequired(req, out)
+	if isStatus(err, http.StatusNotFound) {
+		return nil, response, nil
+	}
+	if err != nil {
+		return nil, response, err
+	}
+	return out, response, nil
+}
+
+// ApprovedCLICommands returns the CLI commands the organization allows endpoint profiles to run. GET /api/approved-cli-commands
+// (CliCommandsController; VIEW_ENDPOINT_PROFILES; on primary 15398425a69 and stable 67e89c87124). Preview: not in the published spec.
+func (s *EndpointsService) ApprovedCLICommands(ctx context.Context) (*ApprovedCLICommands, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/approved-cli-commands", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Endpoints.ApprovedCLICommands")
+	out := new(ApprovedCLICommands)
+	response, err := s.client.doRequired(req, out)
+	return out, response, err
 }
 
 func (s *EndpointsService) CreateProfile(ctx context.Context, input EndpointProfileRequest) (*EndpointProfile, *Response, error) {

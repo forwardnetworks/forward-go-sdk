@@ -83,7 +83,8 @@ func textHead(ctx context.Context, c *Client, path, operation string, maxBytes i
 	if err != nil {
 		return 0, false, nil, err
 	}
-	req.Header.Set("Accept", "text/plain")
+	// application/json too: Forward answers an error as JSON, and without it Spring can only say 406.
+	req.Header.Set("Accept", "text/plain, application/json")
 	req = markOperation(req, operation)
 	head := &headWriter{dst: dst, remaining: maxBytes}
 	resp, err := c.Do(req, head)

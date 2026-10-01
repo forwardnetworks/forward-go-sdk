@@ -211,7 +211,8 @@ func (s *DevicesService) fileRequest(ctx context.Context, networkID, deviceName,
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", "application/octet-stream, text/plain")
+	// application/json too: Forward answers an error as JSON, and without it Spring can only say 406.
+	req.Header.Set("Accept", "application/octet-stream, text/plain, application/json")
 	return req, nil
 }
 

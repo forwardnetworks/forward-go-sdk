@@ -477,11 +477,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Endpoints.AddBatch": {
 		{Method: "POST", Route: "/api/networks/{networkId}/endpoints"},
 	},
+	"Endpoints.ApprovedCLICommands": {
+		{Method: "GET", Route: "/api/approved-cli-commands"},
+	},
 	"Endpoints.CreateProfile": {
 		{Method: "POST", Route: "/api/endpoint-profiles"},
 	},
 	"Endpoints.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/endpoints/{name}"},
+	},
+	"Endpoints.GetProfile": {
+		{Method: "GET", Route: "/api/endpoint-profiles/{profileId}"},
 	},
 	"Endpoints.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/endpoints"},
