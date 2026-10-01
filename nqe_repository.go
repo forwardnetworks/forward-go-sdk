@@ -2,6 +2,7 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -177,4 +178,83 @@ func normalizeNQEPaths(paths []string) []string {
 	out := normalizeStrings(paths)
 	sort.Strings(out)
 	return out
+}
+
+// NQEQueryCommit is one commit that touched a query (QueryCommitInfo): the
+// path the query had at that commit, the commit ID, its author (AuthorID for a
+// user, AuthorEmail otherwise; Author is a display name when Forward has one),
+// time and message.
+type NQEQueryCommit struct {
+	Path        string     `json:"path"`
+	ID          Identifier `json:"id"`
+	AuthorID    Identifier `json:"authorId,omitempty"`
+	AuthorEmail string     `json:"authorEmail,omitempty"`
+	Author      string     `json:"author,omitempty"`
+	CommittedAt string     `json:"committedAt,omitempty"`
+	Title       string     `json:"title,omitempty"`
+	Body        string     `json:"body,omitempty"`
+}
+
+// History returns the commits that touched a query, by its stable ID ("Q_..."
+// or "FQ_..."). GET /api/nqe/queries/{queryId}/history (NqeLibController; on
+// primary 15398425a69 and stable 67e89c87124). Preview: not in the published
+// spec.
+func (s *NQERepositoryService) History(ctx context.Context, queryID string) ([]NQEQueryCommit, *Response, error) {
+	if queryID = strings.TrimSpace(queryID); queryID == "" {
+		return nil, nil, errors.New("forward: NQE query ID is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/nqe/queries/"+url.PathEscape(queryID)+"/history", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "NQERepository.History")
+	result := listResponse[NQEQueryCommit]{Keys: []string{"commits"}}
+	resp, err := s.client.doRequired(req, &result)
+	return result.Items, resp, err
+}
+
+// NQEDiagnostic is one compiler diagnostic. Location stays raw: it is a text
+// region (source name, start and end positions) that varies in which parts it
+// carries.
+type NQEDiagnostic struct {
+	Severity string          `json:"severity,omitempty"`
+	Source   string          `json:"source,omitempty"`
+	Message  string          `json:"message"`
+	Location json.RawMessage `json:"location,omitempty"`
+}
+
+// NQECommitDryRun is what committing the staged paths would do
+// (CommitDryRunInfo). NewErrors maps a query path to the diagnostics the
+// commit would introduce there -- including in queries that import the
+// changed ones. Uses are the checks, dashboards and other consumers of the
+// changed queries, kept raw. The Unauthorized lists name changes the caller
+// may not commit.
+type NQECommitDryRun struct {
+	NewErrors                        map[string][]NQEDiagnostic `json:"newErrors"`
+	Uses                             []json.RawMessage          `json:"uses,omitempty"`
+	UnauthorizedQueryChanges         []string                   `json:"unauthorizedQueryChanges,omitempty"`
+	UnauthorizedAccessSettingChanges []string                   `json:"unauthorizedAccessSettingChanges,omitempty"`
+}
+
+// CommitDryRun reports what committing the staged changes at paths would do,
+// without committing. With a snapshotID the queries are also typed against
+// that snapshot's data model; without one, only against the library. POST
+// /api/nqe/repos/org/commits?dryRun=true[&snapshotId=] (NqeLibController;
+// on primary 15398425a69 and stable 67e89c87124). Preview: not in the
+// published spec.
+func (s *NQERepositoryService) CommitDryRun(ctx context.Context, paths []string, snapshotID string) (*NQECommitDryRun, *Response, error) {
+	paths = normalizeNQEPaths(paths)
+	if len(paths) == 0 {
+		return nil, nil, errors.New("forward: at least one NQE path is required")
+	}
+	query := url.Values{"dryRun": []string{"true"}}
+	setString(query, "snapshotId", snapshotID)
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, "/api/nqe/repos/org/commits?"+query.Encode(), map[string][]string{"paths": paths})
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "NQERepository.CommitDryRun")
+	out := new(NQECommitDryRun)
+	resp, err := s.client.doRequired(req, out)
+	return out, resp, err
 }

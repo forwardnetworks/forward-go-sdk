@@ -267,6 +267,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"CloudManagedSetups.ListMist": {
 		{Method: "GET", Route: "/api/networks/{networkId}/cloud-managed-setups"},
 	},
+	"CollectionSchedules.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/collection-schedules/{scheduleId}"},
+	},
+	"CollectionSchedules.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/collection-schedules"},
+	},
 	"Collections.DeviceStatuses": {
 		{Method: "GET", Route: "/api/networks/{networkId}/device-statuses"},
 	},
@@ -483,8 +489,14 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Endpoints.CreateProfile": {
 		{Method: "POST", Route: "/api/endpoint-profiles"},
 	},
+	"Endpoints.CreateProfileDefinition": {
+		{Method: "POST", Route: "/api/endpoint-profiles"},
+	},
 	"Endpoints.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/endpoints/{name}"},
+	},
+	"Endpoints.DeleteProfile": {
+		{Method: "DELETE", Route: "/api/endpoint-profiles/{profileId}"},
 	},
 	"Endpoints.GetProfile": {
 		{Method: "GET", Route: "/api/endpoint-profiles/{profileId}"},
@@ -619,6 +631,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"NQERepository.Commit": {
 		{Method: "POST", Route: "/api/nqe/repos/org/commits"},
 	},
+	"NQERepository.CommitDryRun": {
+		{Method: "POST", Route: "/api/nqe/repos/org/commits"},
+	},
 	"NQERepository.DeleteDirectory": {
 		{Method: "POST", Route: "/api/users/current/nqe/changes"},
 	},
@@ -633,6 +648,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"NQERepository.Head": {
 		{Method: "GET", Route: "/api/nqe/repos/org/commits/head"},
+	},
+	"NQERepository.History": {
+		{Method: "GET", Route: "/api/nqe/queries/{queryId}/history"},
 	},
 	"NQERepository.ListHeadQueries": {
 		{Method: "GET", Route: "/api/nqe/repos/org/commits/head/queries"},

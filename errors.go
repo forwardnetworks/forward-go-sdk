@@ -32,7 +32,10 @@ const (
 	// property is not set the way the route requires -- a feature switched off
 	// (or, rarely, on) for this tenant, not a missing permission.
 	// ErrorResponse.GateProperty names the property.
-	ErrorKindFeatureGated                      ErrorKind = "feature-gated"
+	ErrorKindFeatureGated ErrorKind = "feature-gated"
+	// ErrorKindEndpointProfileInUse is Forward refusing to delete an endpoint profile that endpoints still use
+	// (NetworkEndpointService.deleteProfile); reassign them first.
+	ErrorKindEndpointProfileInUse              ErrorKind = "endpoint-profile-in-use"
 	ErrorKindNetworkNotFound                   ErrorKind = "network-not-found"
 	ErrorKindAuthentication                    ErrorKind = "authentication-failure"
 	ErrorKindTrustedCertificateApplyInProgress ErrorKind = "trusted-certificate-apply-in-progress"
@@ -49,6 +52,7 @@ var (
 	ErrSnapshotNotProcessed              = errors.New("forward: snapshot not processed")
 	ErrSnapshotProcessingFailed          = errors.New("forward: snapshot processing failed")
 	ErrFeatureGated                      = errors.New("forward: feature not available for this organization or deployment")
+	ErrEndpointProfileInUse              = errors.New("forward: endpoint profile is still used by endpoints")
 	ErrNetworkNotFound                   = errors.New("forward: network not found")
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
@@ -126,6 +130,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindNoSnapshots
 	case ErrFeatureGated:
 		return e.Kind == ErrorKindFeatureGated
+	case ErrEndpointProfileInUse:
+		return e.Kind == ErrorKindEndpointProfileInUse
 	case ErrNetworkNotFound:
 		return e.Kind == ErrorKindNetworkNotFound
 	case ErrAuthentication:
@@ -303,6 +309,11 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	if status == http.StatusBadRequest &&
 		strings.Contains(detail, "no enum constant") && strings.Contains(detail, "orgproperty") {
 		return ErrorKindUnknownOrgProperty
+	}
+	// Requests.validate in NetworkEndpointService.deleteProfile: "Profile is still used in %s network(s): %s".
+	if method == http.MethodDelete && status == http.StatusBadRequest && strings.HasPrefix(path, "/api/endpoint-profiles/") &&
+		strings.Contains(detail, "profile is still used in") {
+		return ErrorKindEndpointProfileInUse
 	}
 	if method == http.MethodPost && path == "/api/trusted-certificates" &&
 		status == http.StatusConflict && requestHasQueryValue(apiErr.Response, "action", "apply") {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -40,13 +41,13 @@ type EndpointPatch struct {
 // CliEndpointProfileDef, SnmpEndpointProfileDef and HttpEndpointProfileDef, plus attribution; Raw keeps the whole object so a field this
 // version does not model is not lost.
 type EndpointProfile struct {
-	ID   Identifier `json:"id"`
+	ID   Identifier `json:"id,omitempty"`
 	Name string     `json:"name"`
 	Type string     `json:"type"`
 
 	// CLI profiles. CLI commands run only if the organization has approved them (Endpoints.ApprovedCLICommands).
-	CommandSets           []string `json:"commandSets"`
-	CustomCommands        []string `json:"customCommands"`
+	CommandSets           []string `json:"commandSets,omitempty"`
+	CustomCommands        []string `json:"customCommands,omitempty"`
 	DetectorCommand       string   `json:"detectorCommand,omitempty"`
 	DetectorErrorPatterns []string `json:"detectorErrorPatterns,omitempty"`
 	NameDetectorCommand   string   `json:"nameDetectorCommand,omitempty"`
@@ -295,6 +296,111 @@ func (s *EndpointsService) CreateProfile(ctx context.Context, input EndpointProf
 		err = errors.New("forward: endpoint profile create returned no ID")
 	}
 	return out, response, err
+}
+
+// CreateProfileDefinition creates an endpoint profile of any type from def -- the read type, so a profile read back can be copied -- and
+// returns it as Forward stored it, with its new ID ("SNMP-5"). Only the fields of def.Type are sent (CLI, SNMP or HTTP, per the published
+// CliEndpointProfileDef / SnmpEndpointProfileDef / HttpEndpointProfileDef); ID, attribution and Raw are never sent. POST
+// /api/endpoint-profiles?type= (createCli/Snmp/HttpEndpointProfile; 201 with the stored profile; MANAGE_ENDPOINT_PROFILES). A CLI
+// profile's commands run only if the organization has approved them (ApprovedCLICommands).
+func (s *EndpointsService) CreateProfileDefinition(ctx context.Context, def EndpointProfile) (*EndpointProfile, *Response, error) {
+	def.Name, def.Type = strings.TrimSpace(def.Name), strings.ToUpper(strings.TrimSpace(def.Type))
+	if def.Name == "" {
+		return nil, nil, errors.New("forward: endpoint profile name is required")
+	}
+	body, err := profileDefinitionBody(def)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, "/api/endpoint-profiles?"+url.Values{"type": []string{def.Type}}.Encode(), body)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Endpoints.CreateProfileDefinition")
+	out := new(EndpointProfile)
+	response, err := s.client.doRequired(req, out)
+	if err == nil && out.ID == "" {
+		err = errors.New("forward: endpoint profile create returned no ID")
+	}
+	return out, response, err
+}
+
+// profileDefinitionBody keeps only the published fields of def's type, so an SNMP profile never carries CLI or HTTP keys.
+func profileDefinitionBody(def EndpointProfile) (any, error) {
+	switch def.Type {
+	case "CLI":
+		return struct {
+			Type                  string   `json:"type"`
+			Name                  string   `json:"name"`
+			DetectorCommand       string   `json:"detectorCommand,omitempty"`
+			DetectorPatterns      []string `json:"detectorPatterns,omitempty"`
+			DetectorErrorPatterns []string `json:"detectorErrorPatterns,omitempty"`
+			NameDetectorCommand   string   `json:"nameDetectorCommand,omitempty"`
+			NameDetectorPatterns  []string `json:"nameDetectorPatterns,omitempty"`
+			Prompt                string   `json:"prompt,omitempty"`
+			PromptResponse        string   `json:"promptResponse,omitempty"`
+			PagePrompt            string   `json:"pagePrompt,omitempty"`
+			PagePromptResponse    string   `json:"pagePromptResponse,omitempty"`
+			PtyType               string   `json:"ptyType,omitempty"`
+			PtyColumnSize         *int     `json:"ptyColumnSize,omitempty"`
+			ClearPrompt           string   `json:"clearPrompt,omitempty"`
+			ResponseTimeoutSec    *int     `json:"responseTimeoutSec,omitempty"`
+			CommandSets           []string `json:"commandSets,omitempty"`
+			CustomCommands        []string `json:"customCommands,omitempty"`
+		}{def.Type, def.Name, def.DetectorCommand, def.DetectorPatterns, def.DetectorErrorPatterns, def.NameDetectorCommand,
+			def.NameDetectorPatterns, def.Prompt, def.PromptResponse, def.PagePrompt, def.PagePromptResponse, def.PtyType,
+			def.PtyColumnSize, def.ClearPrompt, def.ResponseTimeoutSec, def.CommandSets, def.CustomCommands}, nil
+	case "SNMP":
+		return struct {
+			Type                 string      `json:"type"`
+			Name                 string      `json:"name"`
+			DetectorOID          string      `json:"detectorOid,omitempty"`
+			DetectorPatterns     []string    `json:"detectorPatterns,omitempty"`
+			NameDetectorOID      string      `json:"nameDetectorOid,omitempty"`
+			NameDetectorPatterns []string    `json:"nameDetectorPatterns,omitempty"`
+			ResponseTimeoutSec   *int        `json:"responseTimeoutSec,omitempty"`
+			OIDSets              []string    `json:"oidSets,omitempty"`
+			CustomOIDs           []CustomOID `json:"customOids,omitempty"`
+		}{def.Type, def.Name, def.DetectorOID, def.DetectorPatterns, def.NameDetectorOID, def.NameDetectorPatterns,
+			def.ResponseTimeoutSec, def.OIDSets, def.CustomOIDs}, nil
+	case "HTTP":
+		if def.HTTPS == nil || def.AuthType == "" || len(def.Endpoints) == 0 {
+			return nil, errors.New("forward: an HTTP endpoint profile requires HTTPS, AuthType and at least one endpoint")
+		}
+		return struct {
+			Type             string            `json:"type"`
+			Name             string            `json:"name"`
+			HTTPS            bool              `json:"https"`
+			AuthType         string            `json:"authType"`
+			Headers          map[string]string `json:"headers,omitempty"`
+			DetectorURI      string            `json:"detectorUri,omitempty"`
+			DetectorPatterns []string          `json:"detectorPatterns,omitempty"`
+			Endpoints        []HTTPEndpoint    `json:"endpoints"`
+		}{def.Type, def.Name, *def.HTTPS, def.AuthType, def.Headers, def.DetectorURI, def.DetectorPatterns, def.Endpoints}, nil
+	default:
+		return nil, errors.New("forward: endpoint profile type must be CLI, SNMP or HTTP, not " + strconv.Quote(def.Type))
+	}
+}
+
+// DeleteProfile deletes an endpoint profile by its full ID. A 404 is success (already gone). Forward REFUSES to delete a profile that any
+// endpoint in any of the organization's networks still uses -- a 400 "Profile is still used in N network(s)", ErrEndpointProfileInUse --
+// rather than orphaning the endpoints, so an undo reassigns those endpoints first (Endpoints.Patch) and deletes after. Deleting also drops
+// the profile's stored connectivity results. DELETE /api/endpoint-profiles/{profileId} (published deleteEndpointProfile;
+// NetworkEndpointService.deleteProfile; MANAGE_ENDPOINT_PROFILES).
+func (s *EndpointsService) DeleteProfile(ctx context.Context, profileID string) (*Response, error) {
+	if profileID = strings.TrimSpace(profileID); profileID == "" {
+		return nil, errors.New("forward: endpoint profile ID is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, "/api/endpoint-profiles/"+url.PathEscape(profileID), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Endpoints.DeleteProfile")
+	response, err := s.client.Do(req, nil)
+	if isStatus(err, http.StatusNotFound) {
+		return response, nil
+	}
+	return response, err
 }
 
 // Delete removes one endpoint from a network.

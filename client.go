@@ -122,6 +122,7 @@ type Client struct {
 	Vulnerabilities         *VulnerabilitiesService
 	Aliases                 *AliasesService
 	WanCircuits             *WanCircuitsService
+	CollectionSchedules     *CollectionSchedulesService
 }
 
 // Response wraps an HTTP response returned by the Forward API.
@@ -292,6 +293,7 @@ func (c *Client) bindServices() {
 	c.Vulnerabilities = (*VulnerabilitiesService)(&service{client: c})
 	c.Aliases = (*AliasesService)(&service{client: c})
 	c.WanCircuits = (*WanCircuitsService)(&service{client: c})
+	c.CollectionSchedules = (*CollectionSchedulesService)(&service{client: c})
 }
 
 // NewRequest creates an authenticated request relative to the appliance URL.
