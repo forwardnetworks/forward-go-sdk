@@ -51,6 +51,15 @@ type AccessControlGroup struct {
 	ExternalGroupNames   []string          `json:"externalGroupNames"`
 	NetworkRoles         map[string]string `json:"networkRoles"`
 	DeviceAccessLabelIDs []string          `json:"deviceAccessLabelIds"`
+	// OrgAdmin is Forward's own flag for an org-admin group, when the build sends it. IsOrgAdmin keeps reading nil NetworkRoles,
+	// which every build has.
+	OrgAdmin    *bool      `json:"orgAdmin,omitempty"`
+	CreatedAt   string     `json:"createdAt,omitempty"`
+	CreatedBy   string     `json:"createdBy,omitempty"`
+	CreatedByID Identifier `json:"createdById,omitempty"`
+	UpdatedAt   string     `json:"updatedAt,omitempty"`
+	UpdatedBy   string     `json:"updatedBy,omitempty"`
+	UpdatedByID Identifier `json:"updatedById,omitempty"`
 }
 
 // IsOrgAdmin reports whether the group grants org-wide admin. The
@@ -253,4 +262,79 @@ func (s *AccessControlService) DeleteGroup(ctx context.Context, groupID string) 
 	}
 	req = markOperation(req, "AccessControl.DeleteGroup")
 	return s.client.doAccepted(req, nil, true, func(code int) bool { return code == http.StatusNotFound || (code >= 200 && code < 300) })
+}
+
+// GroupNames maps each access control group's ID to its name. Unlike ListGroups it needs no permission beyond being signed in. GET
+// /api/access-control-groups?view=names (AccessController; on primary 15398425a69 and stable 67e89c87124). Preview.
+func (s *AccessControlService) GroupNames(ctx context.Context) (map[string]string, *Response, error) {
+	return s.names(ctx, "/api/access-control-groups?view=names", "AccessControl.GroupNames")
+}
+
+// DeviceAccessLabelNames maps each device access label's ID to its name. GET /api/device-access-labels?view=names (VIEW_USER_ACCOUNTS).
+// Preview.
+func (s *AccessControlService) DeviceAccessLabelNames(ctx context.Context) (map[string]string, *Response, error) {
+	return s.names(ctx, "/api/device-access-labels?view=names", "AccessControl.DeviceAccessLabelNames")
+}
+
+func (s *AccessControlService) names(ctx context.Context, path, operation string) (map[string]string, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, operation)
+	out := map[string]string{}
+	response, err := s.client.doRequired(req, &out)
+	return out, response, err
+}
+
+// SetGroupNetworkRole gives an access control group a role on a WORKSPACE network and returns the group. POST
+// /api/access-control-groups/{id}/network-roles/{networkId}?role= (ASSIGN_ROLES on that network). Forward refuses a network that is not
+// a workspace, and a role above the caller's own on it. Preview.
+func (s *AccessControlService) SetGroupNetworkRole(ctx context.Context, groupID, networkID string, role NetworkRole) (*AccessControlGroup, *Response, error) {
+	groupID, networkID = strings.TrimSpace(groupID), strings.TrimSpace(networkID)
+	if groupID == "" || networkID == "" {
+		return nil, nil, errors.New("forward: access control group ID and network ID are required")
+	}
+	if !role.valid() {
+		return nil, nil, fmt.Errorf("forward: invalid network role %q", role)
+	}
+	path := "/api/access-control-groups/" + url.PathEscape(groupID) + "/network-roles/" + url.PathEscape(networkID) + "?" +
+		url.Values{"role": []string{string(role)}}.Encode()
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "AccessControl.SetGroupNetworkRole")
+	out := new(AccessControlGroup)
+	response, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, response, err
+	}
+	return out, response, nil
+}
+
+// AddLabels adds device access labels to access control groups. PATCH /api/access-control-groups?action=addLabels {groupIds, labelIds}
+// (MANAGE_USER_ACCOUNTS). Preview.
+func (s *AccessControlService) AddLabels(ctx context.Context, groupIDs, labelIDs []string) (*Response, error) {
+	return s.editLabels(ctx, "addLabels", "AccessControl.AddLabels", groupIDs, labelIDs)
+}
+
+// RemoveLabels removes device access labels from access control groups, narrowing which devices their members can see. PATCH
+// /api/access-control-groups?action=removeLabels {groupIds, labelIds} (MANAGE_USER_ACCOUNTS). Preview.
+func (s *AccessControlService) RemoveLabels(ctx context.Context, groupIDs, labelIDs []string) (*Response, error) {
+	return s.editLabels(ctx, "removeLabels", "AccessControl.RemoveLabels", groupIDs, labelIDs)
+}
+
+func (s *AccessControlService) editLabels(ctx context.Context, action, operation string, groupIDs, labelIDs []string) (*Response, error) {
+	groupIDs, labelIDs = nonEmptyStrings(groupIDs), nonEmptyStrings(labelIDs)
+	if len(groupIDs) == 0 || len(labelIDs) == 0 {
+		return nil, errors.New("forward: group IDs and label IDs are required")
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, "/api/access-control-groups?"+url.Values{"action": []string{action}}.Encode(),
+		map[string][]string{"groupIds": groupIDs, "labelIds": labelIDs})
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, operation)
+	return s.client.Do(req, nil)
 }

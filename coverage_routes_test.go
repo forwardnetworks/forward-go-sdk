@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 342
+	const minExercised = 357
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -77,11 +77,12 @@ type wireRequest struct{ method, path string }
 // the one value its consumer sends. Keyed by symbol, then argument index
 // (index 0 is the context).
 var wireArgOverrides = map[string]map[int]any{
-	"Diffs.Count":                  {3: DiffDevices},
-	"Properties.ClearOrganization": {2: OrgProperty("software_central")},
-	"Users.SetNetworkRole":         {3: NetworkRoleAdmin},
-	"Users.AddNetworkRole":         {3: NetworkRoleAdmin},
-	"Users.RemoveNetworkRole":      {3: NetworkRoleAdmin},
+	"Diffs.Count":                       {3: DiffDevices},
+	"Properties.ClearOrganization":      {2: OrgProperty("software_central")},
+	"Users.SetNetworkRole":              {3: NetworkRoleAdmin},
+	"Users.AddNetworkRole":              {3: NetworkRoleAdmin},
+	"Users.RemoveNetworkRole":           {3: NetworkRoleAdmin},
+	"AccessControl.SetGroupNetworkRole": {3: NetworkRoleAdmin},
 	// The kind-based synthetic node calls address a different route per
 	// kind; L3 VPN reaches every one of them.
 	"SyntheticNodes.Get":                {2: SyntheticL3VPN},

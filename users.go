@@ -13,12 +13,49 @@ import (
 
 type UsersService service
 
+// User is a Forward user account. Forward serializes id, username, email, enabled, lastActive, authSource (LOCAL, SAML, LDAP, TACACS,
+// ...), isSupport (only when true) and externalGroups (for an external auth source using access control groups); OrgID and
+// MustSetPassword are not sent by current builds and read as empty.
 type User struct {
 	ID              Identifier `json:"id"`
 	OrgID           Identifier `json:"orgId"`
 	Username        string     `json:"username"`
 	Email           string     `json:"email"`
 	MustSetPassword bool       `json:"mustSetPassword"`
+	Enabled         bool       `json:"enabled"`
+	LastActive      string     `json:"lastActive,omitempty"`
+	AuthSource      string     `json:"authSource,omitempty"`
+	IsSupport       bool       `json:"isSupport,omitempty"`
+	ExternalGroups  []string   `json:"externalGroups,omitempty"`
+}
+
+// UserSession is the caller's own session (GET /api/users/current): the user, the roles in effect for this session, the access control
+// groups the user is in, who is impersonating (if anyone), and when the password was last set.
+type UserSession struct {
+	User          User         `json:"user"`
+	Roles         SessionRoles `json:"roles"`
+	GroupIDs      []string     `json:"groupIds,omitempty"`
+	Impersonator  string       `json:"impersonator,omitempty"`
+	PasswordSetAt string       `json:"passwordSetAt,omitempty"`
+}
+
+// SessionRoles are the roles in effect for a session: access-control-group grants merged in and workspace inheritance applied, so they can
+// exceed what was assigned directly (Users.RolesDirect). Network maps a network ID to its one NetworkRole.
+type SessionRoles struct {
+	System          []string          `json:"system,omitempty"`
+	Org             []string          `json:"org"`
+	Network         map[string]string `json:"network"`
+	SupportedOrgIDs []string          `json:"supportedOrgIds,omitempty"`
+}
+
+// HasOrgAdmin reports whether the session holds org ADMIN.
+func (r SessionRoles) HasOrgAdmin() bool {
+	for _, role := range r.Org {
+		if strings.EqualFold(role, "ADMIN") {
+			return true
+		}
+	}
+	return false
 }
 
 type UserToken struct {
@@ -50,6 +87,19 @@ func (s *UsersService) Current(ctx context.Context) (*User, *Response, error) {
 		err = errors.New("forward: current user response is missing user identity")
 	}
 	return &envelope.User, response, err
+}
+
+// CurrentSession returns the caller's own session, roles included -- the way a token client learns what it may do. Current returns only
+// the user. GET /api/users/current (published getCurrentUser).
+func (s *UsersService) CurrentSession(ctx context.Context) (*UserSession, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/users/current", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Users.CurrentSession")
+	out := new(UserSession)
+	response, err := s.client.doRequired(req, out)
+	return out, response, err
 }
 
 func (s *UsersService) ResetPassword(ctx context.Context, input PasswordResetRequest) (*Response, error) {

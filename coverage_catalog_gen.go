@@ -52,6 +52,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"AIAssist.SummarizeNQEQuery": {
 		{Method: "POST", Route: "/api/nqe/summary-assists"},
 	},
+	"AccessControl.AddLabels": {
+		{Method: "PATCH", Route: "/api/access-control-groups"},
+	},
 	"AccessControl.CreateDeviceAccessLabel": {
 		{Method: "POST", Route: "/api/device-access-labels"},
 	},
@@ -64,11 +67,23 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"AccessControl.DeleteGroup": {
 		{Method: "DELETE", Route: "/api/access-control-groups/{groupId}"},
 	},
+	"AccessControl.DeviceAccessLabelNames": {
+		{Method: "GET", Route: "/api/device-access-labels"},
+	},
+	"AccessControl.GroupNames": {
+		{Method: "GET", Route: "/api/access-control-groups"},
+	},
 	"AccessControl.ListDeviceAccessLabels": {
 		{Method: "GET", Route: "/api/device-access-labels"},
 	},
 	"AccessControl.ListGroups": {
 		{Method: "GET", Route: "/api/access-control-groups"},
+	},
+	"AccessControl.RemoveLabels": {
+		{Method: "PATCH", Route: "/api/access-control-groups"},
+	},
+	"AccessControl.SetGroupNetworkRole": {
+		{Method: "POST", Route: "/api/access-control-groups/{groupId}/network-roles/{networkId}"},
 	},
 	"AccessControl.UpdateDeviceAccessLabel": {
 		{Method: "PATCH", Route: "/api/device-access-labels/{labelId}"},
@@ -1050,6 +1065,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Users.AddNetworkRole": {
 		{Method: "POST", Route: "/api/users/{userId}/roles/network/{networkId}/{role}"},
 	},
+	"Users.BulkSetEnabled": {
+		{Method: "PATCH", Route: "/api/users"},
+	},
 	"Users.ClearNetworkRoles": {
 		{Method: "DELETE", Route: "/api/users/{userId}/roles/network/{networkId}"},
 	},
@@ -1062,11 +1080,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Users.Current": {
 		{Method: "GET", Route: "/api/users/current"},
 	},
+	"Users.CurrentSession": {
+		{Method: "GET", Route: "/api/users/current"},
+	},
 	"Users.DeleteToken": {
 		{Method: "DELETE", Route: "/api/users/current/tokens/{tokenName}"},
 	},
 	"Users.DeleteTokenFor": {
 		{Method: "DELETE", Route: "/api/users/{userId}/tokens/{tokenName}"},
+	},
+	"Users.Get": {
+		{Method: "GET", Route: "/api/users/{userId}"},
+	},
+	"Users.GrantOrgAdmin": {
+		{Method: "POST", Route: "/api/users/{userId}/roles/org/ADMIN"},
 	},
 	"Users.List": {
 		{Method: "GET", Route: "/api/users"},
@@ -1077,17 +1104,35 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Users.ListTokensFor": {
 		{Method: "GET", Route: "/api/users/{userId}/tokens"},
 	},
+	"Users.ListWithRoles": {
+		{Method: "GET", Route: "/api/users"},
+	},
+	"Users.Patch": {
+		{Method: "PATCH", Route: "/api/users/{userId}"},
+	},
 	"Users.RemoveNetworkRole": {
 		{Method: "DELETE", Route: "/api/users/{userId}/roles/network/{networkId}/{role}"},
+	},
+	"Users.Reset2FA": {
+		{Method: "DELETE", Route: "/api/users/{userId}/2fa"},
 	},
 	"Users.ResetPassword": {
 		{Method: "POST", Route: "/api/users/current/password"},
 	},
+	"Users.RevokeOrgAdmin": {
+		{Method: "DELETE", Route: "/api/users/{userId}/roles/org/ADMIN"},
+	},
 	"Users.Roles": {
+		{Method: "GET", Route: "/api/users/{userId}/roles"},
+	},
+	"Users.RolesDirect": {
 		{Method: "GET", Route: "/api/users/{userId}/roles"},
 	},
 	"Users.SetNetworkRole": {
 		{Method: "POST", Route: "/api/users/{userId}/roles/network/{networkId}"},
+	},
+	"Users.TwoFactorStatuses": {
+		{Method: "GET", Route: "/api/users"},
 	},
 	"Version.Get": {
 		{Method: "GET", Route: "/api/version"},

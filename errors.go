@@ -35,7 +35,13 @@ const (
 	ErrorKindFeatureGated ErrorKind = "feature-gated"
 	// ErrorKindEndpointProfileInUse is Forward refusing to delete an endpoint profile that endpoints still use
 	// (NetworkEndpointService.deleteProfile); reassign them first.
-	ErrorKindEndpointProfileInUse              ErrorKind = "endpoint-profile-in-use"
+	ErrorKindEndpointProfileInUse ErrorKind = "endpoint-profile-in-use"
+	// ErrorKindPermissionDenied is a 403 for a missing org or network operation ("Missing permission: OrgOperation.X" or "No
+	// permission for network operation X"); ErrorResponse.Operation names it.
+	ErrorKindPermissionDenied ErrorKind = "permission-denied"
+	// ErrorKindUnlicensedOperation is a 403 for an operation the org's license tier does not include ("Unlicensed operation: ...") --
+	// a license problem, not a role one.
+	ErrorKindUnlicensedOperation               ErrorKind = "unlicensed-operation"
 	ErrorKindNetworkNotFound                   ErrorKind = "network-not-found"
 	ErrorKindAuthentication                    ErrorKind = "authentication-failure"
 	ErrorKindTrustedCertificateApplyInProgress ErrorKind = "trusted-certificate-apply-in-progress"
@@ -53,6 +59,8 @@ var (
 	ErrSnapshotProcessingFailed          = errors.New("forward: snapshot processing failed")
 	ErrFeatureGated                      = errors.New("forward: feature not available for this organization or deployment")
 	ErrEndpointProfileInUse              = errors.New("forward: endpoint profile is still used by endpoints")
+	ErrPermissionDenied                  = errors.New("forward: missing permission for the operation")
+	ErrUnlicensedOperation               = errors.New("forward: operation not included in the organization's license")
 	ErrNetworkNotFound                   = errors.New("forward: network not found")
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
@@ -108,6 +116,10 @@ type ErrorResponse struct {
 	// For ErrorKindFeatureGated: the OrgProperty or DeploymentProperty that
 	// gated the route (e.g. LOCATION_CONNECTIVITY_DIFFS), its current value,
 	// and GateScope "organization" or "deployment".
+	// For ErrorKindPermissionDenied and ErrorKindUnlicensedOperation: the operation Forward named, e.g.
+	// "OrgOperation.MANAGE_USER_ACCOUNTS" or, from the network-operation wording, "EDIT_CHECKS".
+	Operation string `json:"-"`
+
 	GateProperty string `json:"-"`
 	GateEnabled  bool   `json:"-"`
 	GateScope    string `json:"-"`
@@ -132,6 +144,10 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindFeatureGated
 	case ErrEndpointProfileInUse:
 		return e.Kind == ErrorKindEndpointProfileInUse
+	case ErrPermissionDenied:
+		return e.Kind == ErrorKindPermissionDenied
+	case ErrUnlicensedOperation:
+		return e.Kind == ErrorKindUnlicensedOperation
 	case ErrNetworkNotFound:
 		return e.Kind == ErrorKindNetworkNotFound
 	case ErrAuthentication:
@@ -248,7 +264,17 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	// contain TOKEN or CREDENTIAL, and a feature switched off is not a login
 	// problem.
 	if status == http.StatusForbidden {
-		if match := featureGateMessage.FindStringSubmatch(strings.TrimSpace(apiErr.Message)); match != nil {
+		message := strings.TrimSpace(apiErr.Message)
+		// AccessEnforcer: "Missing permission: %s.%s" and "Unlicensed operation: %s.%s"; UserPrincipal.verifyCan: "No permission
+		// for network operation %s".
+		if match := permissionMessage.FindStringSubmatch(message); match != nil {
+			apiErr.Operation = match[2]
+			if match[1] == "Unlicensed operation" {
+				return ErrorKindUnlicensedOperation
+			}
+			return ErrorKindPermissionDenied
+		}
+		if match := featureGateMessage.FindStringSubmatch(message); match != nil {
 			apiErr.GateProperty, apiErr.GateEnabled, apiErr.GateScope = match[1], match[2] == "on", match[3]
 			return ErrorKindFeatureGated
 		}
@@ -327,6 +353,29 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 // "... for your deployment") -- a 403 with no reason code, so this fixed
 // template is the only stable signal. It is anchored so only that exact
 // sentence classifies, never a message that merely contains it.
+// permissionMessage is the whole message of Forward's three operation denials. Anchored, so only those sentences classify.
+var permissionMessage = regexp.MustCompile(`^(Missing permission|Unlicensed operation|No permission for network operation):? ((?:[A-Za-z]+Operation\.)?[A-Z][A-Z0-9_]*)$`)
+
+// MissingPermission reports the operation a 403 says the caller lacks -- "OrgOperation.MANAGE_USER_ACCOUNTS",
+// "NetworkOperation.EDIT_CHECKS", or a bare "EDIT_CHECKS" from the network-operation wording -- and false for any other error,
+// including an unlicensed operation (see UnlicensedOperation).
+func MissingPermission(err error) (operation string, ok bool) {
+	var apiErr *ErrorResponse
+	if errors.As(err, &apiErr) && apiErr.Kind == ErrorKindPermissionDenied {
+		return apiErr.Operation, true
+	}
+	return "", false
+}
+
+// UnlicensedOperation reports the operation a 403 says the organization's license does not include, and false for any other error.
+func UnlicensedOperation(err error) (operation string, ok bool) {
+	var apiErr *ErrorResponse
+	if errors.As(err, &apiErr) && apiErr.Kind == ErrorKindUnlicensedOperation {
+		return apiErr.Operation, true
+	}
+	return "", false
+}
+
 var featureGateMessage = regexp.MustCompile(`^([A-Z][A-Z0-9_]*) is (on|off) for your (organization|deployment)$`)
 
 func requestHasQueryValue(response *http.Response, key, value string) bool {
