@@ -1,8 +1,14 @@
 package forward
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 // The request was map[string]any, where a misspelled key was a silent no-op
@@ -149,5 +155,58 @@ func TestCloudAccountDecodesTestResults(t *testing.T) {
 	}
 	if r := accounts[1].TestResults["sub-1"]; r.Error != "NONE" || r.TestInstant != 1758600000001 {
 		t.Fatalf("azure subscription result = %+v", r)
+	}
+}
+
+// fwd 075aa01 ("Serialize cloud test times as ISO-8601") moved testInstant
+// from epoch millis to Jackson's Instant string. Builds on both sides of it
+// are live (Skyforge's pins predate it; Forward primary 1.0.0-261001 has it),
+// so create and list must decode either, into the same epoch millis.
+func TestCloudAccountTestInstantISO8601(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			_, _ = io.WriteString(w, `{"type":"AWS","name":"aws-demo","collect":true,"regions":{"us-east-1":{"testInstant":"2026-10-01T12:34:56.789Z","error":"NONE"},"us-west-2":null}}`)
+			return
+		}
+		_, _ = io.WriteString(w, `[{"type":"GCP","name":"g","collect":true,"regions":{"us-central1":{"testInstant":"1970-01-01T00:00:00Z","error":"PROJECT_VIEW_PERMISSION_MISSING"}}},
+		  {"type":"AZURE","name":"a","collect":true,"testResults":{"sub-1":{"testInstant":"2026-10-01T12:34:56.123456789Z","error":"NONE"}}},
+		  {"type":"IBM","name":"i","collect":true,"regions":{"us-south":{"testInstant":"1759322096789","error":"NONE"}}}]`)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := context.Background()
+	want := time.Date(2026, 10, 1, 12, 34, 56, 789_000_000, time.UTC)
+
+	created, _, err := client.CloudAccounts.Create(ctx, "N1", CloudAccountRequest{Type: "AWS", Name: "aws-demo", Collect: true, Regions: map[string]int{"us-east-1": 0}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	region := created.Regions["us-east-1"]
+	if at, ok := region.TestedAt(); !ok || !at.Equal(want) || region.TestInstant != want.UnixMilli() || region.Error != "NONE" {
+		t.Fatalf("aws region = %+v (TestedAt %v %v)", region, at, ok)
+	}
+	if _, ok := created.Regions["us-west-2"].TestedAt(); ok {
+		t.Fatal("an untested (null) region must report no test time")
+	}
+
+	accounts, _, err := client.CloudAccounts.List(ctx, "N1")
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if r := accounts[0].Regions["us-central1"]; r.TestInstant != 0 || r.Error != "PROJECT_VIEW_PERMISSION_MISSING" {
+		t.Fatalf("gcp epoch-zero region = %+v", r)
+	}
+	if r := accounts[1].TestResults["sub-1"]; r.TestInstant != time.Date(2026, 10, 1, 12, 34, 56, 123_000_000, time.UTC).UnixMilli() {
+		t.Fatalf("azure nanosecond instant = %+v", r)
+	}
+	if r := accounts[2].Regions["us-south"]; r.TestInstant != 1759322096789 {
+		t.Fatalf("numeric-string millis = %+v", r)
+	}
+
+	var bad []CloudAccount
+	if err := json.Unmarshal([]byte(`[{"regions":{"x":{"testInstant":"yesterday"}}}]`), &bad); err == nil || !strings.Contains(err.Error(), "yesterday") {
+		t.Fatalf("an unreadable testInstant must fail naming the value, got %v", err)
 	}
 }

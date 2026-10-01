@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // CloudAccountsService manages cloud collection sources.
@@ -55,12 +57,72 @@ func (a *CloudAccount) UnmarshalJSON(data []byte) error {
 // stores it on the account (CloudAccount.TestResult in the appserver). A
 // region never tested since its proxy changed comes back as JSON null, which
 // decodes to the zero Region: TestInstant 0 and no Error.
+//
+// TestInstant is epoch milliseconds whatever the build sends: builds before
+// fwd 075aa01 ("Serialize cloud test times as ISO-8601", in neither primary
+// 15398425a69 nor stable 67e89c87124) send epoch millis, later ones an
+// ISO-8601 UTC string such as "2026-10-01T12:34:56.789Z". TestedAt reads it
+// as a time.
 type Region struct {
 	TestInstant int64 `json:"testInstant,omitempty"`
 	// Error is Forward's DeviceCollectionError name for the test: "NONE" on
 	// success, otherwise the failure (UNKNOWN, AUTHENTICATION_FAILED,
 	// PROJECT_VIEW_PERMISSION_MISSING, ...). Empty when never tested.
 	Error string `json:"error,omitempty"`
+}
+
+// UnmarshalJSON accepts testInstant as epoch milliseconds (a number, or a
+// string of digits) or as an ISO-8601 instant.
+func (r *Region) UnmarshalJSON(data []byte) error {
+	var wire struct {
+		TestInstant json.RawMessage `json:"testInstant"`
+		Error       string          `json:"error"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	millis, err := decodeEpochMillisOrInstant(wire.TestInstant)
+	if err != nil {
+		return fmt.Errorf("forward: region testInstant: %w", err)
+	}
+	*r = Region{TestInstant: millis, Error: wire.Error}
+	return nil
+}
+
+// TestedAt returns when the region was last tested, and false if never.
+func (r Region) TestedAt() (time.Time, bool) {
+	if r.TestInstant == 0 {
+		return time.Time{}, false
+	}
+	return time.UnixMilli(r.TestInstant).UTC(), true
+}
+
+// decodeEpochMillisOrInstant reads a JSON time that Forward has sent both as
+// epoch milliseconds and, after Jackson's Instant default, as an ISO-8601
+// string. Absent or null is zero.
+func decodeEpochMillisOrInstant(raw json.RawMessage) (int64, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0, nil
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err != nil {
+		var millis int64
+		if err := json.Unmarshal(raw, &millis); err != nil {
+			return 0, fmt.Errorf("want epoch milliseconds or an ISO-8601 instant, got %s", raw)
+		}
+		return millis, nil
+	}
+	if text = strings.TrimSpace(text); text == "" {
+		return 0, nil
+	}
+	if millis, err := strconv.ParseInt(text, 10, 64); err == nil {
+		return millis, nil
+	}
+	instant, err := time.Parse(time.RFC3339Nano, text)
+	if err != nil {
+		return 0, fmt.Errorf("want epoch milliseconds or an ISO-8601 instant, got %q", text)
+	}
+	return instant.UnixMilli(), nil
 }
 
 type AWSAssumeRoleInfo struct {
