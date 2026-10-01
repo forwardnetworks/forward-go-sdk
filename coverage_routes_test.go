@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 307
+	const minExercised = 316
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -82,6 +82,15 @@ var wireArgOverrides = map[string]map[int]any{
 	"Users.SetNetworkRole":         {3: NetworkRoleAdmin},
 	"Users.AddNetworkRole":         {3: NetworkRoleAdmin},
 	"Users.RemoveNetworkRole":      {3: NetworkRoleAdmin},
+	// The kind-based synthetic node calls address a different route per
+	// kind; L3 VPN reaches every one of them.
+	"SyntheticNodes.Get":               {2: SyntheticL3VPN},
+	"SyntheticNodes.Put":               {2: SyntheticL3VPN},
+	"SyntheticNodes.Delete":            {2: SyntheticL3VPN},
+	"SyntheticNodes.List":              {2: SyntheticL3VPN},
+	"SyntheticNodes.SetQuery":          {2: SyntheticL3VPN},
+	"SyntheticNodes.ComputeQuery":      {2: SyntheticL3VPN},
+	"SyntheticNodes.CompatibleQueries": {2: SyntheticL3VPN},
 }
 
 // recordRequests invokes symbol and returns every request it sent. Each

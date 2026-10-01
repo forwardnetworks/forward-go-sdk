@@ -887,8 +887,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"SoftwareCentral.ListForwardApplianceOVAs": {
 		{Method: "GET", Route: "/api/deployment-artifacts"},
 	},
+	"SyntheticNodes.CompatibleQueries": {
+		{Method: "GET", Route: "/api/synthetic-device-queries"},
+	},
+	"SyntheticNodes.ComputeQuery": {
+		{Method: "POST", Route: "/api/networks/{networkId}/adjacent-networks"},
+		{Method: "POST", Route: "/api/networks/{networkId}/internet-node"},
+		{Method: "POST", Route: "/api/networks/{networkId}/intranet-nodes"},
+		{Method: "POST", Route: "/api/networks/{networkId}/l2-vpns"},
+		{Method: "POST", Route: "/api/networks/{networkId}/l3-vpns"},
+	},
 	"SyntheticNodes.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/adjacent-networks/{adjacentNetworkName}"},
 		{Method: "DELETE", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
+		{Method: "DELETE", Route: "/api/networks/{networkId}/l2-vpns/{l2VpnName}"},
 		{Method: "DELETE", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
 	},
 	"SyntheticNodes.DeleteIntranetNode": {
@@ -898,8 +910,10 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "DELETE", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
 	},
 	"SyntheticNodes.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/adjacent-networks/{adjacentNetworkName}"},
 		{Method: "GET", Route: "/api/networks/{networkId}/internet-node"},
 		{Method: "GET", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
+		{Method: "GET", Route: "/api/networks/{networkId}/l2-vpns/{l2VpnName}"},
 		{Method: "GET", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
 	},
 	"SyntheticNodes.GetInternetNode": {
@@ -911,8 +925,13 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"SyntheticNodes.GetL3VPN": {
 		{Method: "GET", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
 	},
+	"SyntheticNodes.InternetConnectionSuggestions": {
+		{Method: "GET", Route: "/api/networks/{networkId}/internet-node/connection-suggestions"},
+	},
 	"SyntheticNodes.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/adjacent-networks"},
 		{Method: "GET", Route: "/api/networks/{networkId}/intranet-nodes"},
+		{Method: "GET", Route: "/api/networks/{networkId}/l2-vpns"},
 		{Method: "GET", Route: "/api/networks/{networkId}/l3-vpns"},
 	},
 	"SyntheticNodes.ListIntranetNodes": {
@@ -936,8 +955,10 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "PUT", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
 	},
 	"SyntheticNodes.SetQuery": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/adjacent-networks/{adjacentNetworkName}"},
 		{Method: "PATCH", Route: "/api/networks/{networkId}/internet-node"},
 		{Method: "PATCH", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
+		{Method: "PATCH", Route: "/api/networks/{networkId}/l2-vpns/{l2VpnName}"},
 		{Method: "PATCH", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
 	},
 	"Topology.EditOverrides": {
