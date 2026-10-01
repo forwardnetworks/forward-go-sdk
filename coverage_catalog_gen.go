@@ -1083,6 +1083,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Users.CurrentSession": {
 		{Method: "GET", Route: "/api/users/current"},
 	},
+	"Users.Delete": {
+		{Method: "DELETE", Route: "/api/users/{userId}"},
+	},
 	"Users.DeleteToken": {
 		{Method: "DELETE", Route: "/api/users/current/tokens/{tokenName}"},
 	},

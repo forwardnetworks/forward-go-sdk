@@ -202,3 +202,43 @@ func TestMissingPermission(t *testing.T) {
 		}
 	}
 }
+
+// Users.Delete is the org admin's own-credential delete: 204 deletes, 404 is
+// already gone, and Forward's refusals (yourself, a Forward admin) surface
+// with their status and message rather than being swallowed.
+func TestUsersDelete(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		status int
+		body   string
+		ok     bool
+	}{
+		{status: http.StatusNoContent, ok: true},
+		{status: http.StatusNotFound, ok: true},
+		{status: http.StatusBadRequest, body: `{"message":"Can't delete yourself."}`},
+		{status: http.StatusForbidden, body: `{"message":"User does not have permission to delete a Forward Admin."}`},
+	} {
+		var method, path string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			method, path = r.Method, r.URL.EscapedPath()
+			w.WriteHeader(tc.status)
+			_, _ = io.WriteString(w, tc.body)
+		}))
+		_, err := newTestClient(t, server.URL).Users.Delete(context.Background(), " 12 ")
+		server.Close()
+		if method != http.MethodDelete || path != "/api/users/12" {
+			t.Errorf("%d: sent %s %s", tc.status, method, path)
+		}
+		if tc.ok != (err == nil) {
+			t.Errorf("%d: err = %v", tc.status, err)
+		}
+		var apiErr *ErrorResponse
+		if !tc.ok && (!errors.As(err, &apiErr) || !IsStatus(err, tc.status) || apiErr.Message == "") {
+			t.Errorf("%d: refusal must keep its status and message: %v", tc.status, err)
+		}
+	}
+	if _, err := newTestClient(t, "http://127.0.0.1:1").Users.Delete(context.Background(), " "); err == nil {
+		t.Fatal("an empty user ID must be refused")
+	}
+}

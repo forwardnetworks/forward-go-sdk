@@ -395,3 +395,24 @@ func userPath(userID, tail string) (string, error) {
 	}
 	return "/api/users/" + url.PathEscape(userID) + tail, nil
 }
+
+// Delete deletes a user of the caller's org. A 404 is success (already gone). DELETE /api/users/{userId} (published deleteUser;
+// MANAGE_USER_ACCOUNTS). Forward refuses deleting yourself (400 "Can't delete yourself."), a chatbot account, and a Forward admin
+// unless you are one (403); those come back as the ErrorResponse with Forward's message. Admin.DeleteUser is the same route for a
+// service principal.
+func (s *UsersService) Delete(ctx context.Context, userID string) (*Response, error) {
+	path, err := userPath(userID, "")
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Users.Delete")
+	response, err := s.client.Do(req, nil)
+	if isStatus(err, http.StatusNotFound) {
+		return response, nil
+	}
+	return response, err
+}
