@@ -93,6 +93,11 @@ var wireArgOverrides = map[string]map[int]any{
 	"SyntheticNodes.CompatibleQueries":  {2: SyntheticL3VPN},
 	"SyntheticNodes.Backdate":           {2: SyntheticL3VPN},
 	"Endpoints.CreateProfileDefinition": {1: EndpointProfile{Name: "v1", Type: "SNMP"}},
+	// AddBatch and Patch refuse a field the endpoint type does not have, and
+	// the synthesiser fills every field, so they get a valid type and a
+	// minimal endpoint.
+	"Endpoints.AddBatch": {2: "CLI", 3: []Endpoint{{Name: "v1", Host: "v1"}}},
+	"Endpoints.Patch":    {3: "CLI"},
 }
 
 // recordRequests invokes symbol and returns every request it sent. Each

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,21 +13,27 @@ import (
 
 type EndpointsService service
 
+// Endpoint is one network endpoint. Which fields apply depends on Type: Protocol, JumpServerID and LargeRTT are CLI-only, FullCollect is
+// CLI and SNMP, DisableSSLValidation is HTTP-only (the published NewCli/NewSnmp/NewHttpNetworkEndpoint). AddBatch sends only the fields
+// of the batch's type and refuses one set for another type.
 type Endpoint struct {
-	Type         string `json:"type"`
-	Name         string `json:"name"`
-	Host         string `json:"host"`
-	Port         int    `json:"port,omitempty"`
-	Protocol     string `json:"protocol"`
-	CredentialID string `json:"credentialId,omitempty"`
-	ProfileID    string `json:"profileId,omitempty"`
-	JumpServerID string `json:"jumpServerId,omitempty"`
-	FullCollect  bool   `json:"fullCollectionLog,omitempty"`
-	LargeRTT     bool   `json:"largeRtt,omitempty"`
-	Collect      *bool  `json:"collect,omitempty"`
-	Note         string `json:"note,omitempty"`
+	Type                 string `json:"type"`
+	Name                 string `json:"name"`
+	Host                 string `json:"host"`
+	Port                 int    `json:"port,omitempty"`
+	Protocol             string `json:"protocol,omitempty"`
+	CredentialID         string `json:"credentialId,omitempty"`
+	ProfileID            string `json:"profileId,omitempty"`
+	JumpServerID         string `json:"jumpServerId,omitempty"`
+	FullCollect          bool   `json:"fullCollectionLog,omitempty"`
+	LargeRTT             bool   `json:"largeRtt,omitempty"`
+	DisableSSLValidation *bool  `json:"disableSslValidation,omitempty"`
+	Collect              *bool  `json:"collect,omitempty"`
+	Note                 string `json:"note,omitempty"`
 }
 
+// EndpointPatch changes the stated parts of one endpoint; nil fields are left alone. Protocol and JumpServerID apply to CLI endpoints
+// only, and Patch refuses them for another type.
 type EndpointPatch struct {
 	Host         *string `json:"host,omitempty"`
 	Protocol     *string `json:"protocol,omitempty"`
@@ -34,6 +41,80 @@ type EndpointPatch struct {
 	ProfileID    *string `json:"profileId,omitempty"`
 	JumpServerID *string `json:"jumpServerId,omitempty"`
 	Collect      *bool   `json:"collect,omitempty"`
+}
+
+// endpointBody is the create body of one endpoint for endpointType. Forward binds each type to its own class
+// (NewCli/NewSnmp/NewHttpNetworkEndpoint, an endpoint class unwrapped plus collect/collectorId/note) and rejects a field that class does
+// not declare -- an SNMP endpoint sent "protocol" answers 400 'Unrecognized field "protocol" (class SnmpNetworkEndpoint)'. "type" is
+// the NetworkEndpoint type discriminator, so it is always sent and must match.
+func endpointBody(endpointType string, e Endpoint) (any, error) {
+	if t := strings.ToUpper(strings.TrimSpace(e.Type)); t != "" && t != endpointType {
+		return nil, fmt.Errorf("forward: endpoint %s has type %s in a %s batch", e.Name, e.Type, endpointType)
+	}
+	notFor := func(field string) error {
+		return fmt.Errorf("forward: %s is not a field of a %s endpoint (%s)", field, endpointType, e.Name)
+	}
+	switch endpointType {
+	case "CLI":
+		if e.DisableSSLValidation != nil {
+			return nil, notFor("disableSslValidation")
+		}
+		return struct {
+			Type         string `json:"type"`
+			Name         string `json:"name"`
+			Host         string `json:"host"`
+			Port         int    `json:"port,omitempty"`
+			Protocol     string `json:"protocol,omitempty"`
+			ProfileID    string `json:"profileId,omitempty"`
+			CredentialID string `json:"credentialId,omitempty"`
+			JumpServerID string `json:"jumpServerId,omitempty"`
+			FullCollect  bool   `json:"fullCollectionLog,omitempty"`
+			LargeRTT     bool   `json:"largeRtt,omitempty"`
+			Collect      *bool  `json:"collect,omitempty"`
+			Note         string `json:"note,omitempty"`
+		}{endpointType, e.Name, e.Host, e.Port, e.Protocol, e.ProfileID, e.CredentialID, e.JumpServerID, e.FullCollect, e.LargeRTT, e.Collect, e.Note}, nil
+	case "SNMP", "HTTP":
+		switch {
+		case e.Protocol != "":
+			return nil, notFor("protocol")
+		case e.JumpServerID != "":
+			return nil, notFor("jumpServerId")
+		case e.LargeRTT:
+			return nil, notFor("largeRtt")
+		}
+		if endpointType == "SNMP" {
+			if e.DisableSSLValidation != nil {
+				return nil, notFor("disableSslValidation")
+			}
+			return struct {
+				Type         string `json:"type"`
+				Name         string `json:"name"`
+				Host         string `json:"host"`
+				Port         int    `json:"port,omitempty"`
+				ProfileID    string `json:"profileId,omitempty"`
+				CredentialID string `json:"credentialId,omitempty"`
+				FullCollect  bool   `json:"fullCollectionLog,omitempty"`
+				Collect      *bool  `json:"collect,omitempty"`
+				Note         string `json:"note,omitempty"`
+			}{endpointType, e.Name, e.Host, e.Port, e.ProfileID, e.CredentialID, e.FullCollect, e.Collect, e.Note}, nil
+		}
+		if e.FullCollect {
+			return nil, notFor("fullCollectionLog")
+		}
+		return struct {
+			Type                 string `json:"type"`
+			Name                 string `json:"name"`
+			Host                 string `json:"host"`
+			Port                 int    `json:"port,omitempty"`
+			ProfileID            string `json:"profileId,omitempty"`
+			CredentialID         string `json:"credentialId,omitempty"`
+			DisableSSLValidation *bool  `json:"disableSslValidation,omitempty"`
+			Collect              *bool  `json:"collect,omitempty"`
+			Note                 string `json:"note,omitempty"`
+		}{endpointType, e.Name, e.Host, e.Port, e.ProfileID, e.CredentialID, e.DisableSSLValidation, e.Collect, e.Note}, nil
+	default:
+		return nil, fmt.Errorf("forward: endpoint type must be CLI, SNMP or HTTP, not %q", endpointType)
+	}
 }
 
 // EndpointProfile is one endpoint profile: how Forward recognizes and collects a kind of endpoint device. Type selects which fields
@@ -177,12 +258,20 @@ func (s *EndpointsService) AddBatch(ctx context.Context, networkID, endpointType
 	if err != nil {
 		return nil, err
 	}
-	endpointType = strings.TrimSpace(endpointType)
+	endpointType = strings.ToUpper(strings.TrimSpace(endpointType))
 	if endpointType == "" {
 		endpointType = "CLI"
 	}
+	bodies := make([]any, 0, len(endpoints))
+	for _, endpoint := range endpoints {
+		body, err := endpointBody(endpointType, endpoint)
+		if err != nil {
+			return nil, err
+		}
+		bodies = append(bodies, body)
+	}
 	query := url.Values{"action": []string{"addBatch"}, "type": []string{endpointType}}
-	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path+"?"+query.Encode(), endpoints)
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path+"?"+query.Encode(), bodies)
 	if err != nil {
 		return nil, err
 	}
@@ -199,9 +288,13 @@ func (s *EndpointsService) Patch(ctx context.Context, networkID, name, endpointT
 	if err != nil {
 		return nil, err
 	}
-	endpointType = strings.TrimSpace(endpointType)
+	endpointType = strings.ToUpper(strings.TrimSpace(endpointType))
 	if endpointType == "" {
 		endpointType = "CLI"
+	}
+	// Cli/Snmp/HttpNetworkEndpointPatch: protocol and jumpServerId exist on the CLI patch only.
+	if endpointType != "CLI" && (patch.Protocol != nil || patch.JumpServerID != nil) {
+		return nil, fmt.Errorf("forward: protocol and jumpServerId are not fields of a %s endpoint", endpointType)
 	}
 	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path+"?type="+url.QueryEscape(endpointType), patch)
 	if err != nil {
