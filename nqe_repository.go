@@ -126,6 +126,10 @@ func (s *NQERepositoryService) DeleteDirectory(ctx context.Context, path string)
 func (s *NQERepositoryService) AddDirectory(ctx context.Context, path string) (*Response, error) {
 	return s.change(ctx, "addDir", path, nil, http.StatusConflict)
 }
+
+// AddQuery stages a NEW query at path in the caller's workspace (a draft until Commit). It is only for a path that is not in HEAD:
+// Forward refuses an existing path with 409, reason ADD_QUERY_ALREADY_EXISTS ("Attempted to add a query at <path>, but that path
+// already exists in HEAD."). Change an existing query with EditQuery. Calling AddQuery again on its own draft replaces that draft.
 func (s *NQERepositoryService) AddQuery(ctx context.Context, path, source string) (*Response, error) {
 	if strings.TrimSpace(source) == "" {
 		return nil, errors.New("forward: NQE query source is required")
@@ -133,10 +137,9 @@ func (s *NQERepositoryService) AddQuery(ctx context.Context, path, source string
 	return s.change(ctx, "addQuery", path, NQEQuerySource{SourceCode: source})
 }
 
-// DeleteQuery removes a query in the caller's workspace. Like every other
-// change here it is a draft: Commit on the same path is what removes it from
-// the org library. A 404 is tolerated so deleting what is already gone
-// succeeds.
+// DeleteQuery stages the deletion of a query in the caller's workspace. Like every other change here it is a draft: Commit on the same
+// path is what removes it from the org library, and DiscardChange drops the staged deletion instead. A 404 is tolerated so deleting
+// what is already gone succeeds.
 func (s *NQERepositoryService) DeleteQuery(ctx context.Context, path string) (*Response, error) {
 	return s.change(ctx, "deleteQuery", path, nil, http.StatusNotFound)
 }
@@ -257,4 +260,129 @@ func (s *NQERepositoryService) CommitDryRun(ctx context.Context, paths []string,
 	out := new(NQECommitDryRun)
 	resp, err := s.client.doRequired(req, out)
 	return out, resp, err
+}
+
+// NQEDraftBasis is the committed version an edit starts from: the query's stable ID ("Q_...", NQECommittedQuery.QueryID) and a commit
+// that holds the query at that path, normally the head commit read alongside it (Head, GetQuery). Forward rejects the edit (409) when
+// the basis does not match: a commit without the query, a query ID that differs, or a basis older than a draft already in place.
+type NQEDraftBasis struct {
+	QueryID  string `json:"queryId"`
+	CommitID string `json:"commitId"`
+}
+
+// EditQuery stages new source for a query that is already in HEAD (or renamed from one) in the caller's workspace, adding or
+// replacing the draft at path; Commit publishes it and DiscardChange drops it. POST /api/users/current/nqe/changes?action=editQuery
+// &path= {sourceCode, basis} (NqeLibController.editQueryDraft; WRITE_TO_NQE_LIBRARY). A path not in HEAD is refused with 409
+// (PATH_MISSING_IN_HEAD or UPDATE_EXISTING_FOR_NEW_QUERY): stage a new query with AddQuery. Preview: not in the published spec.
+func (s *NQERepositoryService) EditQuery(ctx context.Context, path, source string, basis NQEDraftBasis) (*Response, error) {
+	if strings.TrimSpace(source) == "" {
+		return nil, errors.New("forward: NQE query source is required")
+	}
+	basis.QueryID, basis.CommitID = strings.TrimSpace(basis.QueryID), strings.TrimSpace(basis.CommitID)
+	if basis.QueryID == "" || basis.CommitID == "" {
+		return nil, errors.New("forward: an NQE edit needs its basis query ID and commit ID")
+	}
+	return s.change(ctx, "editQuery", path, struct {
+		SourceCode string        `json:"sourceCode"`
+		Basis      NQEDraftBasis `json:"basis"`
+	}{source, basis})
+}
+
+// DiscardChange drops the caller's draft at exactly path -- a staged add, edit or deletion of a query, or a directory's staged access
+// change -- leaving HEAD untouched. Having no draft there is success, so cleanup can always run. DELETE
+// /api/users/current/nqe/changes?path= (NqeLibController.discardChanges; WRITE_TO_NQE_LIBRARY). Preview.
+func (s *NQERepositoryService) DiscardChange(ctx context.Context, path string) (*Response, error) {
+	if path = strings.TrimSpace(path); path == "" {
+		return nil, errors.New("forward: NQE change path is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, "/api/users/current/nqe/changes?"+url.Values{"path": []string{path}}.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "NQERepository.DiscardChange")
+	response, err := s.client.Do(req, nil)
+	// NqeLibStore.discardChanges: "no change at the path" is NqeLibException INVALID_CHANGE_PATH, rendered as 409.
+	var apiErr *ErrorResponse
+	if isStatus(err, http.StatusConflict) && errors.As(err, &apiErr) && apiErr.Reason == "INVALID_CHANGE_PATH" {
+		return response, nil
+	}
+	return response, err
+}
+
+// DiscardChanges drops every draft of the caller's at or under paths (query paths, or directories for everything inside them);
+// paths with no draft are ignored. POST /api/users/current/nqe/changes?action=bulkDiscard {paths}
+// (NqeLibController.discardChangesRecursiveBulk; WRITE_TO_NQE_LIBRARY). Preview.
+func (s *NQERepositoryService) DiscardChanges(ctx context.Context, paths []string) (*Response, error) {
+	paths = normalizeNQEPaths(paths)
+	if len(paths) == 0 {
+		return nil, errors.New("forward: at least one NQE path is required")
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, "/api/users/current/nqe/changes?action=bulkDiscard", map[string][]string{"paths": paths})
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "NQERepository.DiscardChanges")
+	return s.client.Do(req, nil)
+}
+
+// NQEDraftChange is one draft in the caller's workspace (ChangeInfo). Type is QUERY_ADD, QUERY_EDIT, QUERY_DELETE, DIR_ADD,
+// PERMISSION_SET or PERMISSION_RESET. Path is set for an add (the query or directory path) and an edit; an edit also sets Directory or
+// Name when it moves or renames the query, and SourceCodeSha when it changes the source. Basis is the committed version an edit or a
+// deletion started from; Directory alone names a permission change.
+type NQEDraftChange struct {
+	Type          string          `json:"type"`
+	Path          string          `json:"path,omitempty"`
+	Directory     string          `json:"directory,omitempty"`
+	Name          string          `json:"name,omitempty"`
+	SourceCodeSha string          `json:"sourceCodeSha,omitempty"`
+	Basis         *NQEChangeBasis `json:"basis,omitempty"`
+}
+
+// NQEChangeBasis is the committed query a draft started from: its stable ID, the commit, and its path in that commit.
+type NQEChangeBasis struct {
+	QueryID  Identifier `json:"queryId"`
+	CommitID Identifier `json:"commitId"`
+	Path     string     `json:"path"`
+}
+
+// ListDrafts returns the caller's uncommitted NQE changes. GET /api/users/current/nqe/changes (getUserWorkspaceChanges;
+// VIEW_NQE_LIBRARY). Preview.
+func (s *NQERepositoryService) ListDrafts(ctx context.Context) ([]NQEDraftChange, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/users/current/nqe/changes", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "NQERepository.ListDrafts")
+	result := listResponse[NQEDraftChange]{Keys: []string{"changes"}}
+	response, err := s.client.doRequired(req, &result)
+	return result.Items, response, err
+}
+
+// NQEDraftQuery is the caller's draft source for one query (QueryDraftInfo). LastUpdatedMillis is epoch milliseconds.
+type NQEDraftQuery struct {
+	SourceCode        string `json:"sourceCode"`
+	SourceCodeSha     string `json:"sourceCodeSha,omitempty"`
+	LastUpdatedMillis *int64 `json:"lastUpdated,omitempty"`
+}
+
+// GetDraft returns the caller's draft of the query at path, or (nil, nil) when there is none ("No draft query at <path>"). GET
+// /api/users/current/nqe/changes?path= (getQueryDraftDetails; VIEW_NQE_LIBRARY). Preview.
+func (s *NQERepositoryService) GetDraft(ctx context.Context, path string) (*NQEDraftQuery, *Response, error) {
+	if path = strings.TrimSpace(path); path == "" {
+		return nil, nil, errors.New("forward: NQE query path is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/users/current/nqe/changes?"+url.Values{"path": []string{path}}.Encode(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "NQERepository.GetDraft")
+	out := new(NQEDraftQuery)
+	response, err := s.client.doRequired(req, out)
+	if isStatus(err, http.StatusNotFound) {
+		return nil, response, nil
+	}
+	if err != nil {
+		return nil, response, err
+	}
+	return out, response, nil
 }

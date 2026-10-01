@@ -655,6 +655,18 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"NQERepository.DeleteQuery": {
 		{Method: "POST", Route: "/api/users/current/nqe/changes"},
 	},
+	"NQERepository.DiscardChange": {
+		{Method: "DELETE", Route: "/api/users/current/nqe/changes"},
+	},
+	"NQERepository.DiscardChanges": {
+		{Method: "POST", Route: "/api/users/current/nqe/changes"},
+	},
+	"NQERepository.EditQuery": {
+		{Method: "POST", Route: "/api/users/current/nqe/changes"},
+	},
+	"NQERepository.GetDraft": {
+		{Method: "GET", Route: "/api/users/current/nqe/changes"},
+	},
 	"NQERepository.GetQuery": {
 		{Method: "GET", Route: "/api/nqe/repos/org/commits/{commitId}/queries"},
 	},
@@ -666,6 +678,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"NQERepository.History": {
 		{Method: "GET", Route: "/api/nqe/queries/{queryId}/history"},
+	},
+	"NQERepository.ListDrafts": {
+		{Method: "GET", Route: "/api/users/current/nqe/changes"},
 	},
 	"NQERepository.ListHeadQueries": {
 		{Method: "GET", Route: "/api/nqe/repos/org/commits/head/queries"},
