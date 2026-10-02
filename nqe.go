@@ -487,3 +487,38 @@ func nqeResultPath(networkID, executionKey string, options NQEResultOptions) (st
 	}
 	return path, nil
 }
+
+// Schema returns the NQE data model as this org sees it, as raw InlinedType
+// JSON. It is filtered by the org's feature settings and license tier
+// (NqeAppService.getSchemaTree), and includes network.extensions.<nqeName>
+// for each of the org's data files. GET /api/nqe/schema (NqeController;
+// VIEW_NQE_LIBRARY). Preview: not in the published spec.
+func (s *NQEService) Schema(ctx context.Context) (json.RawMessage, *Response, error) {
+	return s.schema(ctx, "/api/nqe/schema", "NQE.Schema")
+}
+
+// SchemaAt is Schema extended with one snapshot's context: the structure
+// Forward inferred from that snapshot's endpoint and data connector responses
+// (ExternalSourceSchemaLoader). GET /api/nqe/schema?snapshotId= (needs the
+// snapshot created; ErrSnapshotNotProcessed and friends apply). Pass
+// Snapshots.LatestProcessed's ID for a network's current view.
+func (s *NQEService) SchemaAt(ctx context.Context, snapshotID string) (json.RawMessage, *Response, error) {
+	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
+		return nil, nil, errors.New("forward: snapshot ID is required")
+	}
+	return s.schema(ctx, "/api/nqe/schema?"+url.Values{"snapshotId": []string{snapshotID}}.Encode(), "NQE.SchemaAt")
+}
+
+func (s *NQEService) schema(ctx context.Context, path, operation string) (json.RawMessage, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, operation)
+	var out json.RawMessage
+	resp, err := s.client.doRequired(req, &out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}

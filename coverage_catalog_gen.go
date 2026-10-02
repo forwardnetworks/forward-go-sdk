@@ -669,6 +669,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"NQE.Run": {
 		{Method: "POST", Route: "/api/nqe"},
 	},
+	"NQE.Schema": {
+		{Method: "GET", Route: "/api/nqe/schema"},
+	},
+	"NQE.SchemaAt": {
+		{Method: "GET", Route: "/api/nqe/schema"},
+	},
 	"NQE.Start": {
 		{Method: "POST", Route: "/api/networks/{networkId}/nqe-executions"},
 	},
