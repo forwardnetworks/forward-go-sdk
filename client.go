@@ -122,6 +122,7 @@ type Client struct {
 	Vulnerabilities         *VulnerabilitiesService
 	Aliases                 *AliasesService
 	WanCircuits             *WanCircuitsService
+	DataFiles               *DataFilesService
 	CollectionSchedules     *CollectionSchedulesService
 }
 
@@ -293,6 +294,7 @@ func (c *Client) bindServices() {
 	c.Vulnerabilities = (*VulnerabilitiesService)(&service{client: c})
 	c.Aliases = (*AliasesService)(&service{client: c})
 	c.WanCircuits = (*WanCircuitsService)(&service{client: c})
+	c.DataFiles = (*DataFilesService)(&service{client: c})
 	c.CollectionSchedules = (*CollectionSchedulesService)(&service{client: c})
 }
 

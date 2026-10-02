@@ -416,6 +416,30 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Credentials.UpdateSNMP": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},
 	},
+	"DataFiles.Add": {
+		{Method: "POST", Route: "/api/data-files"},
+	},
+	"DataFiles.AddToNetwork": {
+		{Method: "POST", Route: "/api/networks/{networkId}/data-files/{dataFileName}"},
+	},
+	"DataFiles.Content": {
+		{Method: "GET", Route: "/api/data-files/{dataFileName}"},
+	},
+	"DataFiles.InferSchema": {
+		{Method: "POST", Route: "/api/data-files"},
+	},
+	"DataFiles.List": {
+		{Method: "GET", Route: "/api/data-files"},
+	},
+	"DataFiles.ListForNetwork": {
+		{Method: "GET", Route: "/api/networks/{networkId}/data-files"},
+	},
+	"DataFiles.RemoveFromNetwork": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/data-files/{dataFileName}"},
+	},
+	"DataFiles.Schema": {
+		{Method: "GET", Route: "/api/data-files/{dataFileName}/schema"},
+	},
 	"DeviceTags.AddBatch": {
 		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
 	},

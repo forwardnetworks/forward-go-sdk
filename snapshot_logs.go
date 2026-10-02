@@ -76,6 +76,13 @@ func (s *SnapshotsService) ExceptionsText(ctx context.Context, snapshotID string
 }
 
 func textHead(ctx context.Context, c *Client, path, operation string, maxBytes int64, dst io.Writer) (int64, bool, *Response, error) {
+	// application/json too: Forward answers an error as JSON, and without it Spring can only say 406.
+	return downloadHead(ctx, c, path, operation, "text/plain, application/json", maxBytes, dst)
+}
+
+// downloadHead streams up to maxBytes of a GET's body to dst, reporting
+// truncation rather than an error.
+func downloadHead(ctx context.Context, c *Client, path, operation, accept string, maxBytes int64, dst io.Writer) (int64, bool, *Response, error) {
 	if maxBytes <= 0 || dst == nil {
 		return 0, false, nil, errors.New("forward: a positive maxBytes and a destination writer are required")
 	}
@@ -83,8 +90,7 @@ func textHead(ctx context.Context, c *Client, path, operation string, maxBytes i
 	if err != nil {
 		return 0, false, nil, err
 	}
-	// application/json too: Forward answers an error as JSON, and without it Spring can only say 406.
-	req.Header.Set("Accept", "text/plain, application/json")
+	req.Header.Set("Accept", accept)
 	req = markOperation(req, operation)
 	head := &headWriter{dst: dst, remaining: maxBytes}
 	resp, err := c.Do(req, head)
