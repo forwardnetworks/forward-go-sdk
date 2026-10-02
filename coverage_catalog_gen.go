@@ -416,6 +416,24 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Credentials.UpdateSNMP": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},
 	},
+	"DataConnectors.Add": {
+		{Method: "POST", Route: "/api/networks/{networkId}/data-connectors"},
+	},
+	"DataConnectors.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/data-connectors/{name}"},
+	},
+	"DataConnectors.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/data-connectors/{name}"},
+	},
+	"DataConnectors.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/data-connectors"},
+	},
+	"DataConnectors.Test": {
+		{Method: "POST", Route: "/api/networks/{networkId}/data-connectors/{name}"},
+	},
+	"DataConnectors.Update": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/data-connectors/{name}"},
+	},
 	"DataFiles.Add": {
 		{Method: "POST", Route: "/api/data-files"},
 	},

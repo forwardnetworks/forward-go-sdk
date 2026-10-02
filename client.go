@@ -123,6 +123,7 @@ type Client struct {
 	Aliases                 *AliasesService
 	WanCircuits             *WanCircuitsService
 	DataFiles               *DataFilesService
+	DataConnectors          *DataConnectorsService
 	CollectionSchedules     *CollectionSchedulesService
 }
 
@@ -295,6 +296,7 @@ func (c *Client) bindServices() {
 	c.Aliases = (*AliasesService)(&service{client: c})
 	c.WanCircuits = (*WanCircuitsService)(&service{client: c})
 	c.DataFiles = (*DataFilesService)(&service{client: c})
+	c.DataConnectors = (*DataConnectorsService)(&service{client: c})
 	c.CollectionSchedules = (*CollectionSchedulesService)(&service{client: c})
 }
 
