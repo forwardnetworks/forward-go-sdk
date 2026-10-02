@@ -323,6 +323,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Collectors.Delete": {
 		{Method: "DELETE", Route: "/api/collectors/{collectorIdOrName}"},
 	},
+	"Collectors.GetOrganizationSettings": {
+		{Method: "GET", Route: "/api/collection-settings"},
+	},
+	"Collectors.GetSettings": {
+		{Method: "GET", Route: "/api/collectors/{collectorId}/collection-settings"},
+	},
 	"Collectors.List": {
 		{Method: "GET", Route: "/api/collectors"},
 	},

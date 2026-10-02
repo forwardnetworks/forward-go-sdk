@@ -2,6 +2,7 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -218,4 +219,168 @@ func (s *CollectorsService) networkPath(networkID, suffix string) (string, error
 func isStatus(err error, status int) bool {
 	var responseError *ErrorResponse
 	return errors.As(err, &responseError) && responseError.Response != nil && responseError.Response.StatusCode == status
+}
+
+// Forward's defaults for collection settings a user has not set
+// (CollectorCollectionSettings and OrgCollectionSettings in client-structs).
+// The reads return only what is stored, with nil for "default applies"; these
+// are what Forward then uses, for comparison and for the Effective methods.
+const (
+	DefaultCollectorConcurrency             = 128 // devices collected at once; at most 1024
+	DefaultCollectorSNMPConcurrency         = 64  // at most 1024
+	DefaultCollectorVCenterConcurrency      = 1   // at most 100
+	DefaultMaxCommandAuthZPerSecond         = 1000
+	DefaultMaxDeviceAuthNPerSecond          = 1000
+	DefaultMaxScanConnectionsPerSecond      = 2000
+	DefaultPerDeviceSNMPConcurrency         = 4
+	DefaultDeviceCollectionTimeoutMinutes   = 3 * 60
+	DefaultDeviceDiscoveryTimeoutMinutes    = 6 * 60
+	DefaultGeneralJobTimeoutMinutes         = 20
+	DefaultSnapshotCollectionTimeoutMinutes = 6 * 60
+	DefaultCollectionRetryDelayMillis       = 15_000
+	DefaultCollectionMaxRetryDelayMillis    = 60_000
+	DefaultCollectionRetries                = 2
+)
+
+// CollectorCollectionSettings is what is stored for one collector. A nil field
+// means nothing is set and Forward uses its default (Default... constants);
+// the Effective methods apply it explicitly.
+type CollectorCollectionSettings struct {
+	Concurrency               *int `json:"concurrency,omitempty"`
+	SNMPCollectionConcurrency *int `json:"snmpCollectionConcurrency,omitempty"`
+	VCenterConcurrency        *int `json:"vcenterConcurrency,omitempty"`
+}
+
+// EffectiveConcurrency is Concurrency, or DefaultCollectorConcurrency when unset.
+func (s CollectorCollectionSettings) EffectiveConcurrency() int {
+	return intOrDefault(s.Concurrency, DefaultCollectorConcurrency)
+}
+
+// EffectiveSNMPCollectionConcurrency is SNMPCollectionConcurrency, or its default when unset.
+func (s CollectorCollectionSettings) EffectiveSNMPCollectionConcurrency() int {
+	return intOrDefault(s.SNMPCollectionConcurrency, DefaultCollectorSNMPConcurrency)
+}
+
+// EffectiveVCenterConcurrency is VCenterConcurrency, or its default when unset.
+func (s CollectorCollectionSettings) EffectiveVCenterConcurrency() int {
+	return intOrDefault(s.VCenterConcurrency, DefaultCollectorVCenterConcurrency)
+}
+
+// GetSettings returns the collection settings stored for a collector: only
+// what was set, so a nil field is a default, not zero. GET
+// /api/collectors/{collectorId}/collection-settings (CollectionController;
+// VIEW_COLLECTORS). Preview: not in the published spec.
+func (s *CollectorsService) GetSettings(ctx context.Context, collectorID string) (*CollectorCollectionSettings, *Response, error) {
+	if collectorID = strings.TrimSpace(collectorID); collectorID == "" {
+		return nil, nil, errors.New("forward: collector ID is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/collectors/"+url.PathEscape(collectorID)+"/collection-settings", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Collectors.GetSettings")
+	out := new(CollectorCollectionSettings)
+	resp, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}
+
+// OrgCollectionSettings is what is stored for the whole organization's
+// collectors. A nil field (or empty list) means nothing is set and Forward uses
+// its default: the Default... constants where there is one; none for
+// PerDeviceConcurrencyBoost (0) and CommandDelayMS (no delay). Timeouts are in
+// the minutes Forward serializes. The settings this type does not model
+// (disabledCommands, the ribRoute* limits, the redaction settings) are in Raw,
+// with every other key of the response.
+type OrgCollectionSettings struct {
+	MaxCommandAuthZPerSecond      *int     `json:"maxCommandAuthZPerSecond,omitempty"`
+	MaxDeviceAuthNPerSecond       *int     `json:"maxDeviceAuthNPerSecond,omitempty"`
+	MaxScanConnectionsPerSecond   *int     `json:"maxScanConnectionsPerSecond,omitempty"`
+	PerDeviceConcurrencyBoost     *int     `json:"perDeviceConcurrencyBoost,omitempty"`
+	PerDeviceSNMPConcurrency      *int     `json:"perDeviceSnmpConcurrency,omitempty"`
+	DeviceCollectionTimeoutMins   *int     `json:"deviceCollectionTimeoutMinutes,omitempty"`
+	DeviceDiscoveryTimeoutMins    *int     `json:"deviceDiscoveryTimeoutMinutes,omitempty"`
+	GeneralJobTimeoutMins         *int     `json:"generalJobTimeoutMinutes,omitempty"`
+	SnapshotCollectionTimeoutMins *int     `json:"snapshotCollectionTimeoutMinutes,omitempty"`
+	CommandDelayMS                *int     `json:"commandDelayMs,omitempty"`
+	CollectionRetryDelayMillis    *int     `json:"collectionRetryDelayMillis,omitempty"`
+	CollectionMaxRetryDelayMillis *int     `json:"collectionMaxRetryDelayMillis,omitempty"`
+	CollectionRetries             *int     `json:"collectionRetries,omitempty"`
+	EnableBetaCommands            *bool    `json:"enableBetaCommands,omitempty"`
+	DisableCommandOutputLogging   *bool    `json:"disableCommandOutputLogging,omitempty"`
+	EnableSNMPCredDiscovery       *bool    `json:"enableSnmpCredDiscovery,omitempty"`
+	PasswordPrompts               []string `json:"passwordPrompts,omitempty"`
+	CollectFullConfigDeviceTypes  []string `json:"collectFullConfigDeviceTypes,omitempty"`
+
+	// Raw is the whole response object.
+	Raw map[string]json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON decodes the modelled fields and keeps the whole object in Raw.
+func (s *OrgCollectionSettings) UnmarshalJSON(data []byte) error {
+	type plain OrgCollectionSettings
+	var value plain
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*s = OrgCollectionSettings(value)
+	s.Raw = raw
+	return nil
+}
+
+// EffectiveMaxDeviceAuthNPerSecond is MaxDeviceAuthNPerSecond, or its default when unset.
+func (s OrgCollectionSettings) EffectiveMaxDeviceAuthNPerSecond() int {
+	return intOrDefault(s.MaxDeviceAuthNPerSecond, DefaultMaxDeviceAuthNPerSecond)
+}
+
+// EffectiveMaxScanConnectionsPerSecond is MaxScanConnectionsPerSecond, or its default when unset.
+func (s OrgCollectionSettings) EffectiveMaxScanConnectionsPerSecond() int {
+	return intOrDefault(s.MaxScanConnectionsPerSecond, DefaultMaxScanConnectionsPerSecond)
+}
+
+// EffectivePerDeviceConcurrencyBoost is PerDeviceConcurrencyBoost, or 0 when unset.
+func (s OrgCollectionSettings) EffectivePerDeviceConcurrencyBoost() int {
+	return intOrDefault(s.PerDeviceConcurrencyBoost, 0)
+}
+
+// EffectiveDeviceCollectionTimeoutMinutes is DeviceCollectionTimeoutMins, or its default when unset.
+func (s OrgCollectionSettings) EffectiveDeviceCollectionTimeoutMinutes() int {
+	return intOrDefault(s.DeviceCollectionTimeoutMins, DefaultDeviceCollectionTimeoutMinutes)
+}
+
+// EffectiveSnapshotCollectionTimeoutMinutes is SnapshotCollectionTimeoutMins, or its default when unset.
+func (s OrgCollectionSettings) EffectiveSnapshotCollectionTimeoutMinutes() int {
+	return intOrDefault(s.SnapshotCollectionTimeoutMins, DefaultSnapshotCollectionTimeoutMinutes)
+}
+
+func intOrDefault(value *int, fallback int) int {
+	if value == nil {
+		return fallback
+	}
+	return *value
+}
+
+// GetOrganizationSettings returns the collection settings stored for the
+// organization's collectors: only what was set, so a nil field is a default,
+// not zero. GET /api/collection-settings (CollectionController;
+// VIEW_ORG_COLLECTION_SETTINGS). The sibling ?for=collector form is the
+// collectors' own binary feed, not this. Preview: not in the published spec.
+func (s *CollectorsService) GetOrganizationSettings(ctx context.Context) (*OrgCollectionSettings, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/collection-settings", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Collectors.GetOrganizationSettings")
+	out := new(OrgCollectionSettings)
+	resp, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
 }
