@@ -124,6 +124,7 @@ type Client struct {
 	WanCircuits             *WanCircuitsService
 	DataFiles               *DataFilesService
 	DataConnectors          *DataConnectorsService
+	AuditLogs               *AuditLogsService
 	CollectionSchedules     *CollectionSchedulesService
 }
 
@@ -297,6 +298,7 @@ func (c *Client) bindServices() {
 	c.WanCircuits = (*WanCircuitsService)(&service{client: c})
 	c.DataFiles = (*DataFilesService)(&service{client: c})
 	c.DataConnectors = (*DataConnectorsService)(&service{client: c})
+	c.AuditLogs = (*AuditLogsService)(&service{client: c})
 	c.CollectionSchedules = (*CollectionSchedulesService)(&service{client: c})
 }
 

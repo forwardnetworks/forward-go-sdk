@@ -121,6 +121,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Aliases.List": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/aliases"},
 	},
+	"AuditLogs.List": {
+		{Method: "GET", Route: "/api/audit-logs"},
+	},
 	"Backups.GetS3Storage": {
 		{Method: "GET", Route: "/api/backup-settings/storage"},
 	},
