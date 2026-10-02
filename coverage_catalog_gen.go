@@ -297,10 +297,16 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"CollectorTasks.Get": {
 		{Method: "GET", Route: "/api/collector-tasks/{taskId}"},
 	},
+	"CollectorTasks.GetWithSubTasks": {
+		{Method: "GET", Route: "/api/collector-tasks/{taskId}"},
+	},
 	"CollectorTasks.List": {
 		{Method: "GET", Route: "/api/collector-tasks"},
 	},
 	"CollectorTasks.Progress": {
+		{Method: "GET", Route: "/api/collector-tasks"},
+	},
+	"CollectorTasks.SnapshotProgress": {
 		{Method: "GET", Route: "/api/collector-tasks"},
 	},
 	"CollectorTasks.Start": {
@@ -316,6 +322,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"CollectorTasks.Stop": {
 		{Method: "POST", Route: "/api/collector-tasks/{taskId}"},
+	},
+	"CollectorTasks.SubTasksAt": {
+		{Method: "GET", Route: "/api/collector-tasks/{taskId}"},
 	},
 	"Collectors.Attach": {
 		{Method: "PUT", Route: "/api/networks/{networkId}/collector"},
