@@ -3,6 +3,7 @@ package forward
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -297,4 +298,131 @@ func addNonEmpty(query url.Values, key string, values []string) {
 			query.Add(key, value)
 		}
 	}
+}
+
+// CVEAge is how long ago a CVE was published, bucketed by Forward (CveAge):
+// MONTH is up to 30 days, YEAR up to 365, OLDER anything else, including a CVE
+// with no published date.
+type CVEAge string
+
+const (
+	CVEAgeMonth CVEAge = "MONTH"
+	CVEAgeYear  CVEAge = "YEAR"
+	CVEAgeOlder CVEAge = "OLDER"
+)
+
+// DeviceCVECounts is one device with how many CVEs may affect it, counted four
+// ways (DeviceWithCveCounts). Each map's counts sum to the same total, and a
+// bucket with no CVEs is absent. HasExploitToCVECount is keyed "true" and
+// "false". InternetAddressable is nil when Forward has not computed internet
+// exposure for the snapshot, which is different from false. Summary is
+// VULNERABLE, POTENTIALLY_VULNERABLE or NOT_VULNERABLE; the custom counts are
+// present only when the org has custom CVE analysis.
+type DeviceCVECounts struct {
+	Name                 string                        `json:"name"`
+	OSVersion            string                        `json:"osVersion,omitempty"`
+	Model                string                        `json:"model,omitempty"`
+	ManagementIPs        []string                      `json:"managementIps,omitempty"`
+	Tags                 []string                      `json:"tags,omitempty"`
+	LocationID           string                        `json:"locationId,omitempty"`
+	ResultToCVECount     map[CVEDetectionResult]int    `json:"resultToCveCount"`
+	SeverityToCVECount   map[VulnerabilitySeverity]int `json:"severityToCveCount"`
+	AgeToCVECount        map[CVEAge]int                `json:"ageToCveCount"`
+	HasExploitToCVECount map[string]int                `json:"hasExploitToCveCount"`
+	InternetAddressable  *bool                         `json:"internetAddressable,omitempty"`
+	CustomLabelCounts    []CustomLabelDeviceCount      `json:"customLabelCounts,omitempty"`
+	CustomStatusCounts   []CustomStatusDeviceCount     `json:"customStatusCounts,omitempty"`
+	Summary              DeviceVulnerabilityStatus     `json:"summary"`
+}
+
+// CustomLabelDeviceCount is how many of one device's CVEs carry a custom label.
+// (Forward names the field deviceCount, but on this route the thing counted
+// is CVEs.)
+type CustomLabelDeviceCount struct {
+	Label       string `json:"label"`
+	DeviceCount int    `json:"deviceCount"`
+}
+
+// CustomStatusDeviceCount is how many of one device's CVEs have a custom status
+// (VULNERABLE or NOT_VULNERABLE). Forward names the field deviceCount, but on
+// this route the thing counted is CVEs.
+type CustomStatusDeviceCount struct {
+	Status      string `json:"status"`
+	DeviceCount int    `json:"deviceCount"`
+}
+
+// CVEsWithExploit returns how many of the device's CVEs have a known exploit.
+func (d DeviceCVECounts) CVEsWithExploit() int { return d.HasExploitToCVECount["true"] }
+
+// TotalCVEs returns how many CVEs may affect the device.
+func (d DeviceCVECounts) TotalCVEs() int {
+	total := 0
+	for _, count := range d.ResultToCVECount {
+		total += count
+	}
+	return total
+}
+
+// DeviceVulnerabilities is every device with a possible CVE, each with its
+// counts. TotalDevices counts the devices across ALL CVEs, so it can exceed
+// len(Devices) when a filter leaves some devices with no matching CVE.
+// IndexCreatedAt is when the CVE index behind the result was built.
+type DeviceVulnerabilities struct {
+	Devices        []DeviceCVECounts `json:"devices"`
+	TotalDevices   int               `json:"totalDevices"`
+	IndexCreatedAt string            `json:"indexCreatedAt,omitempty"`
+}
+
+// DeviceVulnerabilityListOptions narrows ListDevices to the CVEs that count
+// toward each device: all empty means every CVE. There is no internet
+// filter here; read each device's InternetAddressable.
+type DeviceVulnerabilityListOptions struct {
+	SnapshotID string
+	Severity   VulnerabilitySeverity
+	Age        CVEAge
+	Exploit    *bool
+}
+
+// ListDevices returns the network's devices with the CVEs that may affect them,
+// counted by detection result, severity, age and exploit, in one call -- the
+// inverse of List and Get, which are per CVE. A device with no CVE matching the
+// filters is left out. GET /api/networks/{networkId}/device-vulnerabilities
+// (VulnerabilityAnalysisController.getDeviceVulnerabilities, served on primary
+// 15398425a69 and stable 67e89c87124; VIEW_SECURITY_ANALYSIS). An empty
+// SnapshotID uses the latest processed snapshot. Preview: not in the published
+// spec.
+func (s *VulnerabilitiesService) ListDevices(ctx context.Context, networkID string, options DeviceVulnerabilityListOptions) (*DeviceVulnerabilities, *Response, error) {
+	switch options.Severity {
+	case "", VulnerabilitySeverityNone, VulnerabilitySeverityLow, VulnerabilitySeverityMedium, VulnerabilitySeverityHigh, VulnerabilitySeverityCritical:
+	default:
+		return nil, nil, fmt.Errorf("forward: invalid CVE severity %q", options.Severity)
+	}
+	switch options.Age {
+	case "", CVEAgeMonth, CVEAgeYear, CVEAgeOlder:
+	default:
+		return nil, nil, fmt.Errorf("forward: invalid CVE age %q", options.Age)
+	}
+	path, err := networkPath(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	query := url.Values{}
+	setString(query, "snapshotId", options.SnapshotID)
+	setString(query, "severity", string(options.Severity))
+	setString(query, "age", string(options.Age))
+	if options.Exploit != nil {
+		query.Set("exploit", strconv.FormatBool(*options.Exploit))
+	}
+	path += "/device-vulnerabilities"
+	if len(query) != 0 {
+		path += "?" + query.Encode()
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Vulnerabilities.ListDevices")
+	out := new(DeviceVulnerabilities)
+	resp, err := s.client.doRequired(req, out)
+	return out, resp, err
 }

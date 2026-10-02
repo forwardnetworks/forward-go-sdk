@@ -1215,6 +1215,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Vulnerabilities.ListByOS": {
 		{Method: "GET", Route: "/api/networks/{networkId}/vulnerabilities"},
 	},
+	"Vulnerabilities.ListDevices": {
+		{Method: "GET", Route: "/api/networks/{networkId}/device-vulnerabilities"},
+	},
 	"WanCircuits.Backdate": {
 		{Method: "POST", Route: "/api/networks/{networkId}/wan-circuits"},
 	},
