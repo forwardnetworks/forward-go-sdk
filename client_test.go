@@ -216,7 +216,17 @@ func TestClientRejectsCrossOriginRedirects(t *testing.T) {
 
 func newTestClient(t *testing.T, baseURL string) *Client {
 	t.Helper()
-	client, err := NewClient(Config{BaseURL: baseURL, Username: "user", Password: "pass"})
+	// A transport of its own: httptest.Server.Close closes idle connections on
+	// http.DefaultTransport, which fails other parallel tests' in-flight requests
+	// ("CloseIdleConnections called") if they share it.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	t.Cleanup(transport.CloseIdleConnections)
+	client, err := NewClient(Config{
+		BaseURL:    baseURL,
+		Username:   "user",
+		Password:   "pass",
+		HTTPClient: &http.Client{Transport: transport, Timeout: defaultTimeout},
+	})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
