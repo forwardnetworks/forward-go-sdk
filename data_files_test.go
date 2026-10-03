@@ -160,3 +160,109 @@ func TestDataFilesNetworkAttachment(t *testing.T) {
 		t.Fatal("an empty name must be refused")
 	}
 }
+
+// Replace keeps the file and sends "file" plus, only when headers are given, a
+// JSON-typed "headerRow" part; assess is the same request with ?action=assess
+// and answers SUCCESS or FAILURE in a 200.
+func TestDataFilesReplaceAndAssess(t *testing.T) {
+	t.Parallel()
+
+	type seen struct{ method, uri, file, header, headerType string }
+	var calls []seen
+	result := "SUCCESS"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reader, err := r.MultipartReader()
+		if err != nil {
+			t.Errorf("multipart: %v", err)
+			return
+		}
+		c := seen{method: r.Method, uri: r.URL.RequestURI()}
+		for {
+			part, err := reader.NextPart()
+			if err != nil {
+				break
+			}
+			data, _ := io.ReadAll(part)
+			switch part.FormName() {
+			case "file":
+				c.file = string(data)
+			case "headerRow":
+				c.header, c.headerType = string(data), part.Header.Get("Content-Type")
+			}
+		}
+		calls = append(calls, c)
+		if r.URL.Query().Get("action") == "assess" {
+			_, _ = io.WriteString(w, `{"result":"`+result+`"}`)
+			return
+		}
+		if r.URL.Path == "/api/data-files/missing.csv" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = io.WriteString(w, `{"name":"sites.csv","nqeName":"sites","type":"CSV","contentMd5Hex":"abc","networkIds":["3347"]}`)
+	}))
+	defer server.Close()
+	files := newTestClient(t, server.URL).DataFiles
+	ctx := context.Background()
+
+	got, _, err := files.ReplaceContent(ctx, "sites.csv", []byte("sjc,mary\n"), []string{"site", "owner"})
+	if err != nil || got.ContentMD5Hex != "abc" || got.NetworkIDs[0] != "3347" {
+		t.Fatalf("ReplaceContent() = %+v, %v", got, err)
+	}
+	if c := calls[0]; c.method != http.MethodPost || c.uri != "/api/data-files/sites.csv" || c.file != "sjc,mary\n" || c.header != `["site","owner"]` || c.headerType != "application/json" {
+		t.Fatalf("replace sent %+v", c)
+	}
+	if _, _, err := files.ReplaceContent(ctx, "sites.csv", []byte("x\n"), nil); err != nil || calls[1].header != "" {
+		t.Fatalf("no headers must send no headerRow part: %v %+v", err, calls[1])
+	}
+	ok, _, err := files.AssessReplacement(ctx, "sites.csv", []byte("x\n"), nil)
+	if err != nil || !ok || calls[2].uri != "/api/data-files/sites.csv?action=assess" {
+		t.Fatalf("assess SUCCESS = %v, %v; %+v", ok, err, calls[2])
+	}
+	result = "FAILURE"
+	if ok, _, err := files.AssessReplacement(ctx, "sites.csv", []byte("x\n"), nil); err != nil || ok {
+		t.Fatalf("assess FAILURE = %v, %v", ok, err)
+	}
+	result = "MAYBE"
+	if _, _, err := files.AssessReplacement(ctx, "sites.csv", []byte("x\n"), nil); err == nil {
+		t.Fatal("an unknown assessment result must be an error, not a pass")
+	}
+	if _, _, err := files.ReplaceContent(ctx, "missing.csv", []byte("x"), nil); !IsStatus(err, http.StatusNotFound) {
+		t.Fatalf("a missing file must surface its 404: %v", err)
+	}
+}
+
+func TestDataFilesPatch(t *testing.T) {
+	t.Parallel()
+
+	var method, uri, body string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		method, uri, body = r.Method, r.URL.RequestURI(), string(b)
+		_, _ = io.WriteString(w, `{"name":"owners.csv","nqeName":"owners","type":"CSV"}`)
+	}))
+	defer server.Close()
+	files := newTestClient(t, server.URL).DataFiles
+	ctx := context.Background()
+
+	got, _, err := files.Patch(ctx, "sites.csv", DataFilePatch{Name: Ptr("owners.csv"), NQEName: Ptr("owners")})
+	if err != nil || got.Name != "owners.csv" || method != http.MethodPatch || uri != "/api/data-files/sites.csv" || body != `{"name":"owners.csv","nqeName":"owners"}` {
+		t.Fatalf("rename: %+v %v %s %s %s", got, err, method, uri, body)
+	}
+	if _, _, err := files.Patch(ctx, "sites.csv", DataFilePatch{Description: Ptr("")}); err != nil || body != `{"description":null}` {
+		t.Fatalf("an empty description must clear with an explicit null: %v %s", err, body)
+	}
+	if _, _, err := files.Patch(ctx, "sites.csv", DataFilePatch{Description: Ptr("site owners")}); err != nil || body != `{"description":"site owners"}` {
+		t.Fatalf("set description: %v %s", err, body)
+	}
+	before := body
+	for name, patch := range map[string]DataFilePatch{
+		"empty":          {},
+		"blank NQE name": {NQEName: Ptr(" ")},
+		"blank new name": {Name: Ptr("")},
+	} {
+		if _, _, err := files.Patch(ctx, "sites.csv", patch); err == nil || body != before {
+			t.Errorf("%s patch must be refused locally", name)
+		}
+	}
+}

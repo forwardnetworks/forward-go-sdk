@@ -342,3 +342,163 @@ func (s *DataFilesService) Delete(ctx context.Context, name string) (*Response, 
 	}
 	return resp, err
 }
+
+// DataFilePatch changes a data file's details, not its content. Nil fields
+// are left alone. Name renames the file (Forward lower-cases it and refuses a
+// name a collection source already uses in any network the file is attached
+// to); NQEName changes the field queries read it by, network.extensions.<name>,
+// and may not be blank; Description Ptr("") clears it. At least one field is
+// required. Forward refuses to patch the STIG policy file.
+type DataFilePatch struct {
+	Name        *string
+	NQEName     *string
+	Description *string
+}
+
+// MarshalJSON writes only the stated fields; clearing the description is an
+// explicit null (DataFilePatch.description is a JsonProp).
+func (p DataFilePatch) MarshalJSON() ([]byte, error) {
+	body := map[string]any{}
+	if p.Name != nil {
+		body["name"] = *p.Name
+	}
+	if p.NQEName != nil {
+		body["nqeName"] = *p.NQEName
+	}
+	if p.Description != nil {
+		if *p.Description == "" {
+			body["description"] = nil
+		} else {
+			body["description"] = *p.Description
+		}
+	}
+	return json.Marshal(body)
+}
+
+// Patch changes a data file's name, NQE name or description and returns it.
+// The content is untouched. PATCH /api/data-files/{name} (MANAGE_DATA_FILES;
+// 404 if the file does not exist). Renaming or changing NQEName changes what
+// queries must call it, so it is a breaking change for any query reading the
+// old name.
+func (s *DataFilesService) Patch(ctx context.Context, name string, patch DataFilePatch) (*DataFile, *Response, error) {
+	if patch.Name == nil && patch.NQEName == nil && patch.Description == nil {
+		return nil, nil, errors.New("forward: a data file patch must change something")
+	}
+	if patch.Name != nil && strings.TrimSpace(*patch.Name) == "" {
+		return nil, nil, errors.New("forward: a data file cannot be renamed to nothing")
+	}
+	if patch.NQEName != nil && strings.TrimSpace(*patch.NQEName) == "" {
+		return nil, nil, errors.New("forward: a data file's NQE name may not be blank")
+	}
+	path, err := dataFilePath(name)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, patch)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "DataFiles.Patch")
+	out := new(DataFile)
+	resp, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}
+
+// ReplaceContent replaces the content of an existing data file and returns
+// it. The file keeps its name, type, NQE name and network attachments; headers
+// name the columns of a CSV that has no header row, and are sent like Add's.
+// POST /api/data-files/{name}, multipart file and headerRow (MANAGE_DATA_FILES;
+// 404 if the file does not exist; 50 MB cap).
+//
+// Forward checks that the new content parses as the file's type and infers
+// its NQE type, but does NOT check that queries which read the file still
+// work: incompatible content is accepted. Run AssessReplacement first.
+//
+// To skip a replace that would change nothing, compare DataFile.ContentMD5Hex
+// (List) with the MD5 of the bytes Forward would store: your content as sent,
+// except that a CSV sent with headers is stored with the header line added in
+// front (I did not verify that format), and I did not verify the hash's letter
+// case, so compare case-insensitively.
+func (s *DataFilesService) ReplaceContent(ctx context.Context, name string, content []byte, headers []string) (*DataFile, *Response, error) {
+	req, err := s.replaceRequest(ctx, name, content, headers, "", "DataFiles.ReplaceContent")
+	if err != nil {
+		return nil, nil, err
+	}
+	out := new(DataFile)
+	resp, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}
+
+// AssessReplacement reports whether content could replace a data file without
+// breaking the queries that read it: true when the new content's inferred NQE
+// type is a subtype of the stored content's, so any query that works today
+// still works. It changes nothing. False also covers content that does not
+// parse as the file's type, which is reported as incompatible, not as an
+// error. POST /api/data-files/{name}?action=assess (MANAGE_DATA_FILES; refused
+// for the STIG policy file; 404 if the file does not exist).
+func (s *DataFilesService) AssessReplacement(ctx context.Context, name string, content []byte, headers []string) (bool, *Response, error) {
+	req, err := s.replaceRequest(ctx, name, content, headers, "assess", "DataFiles.AssessReplacement")
+	if err != nil {
+		return false, nil, err
+	}
+	var out struct {
+		Result string `json:"result"`
+	}
+	resp, err := s.client.doRequired(req, &out)
+	if err != nil {
+		return false, resp, err
+	}
+	switch out.Result {
+	case "SUCCESS":
+		return true, resp, nil
+	case "FAILURE":
+		return false, resp, nil
+	}
+	return false, resp, fmt.Errorf("forward: unexpected data file assessment result %q", out.Result)
+}
+
+func (s *DataFilesService) replaceRequest(ctx context.Context, name string, content []byte, headers []string, action, operation string) (*http.Request, error) {
+	path, err := dataFilePath(name)
+	if err != nil {
+		return nil, err
+	}
+	if action != "" {
+		path += "?" + url.Values{"action": []string{action}}.Encode()
+	}
+	body, contentType, err := dataFileMultipart(func(w *multipart.Writer) error {
+		if err := writeDataFilePart(w, name, content); err != nil {
+			return err
+		}
+		if len(headers) == 0 {
+			return nil
+		}
+		headerJSON, err := json.Marshal(headers)
+		if err != nil {
+			return err
+		}
+		header := textproto.MIMEHeader{}
+		header.Set("Content-Disposition", `form-data; name="headerRow"`)
+		header.Set("Content-Type", "application/json")
+		part, err := w.CreatePart(header)
+		if err != nil {
+			return err
+		}
+		_, err = part.Write(headerJSON)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
+	return markOperation(req, operation), nil
+}

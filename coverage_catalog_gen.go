@@ -467,6 +467,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DataFiles.AddToNetwork": {
 		{Method: "POST", Route: "/api/networks/{networkId}/data-files/{dataFileName}"},
 	},
+	"DataFiles.AssessReplacement": {
+		{Method: "POST", Route: "/api/data-files/{dataFileName}"},
+	},
 	"DataFiles.Content": {
 		{Method: "GET", Route: "/api/data-files/{dataFileName}"},
 	},
@@ -482,8 +485,14 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DataFiles.ListForNetwork": {
 		{Method: "GET", Route: "/api/networks/{networkId}/data-files"},
 	},
+	"DataFiles.Patch": {
+		{Method: "PATCH", Route: "/api/data-files/{dataFileName}"},
+	},
 	"DataFiles.RemoveFromNetwork": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/data-files/{dataFileName}"},
+	},
+	"DataFiles.ReplaceContent": {
+		{Method: "POST", Route: "/api/data-files/{dataFileName}"},
 	},
 	"DataFiles.Schema": {
 		{Method: "GET", Route: "/api/data-files/{dataFileName}/schema"},
