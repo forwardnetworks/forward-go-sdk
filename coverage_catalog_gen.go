@@ -118,8 +118,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Admin.SetSupportedOrganizations": {
 		{Method: "PUT", Route: "/api/users/{userId}/supported-orgs"},
 	},
+	"Aliases.Deactivate": {
+		{Method: "DELETE", Route: "/api/snapshots/{snapshotId}/aliases/{name}"},
+	},
+	"Aliases.Get": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/aliases/{name}"},
+	},
 	"Aliases.List": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/aliases"},
+	},
+	"Aliases.Put": {
+		{Method: "PUT", Route: "/api/snapshots/{snapshotId}/aliases/{name}"},
 	},
 	"AuditLogs.List": {
 		{Method: "GET", Route: "/api/audit-logs"},
