@@ -503,11 +503,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DeviceTags.AddBatchTo": {
 		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
 	},
+	"DeviceTags.DeleteTag": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/device-tags/{tagName}"},
+	},
 	"DeviceTags.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/device-tags"},
 	},
 	"DeviceTags.RemoveBatchFrom": {
 		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
+	},
+	"DeviceTags.UpdateTag": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/device-tags/{tagName}"},
 	},
 	"Devices.DownloadFile": {
 		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/files/{fileName}"},
@@ -608,6 +614,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Endpoints.Patch": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/endpoints/{name}"},
+	},
+	"Endpoints.UpdateProfile": {
+		{Method: "PATCH", Route: "/api/endpoint-profiles/{profileId}"},
 	},
 	"Integrations.CreateInfoblox": {
 		{Method: "POST", Route: "/api/integrations/infoblox/instances"},

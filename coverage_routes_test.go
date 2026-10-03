@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 396
+	const minExercised = 399
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -85,6 +85,8 @@ var wireArgOverrides = map[string]map[int]any{
 	"AccessControl.SetGroupNetworkRole":   {3: NetworkRoleAdmin},
 	"Vulnerabilities.ListDevices":         {2: DeviceVulnerabilityListOptions{Severity: VulnerabilitySeverityHigh, Age: CVEAgeYear}},
 	"Networks.SetSnapshotRetentionPolicy": {2: SnapshotRetentionPolicy{Enabled: true, LastWeek: SnapshotRetainAll, LastMonth: SnapshotRetainPerDay, LastQuarter: SnapshotRetainPerWeek, LastYear: SnapshotRetainPerMonth, Older: SnapshotRetainPerQuarter}},
+	"Endpoints.UpdateProfile":             {1: "CLI-1", 2: EndpointProfilePatch{Prompt: Ptr("#")}},
+	"DeviceTags.UpdateTag":                {3: DeviceTagPatch{Color: Ptr("#00ff00")}},
 	"Aliases.Put":                         {2: AliasBuilder{Name: "v1", Type: AliasTypeDevices, Values: []string{"d1"}}},
 	"AuditLogs.List":                      {1: AuditLogListOptions{HTTPMethod: "POST"}},
 	"DataConnectors.Add":                  {2: NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},

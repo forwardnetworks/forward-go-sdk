@@ -72,9 +72,66 @@ type CheckDiagnosis struct {
 }
 
 // DiagnosisDetail is one finding, and the query that produced it.
+//
+// Forward's spec types query as a string, and for most checks it is one, but a
+// loop violation (a predefined NO_LOOP check) sends an OBJECT such as
+// {"flowTypes":["LOOP"]}, with no flow and no devices. So Query holds the
+// string form only (empty when Forward sent an object), QueryRaw always holds
+// whatever was sent, and FlowTypes reads the object form's flowTypes. Decoding
+// never fails a whole check read over this field.
 type DiagnosisDetail struct {
-	Query      string               `json:"query,omitempty"`
+	Query      string               `json:"-"`
+	QueryRaw   json.RawMessage      `json:"-"`
 	References []DiagnosisReference `json:"references,omitempty"`
+}
+
+// UnmarshalJSON accepts query as a string or as any other JSON value.
+func (d *DiagnosisDetail) UnmarshalJSON(data []byte) error {
+	var wire struct {
+		Query      json.RawMessage      `json:"query"`
+		References []DiagnosisReference `json:"references"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*d = DiagnosisDetail{References: wire.References}
+	if len(wire.Query) == 0 || string(wire.Query) == "null" {
+		return nil
+	}
+	d.QueryRaw = append(json.RawMessage(nil), wire.Query...)
+	var text string
+	if json.Unmarshal(wire.Query, &text) == nil {
+		d.Query = text
+	}
+	return nil
+}
+
+// MarshalJSON writes query back as it was received, so a read-modify-write
+// round trip keeps the object form.
+func (d DiagnosisDetail) MarshalJSON() ([]byte, error) {
+	out := map[string]any{}
+	switch {
+	case len(d.QueryRaw) != 0:
+		out["query"] = d.QueryRaw
+	case d.Query != "":
+		out["query"] = d.Query
+	}
+	if len(d.References) != 0 {
+		out["references"] = d.References
+	}
+	return json.Marshal(out)
+}
+
+// FlowTypes returns the flowTypes of an object-form query (["LOOP"] for a
+// loop violation), or nil when query was a string or had none.
+func (d DiagnosisDetail) FlowTypes() []string {
+	var object struct {
+		FlowTypes []string `json:"flowTypes"`
+	}
+	if len(d.QueryRaw) == 0 || json.Unmarshal(d.QueryRaw, &object) != nil {
+		return nil
+	}
+	return object.FlowTypes
 }
 
 // DiagnosisReference points a finding at the configuration that caused it,
@@ -120,7 +177,10 @@ type NewCheck struct {
 	Definition map[string]any `json:"definition"`
 	// Name is omitted when empty. An NQE check takes its name from the query
 	// and Forward rejects the field outright -- including an empty one -- so
-	// sending it unconditionally makes every NQE check fail to create.
+	// sending it unconditionally makes every NQE check fail to create. A
+	// PREDEFINED check is the same: a live Forward answered 400 when a name was
+	// sent with one (reported from use; not checked against Forward's source),
+	// so leave Name empty for a definition that names a predefinedCheckType.
 	Name                  string   `json:"name,omitempty"`
 	Note                  string   `json:"note,omitempty"`
 	Tags                  []string `json:"tags,omitempty"`

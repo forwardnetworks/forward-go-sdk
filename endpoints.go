@@ -535,3 +535,180 @@ func (s *EndpointsService) networkPath(networkID, suffix string) (string, error)
 	}
 	return "/api/networks/" + url.PathEscape(networkID) + suffix, nil
 }
+
+// EndpointProfilePatch changes some of a profile's definition. Only the fields
+// that are set are sent; the profile's type, taken from its ID (CLI-, SNMP- or
+// HTTP-), decides which apply, and a field of another type is refused.
+//
+//   - CLI: Name, DetectorCommand, DetectorPatterns, DetectorErrorPatterns,
+//     NameDetectorCommand, NameDetectorPatterns, Prompt, PromptResponse,
+//     PagePrompt, PagePromptResponse, PtyType, PtyColumnSize, ClearPrompt,
+//     ResponseTimeoutSec, CommandSets, CustomCommands.
+//   - SNMP: Name, DetectorOID, DetectorPatterns, NameDetectorOID,
+//     NameDetectorPatterns, ResponseTimeoutSec, OIDSets, CustomOIDs.
+//   - HTTP: Name, HTTPS, AuthType, Headers, DetectorURI, DetectorPatterns,
+//     Endpoints.
+//
+// A list or map replaces the whole value ("include every one you want to
+// keep"), and an empty non-nil list is a real value. To remove a setting rather
+// than change it, name its JSON key in Clear (for example "detectorCommand"):
+// that sends an explicit null, which Forward accepts for the nullable
+// settings and answers 400 for the rest. Forward validates the combined
+// definition and returns 400 if it is not valid; a CLI profile's CommandSets
+// and CustomCommands are subject to the organization's approved commands.
+type EndpointProfilePatch struct {
+	Name *string
+
+	DetectorPatterns     []string
+	NameDetectorPatterns []string
+	ResponseTimeoutSec   *int
+
+	// CLI.
+	DetectorCommand       *string
+	DetectorErrorPatterns []string
+	NameDetectorCommand   *string
+	Prompt                *string
+	PromptResponse        *string
+	PagePrompt            *string
+	PagePromptResponse    *string
+	PtyType               *string
+	PtyColumnSize         *int
+	ClearPrompt           *string
+	CommandSets           []string
+	CustomCommands        []string
+
+	// SNMP.
+	DetectorOID     *string
+	NameDetectorOID *string
+	OIDSets         []string
+	CustomOIDs      []CustomOID
+
+	// HTTP. HTTPS may not be cleared.
+	HTTPS       *bool
+	AuthType    *string
+	Headers     map[string]string
+	DetectorURI *string
+	Endpoints   []HTTPEndpoint
+
+	// Clear names the JSON keys to set to null.
+	Clear []string
+}
+
+var endpointProfileFields = map[string]map[string]bool{
+	"CLI": {"name": true, "detectorCommand": true, "detectorPatterns": true, "detectorErrorPatterns": true, "nameDetectorCommand": true,
+		"nameDetectorPatterns": true, "prompt": true, "promptResponse": true, "pagePrompt": true, "pagePromptResponse": true, "ptyType": true,
+		"ptyColumnSize": true, "clearPrompt": true, "responseTimeoutSec": true, "commandSets": true, "customCommands": true},
+	"SNMP": {"name": true, "detectorOid": true, "detectorPatterns": true, "nameDetectorOid": true, "nameDetectorPatterns": true,
+		"responseTimeoutSec": true, "oidSets": true, "customOids": true},
+	"HTTP": {"name": true, "https": true, "authType": true, "headers": true, "detectorUri": true, "detectorPatterns": true, "endpoints": true},
+}
+
+// fields returns the patch as the JSON object to send, keyed by wire name.
+func (p EndpointProfilePatch) fields() map[string]any {
+	body := map[string]any{}
+	str := func(key string, v *string) {
+		if v != nil {
+			body[key] = *v
+		}
+	}
+	num := func(key string, v *int) {
+		if v != nil {
+			body[key] = *v
+		}
+	}
+	list := func(key string, v []string) {
+		if v != nil {
+			body[key] = v
+		}
+	}
+	str("name", p.Name)
+	list("detectorPatterns", p.DetectorPatterns)
+	list("nameDetectorPatterns", p.NameDetectorPatterns)
+	num("responseTimeoutSec", p.ResponseTimeoutSec)
+	str("detectorCommand", p.DetectorCommand)
+	list("detectorErrorPatterns", p.DetectorErrorPatterns)
+	str("nameDetectorCommand", p.NameDetectorCommand)
+	str("prompt", p.Prompt)
+	str("promptResponse", p.PromptResponse)
+	str("pagePrompt", p.PagePrompt)
+	str("pagePromptResponse", p.PagePromptResponse)
+	str("ptyType", p.PtyType)
+	num("ptyColumnSize", p.PtyColumnSize)
+	str("clearPrompt", p.ClearPrompt)
+	list("commandSets", p.CommandSets)
+	list("customCommands", p.CustomCommands)
+	str("detectorOid", p.DetectorOID)
+	str("nameDetectorOid", p.NameDetectorOID)
+	list("oidSets", p.OIDSets)
+	if p.CustomOIDs != nil {
+		body["customOids"] = p.CustomOIDs
+	}
+	if p.HTTPS != nil {
+		body["https"] = *p.HTTPS
+	}
+	str("authType", p.AuthType)
+	if p.Headers != nil {
+		body["headers"] = p.Headers
+	}
+	str("detectorUri", p.DetectorURI)
+	if p.Endpoints != nil {
+		body["endpoints"] = p.Endpoints
+	}
+	return body
+}
+
+// body validates the patch against the profile's type and returns the JSON.
+func (p EndpointProfilePatch) body(profileID string) ([]byte, error) {
+	kind, _, found := strings.Cut(profileID, "-")
+	allowed, ok := endpointProfileFields[kind]
+	if !found || !ok {
+		return nil, fmt.Errorf("forward: endpoint profile ID %q must start with CLI-, SNMP- or HTTP-", profileID)
+	}
+	body := p.fields()
+	for key := range body {
+		if !allowed[key] {
+			return nil, fmt.Errorf("forward: %s is not a field of a %s endpoint profile", key, kind)
+		}
+	}
+	for _, key := range p.Clear {
+		if !allowed[key] {
+			return nil, fmt.Errorf("forward: cannot clear %s on a %s endpoint profile", key, kind)
+		}
+		if key == "https" || key == "name" {
+			return nil, fmt.Errorf("forward: %s cannot be cleared", key)
+		}
+		if _, set := body[key]; set {
+			return nil, fmt.Errorf("forward: %s is both set and cleared", key)
+		}
+		body[key] = nil
+	}
+	if len(body) == 0 {
+		return nil, errors.New("forward: an endpoint profile patch must change something")
+	}
+	return json.Marshal(body)
+}
+
+// UpdateProfile changes an endpoint profile in place and returns the stored
+// profile. PATCH /api/endpoint-profiles/{profileId}, one route per type
+// (updateCli/Snmp/HttpEndpointProfile; MANAGE_ENDPOINT_PROFILES). The change
+// applies to every endpoint using the profile from its next collection, so
+// check Endpoints.List for what uses it first. Forward answers 404 for an
+// unknown profile. All three routes are published.
+func (s *EndpointsService) UpdateProfile(ctx context.Context, profileID string, patch EndpointProfilePatch) (*EndpointProfile, *Response, error) {
+	profileID = strings.TrimSpace(profileID)
+	body, err := patch.body(profileID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, "/api/endpoint-profiles/"+url.PathEscape(profileID), json.RawMessage(body))
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Endpoints.UpdateProfile")
+	out := new(EndpointProfile)
+	resp, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}
