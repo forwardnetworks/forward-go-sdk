@@ -318,3 +318,27 @@ func writeDataFilePart(w *multipart.Writer, fileName string, content []byte) err
 	_, err = part.Write(content)
 	return err
 }
+
+// Delete removes a data file from the organization's library, and so from
+// EVERY network it was attached to; queries reading it then see no
+// network.extensions.<nqeName> field for it. RemoveFromNetwork only detaches
+// one network. A file that does not exist counts as success (Forward answers
+// 404 "No data file with name '...' exists."). DELETE /api/data-files/{name}
+// (MANAGE_DATA_FILES). The content is not kept anywhere else: download it
+// first with Content if it may be needed again.
+func (s *DataFilesService) Delete(ctx context.Context, name string) (*Response, error) {
+	path, err := dataFilePath(name)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "DataFiles.Delete")
+	resp, err := s.client.Do(req, nil)
+	if isStatus(err, http.StatusNotFound) {
+		return resp, nil
+	}
+	return resp, err
+}

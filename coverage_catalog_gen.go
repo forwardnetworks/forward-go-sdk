@@ -461,6 +461,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DataFiles.Content": {
 		{Method: "GET", Route: "/api/data-files/{dataFileName}"},
 	},
+	"DataFiles.Delete": {
+		{Method: "DELETE", Route: "/api/data-files/{dataFileName}"},
+	},
 	"DataFiles.InferSchema": {
 		{Method: "POST", Route: "/api/data-files"},
 	},
@@ -763,6 +766,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Networks.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}"},
 	},
+	"Networks.GetSnapshotRetentionPolicy": {
+		{Method: "GET", Route: "/api/networks/{networkId}/snapshotRetentionPolicy"},
+	},
 	"Networks.L7Applications": {
 		{Method: "GET", Route: "/api/l7-applications"},
 	},
@@ -771,6 +777,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Networks.Paths": {
 		{Method: "GET", Route: "/api/networks/{networkId}/paths"},
+	},
+	"Networks.PreviewSnapshotRetention": {
+		{Method: "POST", Route: "/api/networks/{networkId}/snapshotRetentionPolicy/trigger"},
+	},
+	"Networks.SetSnapshotRetentionPolicy": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/snapshotRetentionPolicy"},
 	},
 	"Networks.Update": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}"},

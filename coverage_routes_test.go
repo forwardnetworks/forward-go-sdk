@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 386
+	const minExercised = 390
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -77,18 +77,19 @@ type wireRequest struct{ method, path string }
 // the one value its consumer sends. Keyed by symbol, then argument index
 // (index 0 is the context).
 var wireArgOverrides = map[string]map[int]any{
-	"Diffs.Count":                       {3: DiffDevices},
-	"Properties.ClearOrganization":      {2: OrgProperty("software_central")},
-	"Users.SetNetworkRole":              {3: NetworkRoleAdmin},
-	"Users.AddNetworkRole":              {3: NetworkRoleAdmin},
-	"Users.RemoveNetworkRole":           {3: NetworkRoleAdmin},
-	"AccessControl.SetGroupNetworkRole": {3: NetworkRoleAdmin},
-	"Vulnerabilities.ListDevices":       {2: DeviceVulnerabilityListOptions{Severity: VulnerabilitySeverityHigh, Age: CVEAgeYear}},
-	"AuditLogs.List":                    {1: AuditLogListOptions{HTTPMethod: "POST"}},
-	"DataConnectors.Add":                {2: NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},
-	"DataConnectors.Update":             {3: DataConnectorPatch{Collect: Ptr(true)}},
-	"DataFiles.InferSchema":             {3: DataFileCSV},
-	"DataFiles.Add":                     {1: DataFileCreateRequest{Name: "v1", FileType: DataFileCSV}},
+	"Diffs.Count":                         {3: DiffDevices},
+	"Properties.ClearOrganization":        {2: OrgProperty("software_central")},
+	"Users.SetNetworkRole":                {3: NetworkRoleAdmin},
+	"Users.AddNetworkRole":                {3: NetworkRoleAdmin},
+	"Users.RemoveNetworkRole":             {3: NetworkRoleAdmin},
+	"AccessControl.SetGroupNetworkRole":   {3: NetworkRoleAdmin},
+	"Vulnerabilities.ListDevices":         {2: DeviceVulnerabilityListOptions{Severity: VulnerabilitySeverityHigh, Age: CVEAgeYear}},
+	"Networks.SetSnapshotRetentionPolicy": {2: SnapshotRetentionPolicy{Enabled: true, LastWeek: SnapshotRetainAll, LastMonth: SnapshotRetainPerDay, LastQuarter: SnapshotRetainPerWeek, LastYear: SnapshotRetainPerMonth, Older: SnapshotRetainPerQuarter}},
+	"AuditLogs.List":                      {1: AuditLogListOptions{HTTPMethod: "POST"}},
+	"DataConnectors.Add":                  {2: NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},
+	"DataConnectors.Update":               {3: DataConnectorPatch{Collect: Ptr(true)}},
+	"DataFiles.InferSchema":               {3: DataFileCSV},
+	"DataFiles.Add":                       {1: DataFileCreateRequest{Name: "v1", FileType: DataFileCSV}},
 	// The kind-based synthetic node calls address a different route per
 	// kind; L3 VPN reaches every one of them.
 	"SyntheticNodes.Get":                {2: SyntheticL3VPN},
