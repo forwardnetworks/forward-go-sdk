@@ -91,12 +91,16 @@ var wireArgOverrides = map[string]map[int]any{
 	"CollectionSchedules.Replace":         {3: CollectionScheduleDefinition{Enabled: true, DaysOfTheWeek: []int{1}, Times: []string{"02:00"}}},
 	"Snapshots.Export":                    {2: SnapshotExportOptions{IncludeDevices: []string{"d1"}}, 3: io.Discard},
 	"Backups.DeleteBackup":                {1: int64(7), 2: StorageTypeAll},
-	"Aliases.Put":                         {2: AliasBuilder{Name: "v1", Type: AliasTypeDevices, Values: []string{"d1"}}},
-	"AuditLogs.List":                      {1: AuditLogListOptions{HTTPMethod: "POST"}},
-	"DataConnectors.Add":                  {2: NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},
-	"DataConnectors.Update":               {3: DataConnectorPatch{Collect: Ptr(true)}},
-	"DataFiles.InferSchema":               {3: DataFileCSV},
-	"DataFiles.Add":                       {1: DataFileCreateRequest{Name: "v1", FileType: DataFileCSV}},
+	// The reflection default for a Duration is 10ms, which Upload now honours as a per-call timeout and which
+	// then races the recording server under load; a zero Timeout keeps the client's own.
+	"Snapshots.Upload":               {3: SnapshotUploadOptions{}},
+	"Snapshots.StartUploadOperation": {3: SnapshotUploadOptions{}},
+	"Aliases.Put":                    {2: AliasBuilder{Name: "v1", Type: AliasTypeDevices, Values: []string{"d1"}}},
+	"AuditLogs.List":                 {1: AuditLogListOptions{HTTPMethod: "POST"}},
+	"DataConnectors.Add":             {2: NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},
+	"DataConnectors.Update":          {3: DataConnectorPatch{Collect: Ptr(true)}},
+	"DataFiles.InferSchema":          {3: DataFileCSV},
+	"DataFiles.Add":                  {1: DataFileCreateRequest{Name: "v1", FileType: DataFileCSV}},
 	// The kind-based synthetic node calls address a different route per
 	// kind; L3 VPN reaches every one of them.
 	"SyntheticNodes.Get":                {2: SyntheticL3VPN},
