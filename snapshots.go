@@ -94,6 +94,13 @@ type SnapshotUploadOptions struct {
 	// ExtraQuery carries additional version-specific upload flags. Typed fields
 	// above take precedence over duplicate keys.
 	ExtraQuery url.Values
+
+	// Timeout bounds the whole upload. Zero keeps the client's own timeout,
+	// which is 60 seconds by default and covers the streamed body, so a large
+	// snapshot needs more; a positive value replaces it; a negative value
+	// removes it, leaving the context as the only limit. Forward itself sets no
+	// size limit by default (uploads.max_size is -1), though a deployment can.
+	Timeout time.Duration
 }
 
 // SnapshotSubsetRequest selects one side of a disjoint snapshot merge. Exactly
@@ -374,7 +381,7 @@ func (s *SnapshotsService) Upload(
 
 	go writeSnapshotMultipart(writer, multipartWriter, files)
 	snapshot := new(Snapshot)
-	resp, err := s.client.Do(req, snapshot)
+	resp, err := s.client.withCallTimeout(options.Timeout).Do(req, snapshot)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -428,7 +435,9 @@ func (s *SnapshotsService) UploadMergeCompatibility(ctx context.Context, network
 	return out, response, err
 }
 
-// ExportSubset exports selected devices from a snapshot as a ZIP. Forward can
+// ExportSubset exports selected devices from a snapshot as a ZIP, returned
+// whole in memory. For a large snapshot, obfuscation or a whole-snapshot export
+// use Export, which streams to a writer. Forward can
 // temporarily reject a fresh snapshot until processing finishes; only the typed
 // snapshot-not-processed error (or a successful non-ZIP placeholder response)
 // is retried. Other API errors return immediately.

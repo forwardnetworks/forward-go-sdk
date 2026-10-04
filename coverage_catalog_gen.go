@@ -1007,6 +1007,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Snapshots.ExceptionsText": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/exceptions"},
 	},
+	"Snapshots.Export": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
+	},
 	"Snapshots.ExportSubset": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
 	},
