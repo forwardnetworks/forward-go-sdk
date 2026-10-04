@@ -196,6 +196,12 @@ func (s *LicensingService) Apply(ctx context.Context, key string) (*LicenseDetai
 }
 
 // ListForOrg reads an org's licenses. PLATFORM-scoped (@RequiresForwardSupport).
+//
+// SaaS deployments only. ForwardSupportLicenseController, which serves this and the
+// other /api/orgs/{id}/licenses methods below, is @ProfileCriteria(not = ON_PREM): on an
+// on-prem appserver the route is not mapped and Forward answers 404 "No endpoint", as
+// it does for any unmapped path. The path is right and is served on both pinned
+// builds; use List for your own org, which works everywhere.
 func (s *LicensingService) ListForOrg(ctx context.Context, orgID string) ([]LicenseDetails, *Response, error) {
 	orgID = strings.TrimSpace(orgID)
 	if orgID == "" {
@@ -252,4 +258,46 @@ func (s *LicensingService) InvalidateForOrg(ctx context.Context, orgID, licenseI
 	}
 	req = markOperation(req, "Licensing.InvalidateForOrg")
 	return s.client.Do(req, nil)
+}
+
+// List returns the licenses of the signed-in user's own organization, each
+// with its status now (LicenseController.getLicenses; any signed-in user).
+// Unlike ListForOrg it is served on every deployment, on-prem included. GET
+// /api/licenses. With the SOFTWARE_CENTRAL org property on, invalidated
+// licenses are left out.
+func (s *LicensingService) List(ctx context.Context) ([]LicenseDetails, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/licenses", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Licensing.List")
+	result := listResponse[LicenseDetails]{Keys: []string{"licenses"}}
+	resp, err := s.client.doRequired(req, &result)
+	return result.Items, resp, err
+}
+
+// LicenseTierAndStatus is the organization's license tier and state. Both are
+// empty for an unlicensed organization: the response is still a JSON object,
+// never a 404. The values are Forward's LicenseTier and OrgLicenseStatus names,
+// which are version-dependent, so they stay strings.
+type LicenseTierAndStatus struct {
+	LicenseTier   string `json:"licenseTier,omitempty"`
+	LicenseStatus string `json:"licenseStatus,omitempty"`
+}
+
+// TierAndStatus returns the signed-in user's organization's license tier and
+// status. GET /api/licenses?view=status (LicenseController; any signed-in
+// user; served on every deployment).
+func (s *LicensingService) TierAndStatus(ctx context.Context) (*LicenseTierAndStatus, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/licenses?view=status", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Licensing.TierAndStatus")
+	out := new(LicenseTierAndStatus)
+	resp, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
 }

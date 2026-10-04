@@ -687,11 +687,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Licensing.InvalidateForOrg": {
 		{Method: "POST", Route: "/api/orgs/{orgId}/licenses/{licenseId}"},
 	},
+	"Licensing.List": {
+		{Method: "GET", Route: "/api/licenses"},
+	},
 	"Licensing.ListForOrg": {
 		{Method: "GET", Route: "/api/orgs/{orgId}/licenses"},
 	},
 	"Licensing.RemoveAllForOrg": {
 		{Method: "DELETE", Route: "/api/orgs/{orgId}/licenses"},
+	},
+	"Licensing.TierAndStatus": {
+		{Method: "GET", Route: "/api/licenses"},
 	},
 	"Locations.Assign": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/atlas"},
