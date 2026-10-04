@@ -294,11 +294,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"CloudManagedSetups.ListMist": {
 		{Method: "GET", Route: "/api/networks/{networkId}/cloud-managed-setups"},
 	},
+	"CollectionSchedules.Create": {
+		{Method: "POST", Route: "/api/networks/{networkId}/collection-schedules"},
+	},
+	"CollectionSchedules.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/collection-schedules/{scheduleId}"},
+	},
 	"CollectionSchedules.Get": {
 		{Method: "GET", Route: "/api/networks/{networkId}/collection-schedules/{scheduleId}"},
 	},
 	"CollectionSchedules.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/collection-schedules"},
+	},
+	"CollectionSchedules.Replace": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/collection-schedules/{scheduleId}"},
 	},
 	"Collections.DeviceStatuses": {
 		{Method: "GET", Route: "/api/networks/{networkId}/device-statuses"},
