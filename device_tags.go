@@ -40,7 +40,13 @@ func (s *DeviceTagsService) AddBatch(ctx context.Context, networkID string, tags
 	return s.client.Do(req, nil)
 }
 
-// AddBatchTo applies existing tag names to devices.
+// AddBatchTo applies existing tag names to devices. It sends no snapshotId, so Forward writes it at the
+// network's STAGING instant: an instant after every snapshot, used for timeline entities that apply to
+// any future snapshot (NetworkInstant.staging). The devices must be collection sources (Forward validates
+// unless told not to; this SDK always lets it). From Forward's source, not a live test: List with
+// "devices" also sends no snapshotId and reads "active tags as of the staging instant"
+// (DeviceTagsService.getAllActiveDeviceTags), so a tag applied here should show in that List at once,
+// before any snapshot exists. A read AT a snapshot (not offered by this SDK) shows only what was active then.
 func (s *DeviceTagsService) AddBatchTo(ctx context.Context, networkID string, devices, tags []string) (*Response, error) {
 	networkID, err := s.client.resolveNetworkID(networkID)
 	if err != nil {
@@ -86,6 +92,8 @@ func (s *DeviceTagsService) RemoveBatchFrom(ctx context.Context, networkID strin
 
 // List returns tag definitions. with is an optional appserver expansion such
 // as "devices". Bare arrays and {"tags": [...]} are both accepted.
+// With "devices" and no snapshot it reflects the staging instant, i.e. tags already applied by AddBatchTo and
+// RemoveBatchFrom, whether or not a snapshot has been taken since.
 func (s *DeviceTagsService) List(ctx context.Context, networkID, with string) ([]DeviceTag, *Response, error) {
 	networkID, err := s.client.resolveNetworkID(networkID)
 	if err != nil {

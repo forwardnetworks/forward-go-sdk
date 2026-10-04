@@ -77,7 +77,7 @@ func TestAliasesGetPutDeactivate(t *testing.T) {
 		case r.Method == http.MethodDelete:
 			_, _ = io.WriteString(w, `{"name":"border routers","type":"DEVICES","createdAt":"2026-10-02T10:00:00Z","creatorId":"12"}`)
 		default:
-			_, _ = io.WriteString(w, `{"name":"border routers","type":"DEVICES","createdAt":"2026-10-02T10:00:00Z","creatorId":"12","values":["bbr?_rtr"],"resolved":["bbra_rtr"]}`)
+			_, _ = io.WriteString(w, `{"name":"border routers","type":"DEVICES","createdAt":"2026-10-02T10:00:00Z","creatorId":"12","values":["bbr?_rtr"],"resolvedValue":{"devices":["bbra_rtr"]}}`)
 		}
 	}))
 	defer server.Close()
@@ -94,7 +94,7 @@ func TestAliasesGetPutDeactivate(t *testing.T) {
 	}
 	var def map[string]any
 	_ = json.Unmarshal(got.Definition, &def)
-	if def["resolved"] == nil {
+	if def["resolvedValue"] == nil {
 		t.Fatalf("Get must keep the resolved value in Definition: %v", def)
 	}
 	if gone, _, err := aliases.Get(ctx, "9", "gone"); gone != nil || err != nil {
