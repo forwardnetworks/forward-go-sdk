@@ -747,11 +747,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Locations.CreateCluster": {
 		{Method: "POST", Route: "/api/networks/{networkId}/locations/{locationId}/clusters"},
 	},
+	"Locations.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/locations/{locationId}"},
+	},
+	"Locations.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/locations/{locationId}"},
+	},
 	"Locations.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/locations"},
 	},
 	"Locations.ListClusters": {
 		{Method: "GET", Route: "/api/networks/{networkId}/locations/{locationId}/clusters"},
+	},
+	"Locations.Patch": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/locations/{locationId}"},
 	},
 	"Locations.PatchCluster": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}"},

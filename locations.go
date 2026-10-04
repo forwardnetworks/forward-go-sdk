@@ -21,14 +21,22 @@ type Location struct {
 	DeviceGlobs   []string   `json:"deviceGlobs,omitempty"`
 }
 
+// LocationCreateRequest is a location to add. ID is optional: absent, Forward assigns a numeric one, and a stable
+// ID you choose is what lets an applier find the location again. City is required if AdminDivision or Country is
+// given, and Country if City is (display only).
+//
+// DeviceGlobs is Forward's hidden (unpublished) dynamic assignment: device names and globs ("sjc-*") that put
+// matching devices in this location. Forward recomputes the assignment after every location change; a device that
+// matches globs of several locations goes to the one with the lowest id.
 type LocationCreateRequest struct {
-	ID            *string `json:"id"`
-	Name          string  `json:"name"`
-	Lat           float64 `json:"lat"`
-	Lng           float64 `json:"lng"`
-	City          string  `json:"city,omitempty"`
-	AdminDivision string  `json:"adminDivision,omitempty"`
-	Country       string  `json:"country,omitempty"`
+	ID            *string  `json:"id"`
+	Name          string   `json:"name"`
+	Lat           float64  `json:"lat"`
+	Lng           float64  `json:"lng"`
+	City          string   `json:"city,omitempty"`
+	AdminDivision string   `json:"adminDivision,omitempty"`
+	Country       string   `json:"country,omitempty"`
+	DeviceGlobs   []string `json:"deviceGlobs,omitempty"`
 }
 
 type AtlasPatch map[string]string
@@ -159,4 +167,131 @@ func (s *LocationsService) clusterBase(networkID, locationID string) (string, er
 		return "", errors.New("forward: location ID is required")
 	}
 	return base + "/" + url.PathEscape(locationID) + "/clusters", nil
+}
+
+// LocationPatch changes some of a location; nil fields are left alone. DeviceGlobs replaces the whole list when
+// non-nil, and an empty non-nil list clears it. ID renames the location's id. Clearing City, AdminDivision or
+// Country is not supported here.
+type LocationPatch struct {
+	ID            *string
+	Name          *string
+	Lat           *float64
+	Lng           *float64
+	City          *string
+	AdminDivision *string
+	Country       *string
+	DeviceGlobs   []string
+}
+
+func (p LocationPatch) body() (map[string]any, error) {
+	body := map[string]any{}
+	set := func(key string, value *string) {
+		if value != nil {
+			body[key] = *value
+		}
+	}
+	set("id", p.ID)
+	set("name", p.Name)
+	set("city", p.City)
+	set("adminDivision", p.AdminDivision)
+	set("country", p.Country)
+	if p.Lat != nil {
+		body["lat"] = *p.Lat
+	}
+	if p.Lng != nil {
+		body["lng"] = *p.Lng
+	}
+	if p.DeviceGlobs != nil {
+		body["deviceGlobs"] = p.DeviceGlobs
+	}
+	if len(body) == 0 {
+		return nil, errors.New("forward: a location patch must change something")
+	}
+	if p.Name != nil && strings.TrimSpace(*p.Name) == "" {
+		return nil, errors.New("forward: a location cannot be renamed to nothing")
+	}
+	return body, nil
+}
+
+func (s *LocationsService) locationPath(networkID, locationID string) (string, error) {
+	base, err := s.base(networkID)
+	if err != nil {
+		return "", err
+	}
+	if locationID = strings.TrimSpace(locationID); locationID == "" {
+		// Never collapse onto the collection route.
+		return "", errors.New("forward: location ID is required")
+	}
+	return base + "/" + url.PathEscape(locationID), nil
+}
+
+// Get returns one location, or (nil, nil) when it does not exist. GET
+// /api/networks/{networkId}/locations/{locationId} (getLocation, published;
+// VIEW_NETWORK_AND_SNAPSHOTS).
+func (s *LocationsService) Get(ctx context.Context, networkID, locationID string) (*Location, *Response, error) {
+	path, err := s.locationPath(networkID, locationID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Locations.Get")
+	out := new(Location)
+	resp, err := s.client.doRequired(req, out)
+	if isStatus(err, http.StatusNotFound) {
+		return nil, resp, nil
+	}
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}
+
+// Patch changes a location and returns it. PATCH
+// /api/networks/{networkId}/locations/{locationId} (patchLocation, published;
+// EDIT_TOPOLOGY_LAYOUT). Forward then recomputes dynamic device assignment. This
+// is the idempotent update: Get the location, compare, Patch what differs.
+func (s *LocationsService) Patch(ctx context.Context, networkID, locationID string, patch LocationPatch) (*Location, *Response, error) {
+	body, err := patch.body()
+	if err != nil {
+		return nil, nil, err
+	}
+	path, err := s.locationPath(networkID, locationID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, body)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Locations.Patch")
+	out := new(Location)
+	resp, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}
+
+// Delete removes a location; a location that does not exist counts as success.
+// DELETE /api/networks/{networkId}/locations/{locationId} (deleteLocation,
+// published; EDIT_TOPOLOGY_LAYOUT; 204). Forward recomputes dynamic assignment
+// afterwards. I did not trace where devices assigned to it end up.
+func (s *LocationsService) Delete(ctx context.Context, networkID, locationID string) (*Response, error) {
+	path, err := s.locationPath(networkID, locationID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Locations.Delete")
+	resp, err := s.client.Do(req, nil)
+	if isStatus(err, http.StatusNotFound) {
+		return resp, nil
+	}
+	return resp, err
 }
