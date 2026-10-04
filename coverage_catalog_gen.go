@@ -133,6 +133,15 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"AuditLogs.List": {
 		{Method: "GET", Route: "/api/audit-logs"},
 	},
+	"Backups.BackupProgress": {
+		{Method: "GET", Route: "/api/backups"},
+	},
+	"Backups.CancelOperation": {
+		{Method: "POST", Route: "/api/backups"},
+	},
+	"Backups.DeleteBackup": {
+		{Method: "DELETE", Route: "/api/backups/{backupId}"},
+	},
 	"Backups.GetS3Storage": {
 		{Method: "GET", Route: "/api/backup-settings/storage"},
 	},
@@ -142,8 +151,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Backups.Last": {
 		{Method: "GET", Route: "/api/backups"},
 	},
+	"Backups.LastRestoreResult": {
+		{Method: "GET", Route: "/api/backups"},
+	},
+	"Backups.ListBackups": {
+		{Method: "GET", Route: "/api/backups"},
+	},
+	"Backups.RestoreSnapshot": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
+	},
 	"Backups.SetS3BucketOwnership": {
 		{Method: "POST", Route: "/api/backup-settings"},
+	},
+	"Backups.SnapshotRestoreStatus": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}"},
 	},
 	"Backups.Trigger": {
 		{Method: "POST", Route: "/api/backups"},
