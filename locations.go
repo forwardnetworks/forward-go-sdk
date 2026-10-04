@@ -295,3 +295,61 @@ func (s *LocationsService) Delete(ctx context.Context, networkID, locationID str
 	}
 	return resp, err
 }
+
+// Atlas returns the network's device atlas: which location each located device is in, as device name to
+// location ID, in Forward's name order. Cloud locations and devices with no fixed location are not in it.
+// GET /api/networks/{networkId}/atlas (getAtlas, published; VIEW_NETWORK_AND_SNAPSHOTS). Despite the name
+// this is a device-to-location map, not a geographic database: Forward has no city or coordinate lookup.
+func (s *LocationsService) Atlas(ctx context.Context, networkID string) (map[string]string, *Response, error) {
+	base, err := s.base(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, strings.TrimSuffix(base, "/locations")+"/atlas", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Locations.Atlas")
+	out := map[string]string{}
+	resp, err := s.client.doRequired(req, &out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}
+
+// AtlasLocation is one location in the grouped atlas and the devices it holds. Devices are assigned to it
+// directly; AnchoredDevices are there because they are anchored to a physical device in it (virtual contexts
+// and wireless access points); DynamicMatchDevices are there because their name matches one of the
+// location's DeviceGlobs. A device is in exactly one of the three. Forward sorts each list.
+type AtlasLocation struct {
+	LocationID          Identifier `json:"locationId"`
+	Devices             []string   `json:"devices,omitempty"`
+	AnchoredDevices     []string   `json:"anchoredDevices,omitempty"`
+	DynamicMatchDevices []string   `json:"dynamicMatchDevices,omitempty"`
+}
+
+// AtlasByLocation returns the atlas grouped by location, telling apart devices placed by hand, by anchoring
+// and by a deviceGlobs match, in Forward's location-ID order. It is the way to confirm that a location's
+// DeviceGlobs put the devices you expect there. Empty locations are omitted, and so are cloud locations and
+// devices with no fixed location. GET /api/networks/{networkId}/atlas?v=2 (VIEW_NETWORK_AND_SNAPSHOTS).
+// Unpublished: not in Forward's OpenAPI set.
+func (s *LocationsService) AtlasByLocation(ctx context.Context, networkID string) ([]AtlasLocation, *Response, error) {
+	base, err := s.base(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, strings.TrimSuffix(base, "/locations")+"/atlas?v=2", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Locations.AtlasByLocation")
+	var out struct {
+		Locations []AtlasLocation `json:"locations"`
+	}
+	resp, err := s.client.doRequired(req, &out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out.Locations, resp, nil
+}

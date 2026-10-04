@@ -741,6 +741,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Locations.Assign": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/atlas"},
 	},
+	"Locations.Atlas": {
+		{Method: "GET", Route: "/api/networks/{networkId}/atlas"},
+	},
+	"Locations.AtlasByLocation": {
+		{Method: "GET", Route: "/api/networks/{networkId}/atlas"},
+	},
 	"Locations.Create": {
 		{Method: "POST", Route: "/api/networks/{networkId}/locations"},
 	},

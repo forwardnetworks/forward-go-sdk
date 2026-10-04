@@ -73,3 +73,34 @@ func TestLocationsGetPatchDelete(t *testing.T) {
 		t.Fatalf("refused calls reached the wire: %q", calls[before:])
 	}
 }
+
+// The atlas is a device-to-location map, not a geographic database; the grouped view says WHY a device is in
+// a location (placed, anchored, or matched by deviceGlobs).
+func TestLocationsAtlas(t *testing.T) {
+	t.Parallel()
+
+	var uris []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uris = append(uris, r.URL.RequestURI())
+		if r.URL.Query().Get("v") == "2" {
+			_, _ = io.WriteString(w, `{"locations":[{"locationId":"den","devices":["den-r1"],"dynamicMatchDevices":["den-sw1","den-sw2"]},{"locationId":"sjc","anchoredDevices":["sjc-ctx1"]}]}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"den-r1":"den","den-sw1":"den","sjc-ctx1":"sjc"}`)
+	}))
+	defer server.Close()
+	locations := newTestClient(t, server.URL).Locations
+	ctx := context.Background()
+
+	flat, _, err := locations.Atlas(ctx, "N1")
+	if err != nil || len(flat) != 3 || flat["den-sw1"] != "den" || uris[0] != "/api/networks/N1/atlas" {
+		t.Fatalf("Atlas() = %v, %v; %s", flat, err, uris[0])
+	}
+	grouped, _, err := locations.AtlasByLocation(ctx, "N1")
+	if err != nil || uris[1] != "/api/networks/N1/atlas?v=2" || len(grouped) != 2 {
+		t.Fatalf("AtlasByLocation() = %+v, %v; %s", grouped, err, uris[1])
+	}
+	if grouped[0].LocationID != "den" || len(grouped[0].DynamicMatchDevices) != 2 || len(grouped[0].AnchoredDevices) != 0 || grouped[1].AnchoredDevices[0] != "sjc-ctx1" {
+		t.Fatalf("grouped = %+v", grouped)
+	}
+}
