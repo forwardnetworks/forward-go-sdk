@@ -820,6 +820,15 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Networks.CheckAccess": {
 		{Method: "GET", Route: "/api/networks"},
 	},
+	"Networks.CloudObject": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cloud-objects/{objectId}"},
+	},
+	"Networks.CloudObjectFiles": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cloud-objects/{objectId}/files"},
+	},
+	"Networks.CloudObjects": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cloud-objects"},
+	},
 	"Networks.Create": {
 		{Method: "POST", Route: "/api/networks"},
 	},
