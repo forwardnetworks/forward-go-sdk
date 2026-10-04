@@ -113,7 +113,7 @@ func TestBackdateRoutesAndGuards(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()
-	hooked, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p", NetworkID: "n1", Hooks: []Hook{func(_ context.Context, e Event) {
+	hooked, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p", NetworkID: "n1", Hooks: []Hook{func(_ context.Context, e Event) {
 		if e.Type == EventRequest {
 			mu.Lock()
 			ops = append(ops, e.Operation)

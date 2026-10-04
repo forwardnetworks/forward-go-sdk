@@ -56,7 +56,7 @@ func TestEndpointsDeleteIsIdempotentAndHitsTheRightRoute(t *testing.T) {
 		t.Errorf("no request should be sent for an empty name, got %s %s", r.Method, r.URL.Path)
 	}))
 	t.Cleanup(fatal.Close)
-	safe, err := NewClient(Config{BaseURL: fatal.URL, Username: "u", Password: "p"})
+	safe, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: fatal.URL, Username: "u", Password: "p"})
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}

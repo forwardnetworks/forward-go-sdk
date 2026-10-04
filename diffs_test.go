@@ -30,7 +30,7 @@ func TestDiffsMaterialSummaryIgnoresSuperficialFileChurn(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	c, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p"})
+	c, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestDiffsMaterialSummaryCountsConfigFiles(t *testing.T) {
 		_, _ = w.Write([]byte(`{"count":0,"complete":true}`))
 	}))
 	defer server.Close()
-	c, _ := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p"})
+	c, _ := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
 	sum, err := c.Diffs.MaterialSummary(context.Background(), "1", "2")
 	if err != nil {
 		t.Fatal(err)

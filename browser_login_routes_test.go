@@ -41,7 +41,7 @@ func TestBrowserLoginUsesOnlyLiveRoutes(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "alice", Password: "pw", AuthMode: AuthModeBrowser})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "alice", Password: "pw", AuthMode: AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestBrowserLoginFallsBackToLoginPageCSRF(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "alice", Password: "pw", AuthMode: AuthModeBrowser})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "alice", Password: "pw", AuthMode: AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}

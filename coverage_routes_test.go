@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 415
+	const minExercised = 426
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -95,6 +95,9 @@ var wireArgOverrides = map[string]map[int]any{
 	// then races the recording server under load; a zero Timeout keeps the client's own.
 	"Snapshots.Upload":               {3: SnapshotUploadOptions{}},
 	"Snapshots.StartUploadOperation": {3: SnapshotUploadOptions{}},
+	"Scorecards.Trends":              {2: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), 3: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), 4: 30},
+	"Checks.ChecksReport":            {2: ChecksReportOptions{}, 3: io.Discard},
+	"Checks.CheckCategoryReport":     {2: "NQE", 3: "", 4: ChecksReportOptions{}, 5: io.Discard},
 	"Aliases.Put":                    {2: AliasBuilder{Name: "v1", Type: AliasTypeDevices, Values: []string{"d1"}}},
 	"AuditLogs.List":                 {1: AuditLogListOptions{HTTPMethod: "POST"}},
 	"DataConnectors.Add":             {2: NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},

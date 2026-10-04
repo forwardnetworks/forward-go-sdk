@@ -177,7 +177,7 @@ func TestCloudPredictRefusedByProfile(t *testing.T) {
 		t.Errorf("request reached the server: %s %s", r.Method, r.URL)
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(),
 		BaseURL: server.URL, Username: "user", Password: "pass",
 		Capabilities: CapabilityProfile{Track: "stable", Build: "26.4", Features: map[Capability]CapabilitySupport{
 			CapabilityCloudPredict: CapabilityUnsupported,

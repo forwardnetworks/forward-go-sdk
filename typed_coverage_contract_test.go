@@ -43,7 +43,7 @@ func TestCollectorRegistrationIdentityIsUsedForUpload(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient(Config{
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(),
 		BaseURL: server.URL, Username: "support", Password: "api-secret", AuthMode: AuthModeService,
 		Hooks: []Hook{func(_ context.Context, event Event) {
 			eventsMu.Lock()
@@ -126,7 +126,7 @@ func TestBrowserSessionAndUnauthenticatedReachability(t *testing.T) {
 	}))
 	defer server.Close()
 
-	browser, err := NewClient(Config{BaseURL: server.URL, Username: "alice", Password: "password", AuthMode: AuthModeBrowser})
+	browser, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "alice", Password: "password", AuthMode: AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestBrowserSessionAndUnauthenticatedReachability(t *testing.T) {
 		t.Fatalf("browser user = %#v", user)
 	}
 
-	probe, err := NewClient(Config{BaseURL: server.URL, AuthMode: AuthModeNone})
+	probe, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, AuthMode: AuthModeNone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestBackupAPIRoutesAndServicePrincipal(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "support", Password: "secret", AuthMode: AuthModeService})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "support", Password: "secret", AuthMode: AuthModeService})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,7 @@ func TestBackupAPIRoutesAndServicePrincipal(t *testing.T) {
 		t.Fatalf("update s3 storage: %v", err)
 	}
 
-	userClient, err := NewClient(Config{BaseURL: server.URL, Username: "user", Password: "secret"})
+	userClient, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "user", Password: "secret"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +261,7 @@ func TestTransparentFacadeAndMutationNoRetry(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "user", Password: "password"})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "user", Password: "password"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +292,7 @@ func TestAdminSupportedOrganizationCorrectionRoute(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "support", Password: "secret", AuthMode: AuthModeService})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "support", Password: "secret", AuthMode: AuthModeService})
 	if err != nil {
 		t.Fatal(err)
 	}

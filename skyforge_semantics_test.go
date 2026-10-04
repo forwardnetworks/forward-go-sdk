@@ -24,7 +24,7 @@ func TestForNetworkSharesTransportAndScopesServices(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "user", Password: "pass", NetworkID: "tenant-1"})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "user", Password: "pass", NetworkID: "tenant-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,15 +144,17 @@ func TestChecksRetryOnlyClientPrimeTimeout(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if calls.Add(1) == 1 {
-			time.Sleep(40 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			return
 		}
 		_, _ = io.WriteString(w, `[{"name":"cached","status":"PASS"}]`)
 	}))
 	defer server.Close()
+	// The first call must outlast the client timeout and the second must fit inside it. A 10ms timeout
+	// made the second call race the scheduler under -race load, so the margins are wide.
 	client, err := NewClient(Config{
 		BaseURL: server.URL, Username: "user", Password: "pass",
-		HTTPClient: &http.Client{Timeout: 10 * time.Millisecond},
+		HTTPClient: &http.Client{Timeout: 250 * time.Millisecond},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -275,7 +277,7 @@ func TestCapabilityProfileBlocksUnsupportedEndpoint(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls.Add(1) }))
 	defer server.Close()
-	client, err := NewClient(Config{
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(),
 		BaseURL: server.URL, Username: "user", Password: "pass", NetworkID: "n1",
 		Capabilities: CapabilityProfile{Track: "stable", Build: "stable-build", Features: map[Capability]CapabilitySupport{
 			CapabilityStructuredBGPAdvertisements: CapabilityUnsupported,
@@ -385,7 +387,7 @@ func TestDeviceTagsRemoveBatchFromSendsTheRemoveActionAndRefusesEmptyInput(t *te
 		t.Fatalf("action=%q snapshotId=%q body=%s", gotAction, gotSnapshot, gotBody)
 	}
 	var op string
-	hc, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p", Hooks: []Hook{func(_ context.Context, e Event) {
+	hc, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p", Hooks: []Hook{func(_ context.Context, e Event) {
 		if e.Type == EventResponse {
 			op = e.Operation
 		}

@@ -21,7 +21,7 @@ func TestClassicDevicePutBatchCollectHasThreeStates(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, err := NewClient(Config{BaseURL: srv.URL, Username: "u", Password: "p"})
+	c, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: srv.URL, Username: "u", Password: "p"})
 	if err != nil {
 		t.Fatalf("client: %v", err)
 	}

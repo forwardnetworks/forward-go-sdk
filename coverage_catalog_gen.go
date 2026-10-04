@@ -228,6 +228,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"CVEIndex.Put": {
 		{Method: "PUT", Route: "/api/cve-index"},
 	},
+	"Checks.CheckCategoryReport": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks-report"},
+	},
+	"Checks.ChecksReport": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checksReport"},
+	},
 	"Checks.Create": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks"},
 	},
@@ -472,6 +478,18 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Credentials.UpdateSNMP": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},
+	},
+	"Dashboards.Defaults": {
+		{Method: "GET", Route: "/api/networks/{networkId}/dashboards"},
+	},
+	"Dashboards.DisplaySettings": {
+		{Method: "GET", Route: "/api/networks/{networkId}/dashboards/{dashboardId}/display-settings"},
+	},
+	"Dashboards.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/dashboards/{dashboardId}"},
+	},
+	"Dashboards.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/dashboards"},
 	},
 	"DataConnectors.Add": {
 		{Method: "POST", Route: "/api/networks/{networkId}/data-connectors"},
@@ -1007,6 +1025,21 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"SAML.PutSettings": {
 		{Method: "PUT", Route: "/api/auth/saml-settings"},
+	},
+	"Scorecards.Definitions": {
+		{Method: "GET", Route: "/api/networks/{networkId}/scorecards"},
+	},
+	"Scorecards.ForSnapshot": {
+		{Method: "GET", Route: "/api/networks/{networkId}/scorecards"},
+	},
+	"Scorecards.KPICategories": {
+		{Method: "GET", Route: "/api/networks/{networkId}/kpi-categories"},
+	},
+	"Scorecards.KPICategoryDefinitions": {
+		{Method: "GET", Route: "/api/networks/{networkId}/kpi-categories"},
+	},
+	"Scorecards.Trends": {
+		{Method: "GET", Route: "/api/networks/{networkId}/scorecards"},
 	},
 	"Snapshots.Collect": {
 		{Method: "GET", Route: "/api/collector-tasks/{taskId}"},

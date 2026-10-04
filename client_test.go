@@ -214,6 +214,13 @@ func TestClientRejectsCrossOriginRedirects(t *testing.T) {
 	}
 }
 
+// privateHTTPClient returns an HTTP client with a transport of its own. httptest.Server.Close calls
+// CloseIdleConnections on http.DefaultTransport, which fails other parallel tests' in-flight requests
+// ("http: CloseIdleConnections called") if they share it, so a test that builds its own Client should not.
+func privateHTTPClient() *http.Client {
+	return &http.Client{Transport: http.DefaultTransport.(*http.Transport).Clone(), Timeout: defaultTimeout}
+}
+
 func newTestClient(t *testing.T, baseURL string) *Client {
 	t.Helper()
 	// A transport of its own: httptest.Server.Close closes idle connections on

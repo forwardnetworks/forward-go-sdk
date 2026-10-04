@@ -24,7 +24,7 @@ func TestHooksAndRawService(t *testing.T) {
 
 	var mu sync.Mutex
 	var events []Event
-	client, err := NewClient(Config{
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(),
 		BaseURL: server.URL, Username: "user", Password: "pass",
 		Hooks: []Hook{func(_ context.Context, event Event) {
 			mu.Lock()

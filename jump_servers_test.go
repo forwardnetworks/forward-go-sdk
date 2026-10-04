@@ -36,7 +36,7 @@ func TestJumpServersCreateUsesTheLiveRouteAndNewJumpServerBody(t *testing.T) {
 		_, _ = io.WriteString(w, `{"id":"js-1","host":"10.0.0.9","port":2222,"username":"lab"}`)
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p"})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestJumpServersCreateOmitsOptionalFields(t *testing.T) {
 		_, _ = io.WriteString(w, `{"id":"js-2"}`)
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p"})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestJumpServersCreateOmitsOptionalFields(t *testing.T) {
 // constructor; an empty key is refused before any request is sent.
 func TestJumpServersCreateRequiresKeyMaterial(t *testing.T) {
 	t.Parallel()
-	client, err := NewClient(Config{BaseURL: "https://forward.invalid", Username: "u", Password: "p"})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: "https://forward.invalid", Username: "u", Password: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}

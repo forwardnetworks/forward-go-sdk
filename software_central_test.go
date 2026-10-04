@@ -56,7 +56,7 @@ func TestSoftwareCentralListSendsBasicAuthAndTypeFilter(t *testing.T) {
 		_, _ = io.WriteString(w, softwareCentralCatalogFixture)
 	}))
 	defer server.Close()
-	c, err := NewClient(Config{BaseURL: server.URL, Username: "sc-user@example.com", Password: "sc-pass"})
+	c, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "sc-user@example.com", Password: "sc-pass"})
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}

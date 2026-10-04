@@ -112,7 +112,7 @@ func TestBrowserWritesCarryTheCurrentSessionsCSRFToken(t *testing.T) {
 	fake := newFakeForwardSession()
 	server := httptest.NewServer(fake)
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "forward", Password: "pw", AuthMode: AuthModeBrowser})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "forward", Password: "pw", AuthMode: AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestBrowserWriteWithoutCSRFIsRejectedByTheFake(t *testing.T) {
 	fake := newFakeForwardSession()
 	server := httptest.NewServer(fake)
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "forward", Password: "pw", AuthMode: AuthModeBrowser})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "forward", Password: "pw", AuthMode: AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestBrowserSAMLSignInRoundTrip(t *testing.T) {
 	fake := newFakeForwardSession()
 	server := httptest.NewServer(fake)
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, AuthMode: AuthModeBrowser})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, AuthMode: AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +214,7 @@ func TestBrowserSAMLSignInRoundTrip(t *testing.T) {
 }
 
 func TestBrowserSAMLAssertionConsumerRequiresARegistration(t *testing.T) {
-	client, err := NewClient(Config{BaseURL: "https://fwd.example", AuthMode: AuthModeBrowser})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: "https://fwd.example", AuthMode: AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}

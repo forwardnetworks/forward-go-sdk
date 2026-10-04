@@ -33,7 +33,7 @@ func TestRetryRefusedOnly(t *testing.T) {
 			}
 			_, _ = io.WriteString(w, `{"build":"1"}`)
 		}))
-		client, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p",
+		client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p",
 			Retry: RetryPolicy{MaxAttempts: 3, Delay: time.Millisecond, RefusedOnly: true}})
 		if err != nil {
 			t.Fatal(err)
@@ -59,7 +59,7 @@ func TestRetryRefusedOnlyDoesNotRetryTransportErrors(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p",
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p",
 		Retry: RetryPolicy{MaxAttempts: 3, Delay: time.Millisecond, RefusedOnly: true}})
 	if err != nil {
 		t.Fatal(err)

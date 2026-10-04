@@ -14,7 +14,7 @@ func acClient(t *testing.T, handler http.HandlerFunc) *Client {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	c, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p"})
+	c, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestUsersRolesAndAdminUserExternalGroups(t *testing.T) {
 		}
 	}))
 	t.Cleanup(server.Close)
-	c, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p"})
+	c, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestUsersRolesAndAdminUserExternalGroups(t *testing.T) {
 	}
 	// Admin routes require a SERVICE principal; the SDK refuses a user-mode
 	// client before sending, which is its own contract and not this test's.
-	svc, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p", AuthMode: AuthModeService})
+	svc, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p", AuthMode: AuthModeService})
 	if err != nil {
 		t.Fatalf("service client: %v", err)
 	}

@@ -12,7 +12,7 @@ import (
 
 func retryClient(t *testing.T, baseURL string) *Client {
 	t.Helper()
-	client, err := NewClient(Config{
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(),
 		BaseURL:  baseURL,
 		Username: "user",
 		Password: "pass",
@@ -149,7 +149,7 @@ func TestRetryHonorsContextCancel(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient(Config{
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(),
 		BaseURL:  server.URL,
 		Username: "user",
 		Password: "pass",

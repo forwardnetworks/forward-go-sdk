@@ -42,7 +42,7 @@ func TestCVEIndexDownloadKeepsGzipBytesAndDigestsThem(t *testing.T) {
 		_, _ = w.Write(index)
 	}))
 	defer server.Close()
-	c, err := NewClient(Config{BaseURL: server.URL, Username: "sc-user", Password: "sc-pass"})
+	c, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "sc-user", Password: "sc-pass"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestCVEIndexDownloadRefusesANonGzipBody(t *testing.T) {
 		_, _ = io.WriteString(w, "<html>maintenance</html>")
 	}))
 	defer server.Close()
-	c, _ := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p"})
+	c, _ := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
 	if _, _, err := c.CVEIndex.Download(context.Background()); !errors.Is(err, ErrCVEIndexNotGzip) {
 		t.Fatalf("err = %v, want ErrCVEIndexNotGzip", err)
 	}
@@ -83,7 +83,7 @@ func TestCVEIndexDownloadEmpty401IsAuthentication(t *testing.T) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	defer server.Close()
-	c, _ := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p"})
+	c, _ := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
 	if _, _, err := c.CVEIndex.Download(context.Background()); !errors.Is(err, ErrAuthentication) {
 		t.Fatalf("err = %v, want ErrAuthentication", err)
 	}
@@ -119,7 +119,7 @@ func TestCVEIndexMetadataPutAndDelete(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	c, _ := NewClient(Config{BaseURL: server.URL, Username: "admin", Password: "p"})
+	c, _ := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "admin", Password: "p"})
 	ctx := context.Background()
 
 	meta, _, err := c.CVEIndex.Metadata(ctx)

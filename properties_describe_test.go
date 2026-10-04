@@ -193,7 +193,7 @@ func TestPropertiesOperationsAreMarked(t *testing.T) {
 		_, _ = io.WriteString(w, `{}`)
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p", Hooks: []Hook{func(_ context.Context, e Event) {
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p", Hooks: []Hook{func(_ context.Context, e Event) {
 		if e.Type == EventRequest {
 			ops[e.Method+" "+e.Path] = e.Operation
 		}
