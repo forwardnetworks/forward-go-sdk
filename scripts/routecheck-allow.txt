@@ -1,0 +1,8 @@
+# Manifest routes that cmd/routecheck is told not to find in Forward's source.
+#
+#   METHOD /route [pin=NAME[,NAME]]  # why it is allowed
+#
+# Without pin= the route may be unmapped at every pin; with pin= only at those named in scripts/forward-pins.
+# A reason after # is required. Every manifest route is currently mapped at both pins, so this file is empty:
+# add a line only for a route you have confirmed is served some other way (a servlet filter, or a build that
+# has it while a pin does not), and remove it when the pin catches up. routecheck says when an entry is unused.
