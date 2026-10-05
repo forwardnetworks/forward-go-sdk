@@ -287,7 +287,7 @@ func (s *AliasesService) Deactivate(ctx context.Context, snapshotID, name string
 	req = markOperation(req, "Aliases.Deactivate")
 	out := new(Alias)
 	resp, err := s.client.doRequired(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return nil, resp, nil
 	}
 	if err != nil {

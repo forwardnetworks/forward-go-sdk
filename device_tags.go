@@ -185,7 +185,7 @@ func (s *DeviceTagsService) DeleteTag(ctx context.Context, networkID, tag string
 	}
 	req = markOperation(req, "DeviceTags.DeleteTag")
 	resp, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return resp, nil
 	}
 	return resp, err

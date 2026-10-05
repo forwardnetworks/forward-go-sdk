@@ -447,3 +447,9 @@ func isNetworkResourcePath(path string) bool {
 	// to a missing child and are not classified without a structured message.
 	return len(strings.Split(strings.Trim(rest, "/"), "/")) <= 2
 }
+
+// isGone reports whether a failed delete means the thing is already absent, so the delete may count as done. A 404 that
+// means Forward does not serve the route at all (ErrEndpointNotServed) does not qualify: nothing was deleted.
+func isGone(err error) bool {
+	return isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed)
+}

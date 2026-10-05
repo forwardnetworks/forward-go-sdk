@@ -259,7 +259,7 @@ func (s *IntegrationsService) deleteTolerant(ctx context.Context, path, operatio
 	}
 	req = markOperation(req, operation)
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err

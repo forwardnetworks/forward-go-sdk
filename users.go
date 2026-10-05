@@ -144,7 +144,7 @@ func (s *UsersService) DeleteToken(ctx context.Context, tokenName string) (*Resp
 	}
 	req = markOperation(req, "Users.DeleteToken")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err

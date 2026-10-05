@@ -175,7 +175,7 @@ func (s *UsersService) DeleteTokenFor(ctx context.Context, userID, tokenName str
 	}
 	req = markOperation(req, "Users.DeleteTokenFor")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err
@@ -411,7 +411,7 @@ func (s *UsersService) Delete(ctx context.Context, userID string) (*Response, er
 	}
 	req = markOperation(req, "Users.Delete")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err

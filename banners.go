@@ -89,7 +89,7 @@ func (s *BannersService) Delete(ctx context.Context, bannerID string) (*Response
 	}
 	req = markOperation(req, "Banners.Delete")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err

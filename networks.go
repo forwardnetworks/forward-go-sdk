@@ -92,6 +92,7 @@ type PathSearchRequest struct {
 	AppID                   string
 	UserID                  string
 	UserGroupID             string
+	Domain                  string
 	URL                     string
 	IncludeTags             *bool
 	IncludeNetworkFunctions *bool
@@ -247,6 +248,9 @@ func (s *NetworksService) Paths(ctx context.Context, networkID string, input Pat
 	}
 	if params.UserID != "" {
 		query.Set("userId", params.UserID)
+	}
+	if params.Domain != "" {
+		query.Set("domain", params.Domain)
 	}
 	if params.UserGroupID != "" {
 		query.Set("userGroupId", params.UserGroupID)

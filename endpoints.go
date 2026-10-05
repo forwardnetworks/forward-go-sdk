@@ -490,7 +490,7 @@ func (s *EndpointsService) DeleteProfile(ctx context.Context, profileID string) 
 	}
 	req = markOperation(req, "Endpoints.DeleteProfile")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err
@@ -522,7 +522,7 @@ func (s *EndpointsService) Delete(ctx context.Context, networkID, name string) (
 	}
 	req = markOperation(req, "Endpoints.Delete")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err

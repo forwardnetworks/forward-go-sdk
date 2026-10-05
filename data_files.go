@@ -337,7 +337,7 @@ func (s *DataFilesService) Delete(ctx context.Context, name string) (*Response, 
 	}
 	req = markOperation(req, "DataFiles.Delete")
 	resp, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return resp, nil
 	}
 	return resp, err

@@ -200,7 +200,7 @@ func (s *AdminService) DeleteUser(ctx context.Context, userID string) (*Response
 	}
 	req = markOperation(req, "Admin.DeleteUser")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err

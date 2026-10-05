@@ -114,6 +114,9 @@ func (s *BackupsService) UpdateSettings(ctx context.Context, storageType Storage
 	return out, response, err
 }
 
+// GetS3Storage returns the stored S3 settings, or nil when none are configured. The secret key is write-only: Forward
+// marks S3StorageSettings.secretKey @JsonIgnore, so no response carries it, and the SDK clears SecretKey on every
+// decoded response anyway so a caller can never read one back.
 func (s *BackupsService) GetS3Storage(ctx context.Context) (*S3StorageSettings, *Response, error) {
 	if err := s.requireClient(); err != nil {
 		return nil, nil, err
@@ -128,6 +131,7 @@ func (s *BackupsService) GetS3Storage(ctx context.Context) (*S3StorageSettings, 
 	if err == nil && !out.Present {
 		return nil, response, nil
 	}
+	out.Value.SecretKey = ""
 	return &out.Value, response, err
 }
 
@@ -142,6 +146,7 @@ func (s *BackupsService) UpdateS3Storage(ctx context.Context, patch S3StorageSet
 	req = markOperation(req, "Backups.UpdateS3Storage")
 	out := new(S3StorageSettings)
 	response, err := s.client.doRequired(req, out)
+	out.SecretKey = ""
 	return out, response, err
 }
 

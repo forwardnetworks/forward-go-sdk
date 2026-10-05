@@ -258,7 +258,7 @@ func (s *CollectionSchedulesService) Delete(ctx context.Context, networkID, sche
 	}
 	req = markOperation(req, "CollectionSchedules.Delete")
 	resp, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return resp, nil
 	}
 	return resp, err

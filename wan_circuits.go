@@ -157,7 +157,7 @@ func (s *WanCircuitsService) Delete(ctx context.Context, networkID, name string)
 	}
 	req = markOperation(req, "WanCircuits.Delete")
 	resp, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return resp, nil
 	}
 	return resp, err

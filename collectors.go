@@ -129,7 +129,7 @@ func (s *CollectorsService) Delete(ctx context.Context, collectorIDOrName string
 	}
 	req = markOperation(req, "Collectors.Delete")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err

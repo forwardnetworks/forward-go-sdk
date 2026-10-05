@@ -166,7 +166,7 @@ func (s *LocationsService) DeleteCluster(ctx context.Context, networkID, locatio
 	}
 	req = markOperation(req, "Locations.DeleteCluster")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed) {
+	if isGone(err) {
 		return response, nil
 	}
 	return response, err
@@ -313,7 +313,7 @@ func (s *LocationsService) Delete(ctx context.Context, networkID, locationID str
 	}
 	req = markOperation(req, "Locations.Delete")
 	resp, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if isGone(err) {
 		return resp, nil
 	}
 	return resp, err
