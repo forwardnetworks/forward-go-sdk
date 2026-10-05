@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -711,4 +712,68 @@ func (s *EndpointsService) UpdateProfile(ctx context.Context, profileID string, 
 		return nil, resp, err
 	}
 	return out, resp, nil
+}
+
+// CLICommandAssessment splits commands by whether the organization's approved list allows them.
+type CLICommandAssessment struct {
+	Approved   []string `json:"approved"`
+	Unapproved []string `json:"unapproved"`
+}
+
+// AssessCLICommands says which of commands the organization's approved list allows. Forward matches each command against
+// every approved regex with find(), not a full match, and an endpoint profile is collected only if all of its commands
+// are approved. Nothing is stored. POST /api/approved-cli-commands?action=assess, JSON list of strings
+// (CliCommandsController.assessCliCommands; MANAGE_ENDPOINT_PROFILES, although nothing is written; on primary
+// 15398425a69 and stable 67e89c87124). Preview: not in the published spec. An empty list is answered without a request.
+func (s *EndpointsService) AssessCLICommands(ctx context.Context, commands []string) (*CLICommandAssessment, *Response, error) {
+	if len(commands) == 0 {
+		return &CLICommandAssessment{Approved: []string{}, Unapproved: []string{}}, nil, nil
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, "/api/approved-cli-commands?action=assess", commands)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Endpoints.AssessCLICommands")
+	out := new(CLICommandAssessment)
+	response, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, response, err
+	}
+	if out.Approved == nil {
+		out.Approved = []string{}
+	}
+	if out.Unapproved == nil {
+		out.Unapproved = []string{}
+	}
+	return out, response, nil
+}
+
+// UpdateApprovedCLICommands replaces the organization's approved CLI command list with a Forward-signed file; a list
+// cannot be authored locally, because Forward verifies the signature and that the identifiers match the organization
+// and answers 400 ("Signature mismatch" or "Identifier mismatch") otherwise. The file is sent as is. This changes which
+// endpoint profiles are collected. POST /api/approved-cli-commands?action=update, multipart "file"
+// (CliCommandsController.updateApprovedCliCommands; MANAGE_ENDPOINT_PROFILES; on primary 15398425a69 and stable
+// 67e89c87124). Preview: not in the published spec.
+func (s *EndpointsService) UpdateApprovedCLICommands(ctx context.Context, fileName string, signed []byte) (*ApprovedCLICommands, *Response, error) {
+	if len(signed) == 0 {
+		return nil, nil, errors.New("forward: the signed approved-commands file is empty")
+	}
+	body, contentType, err := dataFileMultipart(func(w *multipart.Writer) error {
+		return writeDataFilePart(w, fileName, signed)
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodPost, "/api/approved-cli-commands?action=update", body)
+	if err != nil {
+		return nil, nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
+	req = markOperation(req, "Endpoints.UpdateApprovedCLICommands")
+	out := new(ApprovedCLICommands)
+	response, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, response, err
+	}
+	return out, response, nil
 }

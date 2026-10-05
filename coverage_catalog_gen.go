@@ -639,6 +639,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Endpoints.ApprovedCLICommands": {
 		{Method: "GET", Route: "/api/approved-cli-commands"},
 	},
+	"Endpoints.AssessCLICommands": {
+		{Method: "POST", Route: "/api/approved-cli-commands"},
+	},
 	"Endpoints.CreateProfile": {
 		{Method: "POST", Route: "/api/endpoint-profiles"},
 	},
@@ -665,6 +668,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Endpoints.Patch": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/endpoints/{name}"},
+	},
+	"Endpoints.UpdateApprovedCLICommands": {
+		{Method: "POST", Route: "/api/approved-cli-commands"},
 	},
 	"Endpoints.UpdateProfile": {
 		{Method: "PATCH", Route: "/api/endpoint-profiles/{profileId}"},
