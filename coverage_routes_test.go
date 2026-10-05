@@ -91,19 +91,15 @@ var wireArgOverrides = map[string]map[int]any{
 	"CollectionSchedules.Replace":         {3: CollectionScheduleDefinition{Enabled: true, DaysOfTheWeek: []int{1}, Times: []string{"02:00"}}},
 	"Snapshots.Export":                    {2: SnapshotExportOptions{IncludeDevices: []string{"d1"}}, 3: io.Discard},
 	"Backups.DeleteBackup":                {1: int64(7), 2: StorageTypeAll},
-	// The reflection default for a Duration is 10ms, which Upload now honours as a per-call timeout and which
-	// then races the recording server under load; a zero Timeout keeps the client's own.
-	"Snapshots.Upload":               {3: SnapshotUploadOptions{}},
-	"Snapshots.StartUploadOperation": {3: SnapshotUploadOptions{}},
-	"Scorecards.Trends":              {2: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), 3: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), 4: 30},
-	"Checks.ChecksReport":            {2: ChecksReportOptions{}, 3: io.Discard},
-	"Checks.CheckCategoryReport":     {2: "NQE", 3: "", 4: ChecksReportOptions{}, 5: io.Discard},
-	"Aliases.Put":                    {2: AliasBuilder{Name: "v1", Type: AliasTypeDevices, Values: []string{"d1"}}},
-	"AuditLogs.List":                 {1: AuditLogListOptions{HTTPMethod: "POST"}},
-	"DataConnectors.Add":             {2: NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},
-	"DataConnectors.Update":          {3: DataConnectorPatch{Collect: Ptr(true)}},
-	"DataFiles.InferSchema":          {3: DataFileCSV},
-	"DataFiles.Add":                  {1: DataFileCreateRequest{Name: "v1", FileType: DataFileCSV}},
+	"Scorecards.Trends":                   {2: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), 3: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), 4: 30},
+	"Checks.ChecksReport":                 {2: ChecksReportOptions{}, 3: io.Discard},
+	"Checks.CheckCategoryReport":          {2: "NQE", 3: "", 4: ChecksReportOptions{}, 5: io.Discard},
+	"Aliases.Put":                         {2: AliasBuilder{Name: "v1", Type: AliasTypeDevices, Values: []string{"d1"}}},
+	"AuditLogs.List":                      {1: AuditLogListOptions{HTTPMethod: "POST"}},
+	"DataConnectors.Add":                  {2: NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},
+	"DataConnectors.Update":               {3: DataConnectorPatch{Collect: Ptr(true)}},
+	"DataFiles.InferSchema":               {3: DataFileCSV},
+	"DataFiles.Add":                       {1: DataFileCreateRequest{Name: "v1", FileType: DataFileCSV}},
 	// The kind-based synthetic node calls address a different route per
 	// kind; L3 VPN reaches every one of them.
 	"SyntheticNodes.Get":                {2: SyntheticL3VPN},
@@ -149,7 +145,9 @@ func recordRequestsAs(t *testing.T, symbol string, mode AuthMode) []wireRequest 
 	}))
 	defer server.Close()
 
-	cfg := Config{BaseURL: server.URL, Username: "user", Password: "pass", NetworkID: "net1", AuthMode: mode}
+	// A transport of its own: closing this server would otherwise close idle connections on the shared
+	// http.DefaultTransport and fail the other parallel subtests' in-flight requests.
+	cfg := Config{BaseURL: server.URL, Username: "user", Password: "pass", NetworkID: "net1", AuthMode: mode, HTTPClient: privateHTTPClient()}
 	switch mode {
 	case AuthModeBrowser:
 		cfg.Username, cfg.Password = "", ""
@@ -205,7 +203,10 @@ func synthesize(t reflect.Type, depth int) reflect.Value {
 	}
 	switch t {
 	case reflect.TypeOf(time.Duration(0)):
-		return reflect.ValueOf(10 * time.Millisecond).Convert(t)
+		// Zero means "use the default" for every Duration option in the SDK (timeouts, poll intervals). A
+		// non-zero value is read as a real limit: 10ms once made Upload time out before the recording server
+		// answered under -race load, and the 300ms context in recordRequestsAs bounds any wait that remains.
+		return reflect.Zero(t)
 	case reflect.TypeOf(time.Time{}):
 		return reflect.ValueOf(time.Unix(1790000000, 0))
 	}
