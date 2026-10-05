@@ -41,7 +41,14 @@ const (
 	ErrorKindPermissionDenied ErrorKind = "permission-denied"
 	// ErrorKindUnlicensedOperation is a 403 for an operation the org's license tier does not include ("Unlicensed operation: ...") --
 	// a license problem, not a role one.
-	ErrorKindUnlicensedOperation               ErrorKind = "unlicensed-operation"
+	ErrorKindUnlicensedOperation ErrorKind = "unlicensed-operation"
+	// ErrorKindEndpointNotServed is a 404 because Forward has no route at all for this method and path on this
+	// deployment: Spring's NoHandlerFoundException, which Forward renders as the JSON message "No endpoint <METHOD> <URL>."
+	// with no reason code. It is what a controller excluded by a deployment profile looks like (the org licence routes are
+	// SaaS-only, the backup and restore routes on-prem Kubernetes only), and also what a mistyped path or a route from a
+	// newer Forward looks like, so it means "not served here", never "the thing you asked for is missing". Contrast
+	// ErrorKindNetworkNotFound, a route that exists and found no such network.
+	ErrorKindEndpointNotServed                 ErrorKind = "endpoint-not-served"
 	ErrorKindNetworkNotFound                   ErrorKind = "network-not-found"
 	ErrorKindAuthentication                    ErrorKind = "authentication-failure"
 	ErrorKindTrustedCertificateApplyInProgress ErrorKind = "trusted-certificate-apply-in-progress"
@@ -61,6 +68,7 @@ var (
 	ErrEndpointProfileInUse              = errors.New("forward: endpoint profile is still used by endpoints")
 	ErrPermissionDenied                  = errors.New("forward: missing permission for the operation")
 	ErrUnlicensedOperation               = errors.New("forward: operation not included in the organization's license")
+	ErrEndpointNotServed                 = errors.New("forward: route is not served by this deployment")
 	ErrNetworkNotFound                   = errors.New("forward: network not found")
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
@@ -148,6 +156,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindPermissionDenied
 	case ErrUnlicensedOperation:
 		return e.Kind == ErrorKindUnlicensedOperation
+	case ErrEndpointNotServed:
+		return e.Kind == ErrorKindEndpointNotServed
 	case ErrNetworkNotFound:
 		return e.Kind == ErrorKindNetworkNotFound
 	case ErrAuthentication:
@@ -324,6 +334,11 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 			strings.Contains(detail, "snapshot unprocessed")) {
 		return ErrorKindSnapshotNotProcessed
 	}
+	// Before the network rules below: "No endpoint GET /api/networks/9/x." on a network path would otherwise read as a
+	// missing network when the route is simply not served here.
+	if status == http.StatusNotFound && apiErr.Reason == "" && isNoEndpointMessage(apiErr.Message, method) {
+		return ErrorKindEndpointNotServed
+	}
 	if status == http.StatusNotFound &&
 		(containsWords(detail, "network", "not", "found") ||
 			containsWords(detail, "network", "does", "not", "exist") ||
@@ -410,6 +425,16 @@ func containsWords(detail string, words ...string) bool {
 		}
 	}
 	return true
+}
+
+// isNoEndpointMessage reports Spring's NoHandlerFoundException text as Forward writes it ("No endpoint " + method + " " +
+// URL + "."), for the request's own method. Checked against spring-webmvc 7.0.9's class constants.
+func isNoEndpointMessage(message, method string) bool {
+	message = strings.TrimSpace(message)
+	if method == "" || !strings.HasSuffix(message, ".") {
+		return false
+	}
+	return strings.HasPrefix(strings.ToUpper(message), "NO ENDPOINT "+strings.ToUpper(method)+" ")
 }
 
 func isNetworkResourcePath(path string) bool {

@@ -15,7 +15,8 @@ import (
 // Backup operations and per-snapshot restore (ClusterBackupRestoreController).
 // The controller is active only on ON-PREM, Kubernetes deployments that are not
 // shared (@ProfileCriteria allOf ON_PREM, K8S; not SHARED_K8S); elsewhere these
-// routes are not mapped and Forward answers 404 "No endpoint". Backup
+// routes are not mapped and Forward answers 404 "No endpoint", which the SDK
+// classifies as ErrEndpointNotServed. Backup
 // administration needs the ADMINISTER_SYSTEM system permission, which Forward
 // enforces (403, typed: MissingPermission), so unlike the older Backups methods
 // these do not insist on a service principal. There is NO route to restore a

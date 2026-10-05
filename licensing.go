@@ -200,8 +200,9 @@ func (s *LicensingService) Apply(ctx context.Context, key string) (*LicenseDetai
 // SaaS deployments only. ForwardSupportLicenseController, which serves this and the
 // other /api/orgs/{id}/licenses methods below, is @ProfileCriteria(not = ON_PREM): on an
 // on-prem appserver the route is not mapped and Forward answers 404 "No endpoint", as
-// it does for any unmapped path. The path is right and is served on both pinned
-// builds; use List for your own org, which works everywhere.
+// it does for any unmapped path; errors.Is(err, ErrEndpointNotServed) tells that apart
+// from a missing org. The path is right and is served on both pinned builds; use List
+// for your own org, which works everywhere.
 func (s *LicensingService) ListForOrg(ctx context.Context, orgID string) ([]LicenseDetails, *Response, error) {
 	orgID = strings.TrimSpace(orgID)
 	if orgID == "" {
@@ -218,7 +219,8 @@ func (s *LicensingService) ListForOrg(ctx context.Context, orgID string) ([]Lice
 }
 
 // RemoveAllForOrg deletes every license from ONE NAMED org. PLATFORM-scoped
-// (@RequiresForwardAdmin).
+// (@RequiresForwardAdmin). SaaS deployments only: an on-prem appserver does not map the
+// route (ErrEndpointNotServed), see ListForOrg.
 //
 // READ THE PATH. This is DELETE /api/orgs/{id}/licenses -- the org's LICENSE
 // COLLECTION. It is not, and cannot become, a call that deletes the org: there
@@ -239,7 +241,8 @@ func (s *LicensingService) RemoveAllForOrg(ctx context.Context, orgID string) (*
 }
 
 // InvalidateForOrg invalidates ONE license on a named org, leaving the rest.
-// PLATFORM-scoped (@RequiresForwardSupport). Prefer this over RemoveAllForOrg
+// PLATFORM-scoped (@RequiresForwardSupport), and SaaS deployments only (on-prem answers
+// ErrEndpointNotServed, see ListForOrg). Prefer this over RemoveAllForOrg
 // whenever the intent is to undo a single license: "remove all" is a blunt
 // instrument and its blast radius is the whole org's entitlement.
 func (s *LicensingService) InvalidateForOrg(ctx context.Context, orgID, licenseID string) (*Response, error) {
