@@ -77,7 +77,7 @@ func newRootCmd() *cobra.Command {
 
 	root.AddCommand(
 		newCollectorsCmd(), newCollectorCmd(), newDevicesCmd(), newLocationsCmd(), newCloudAccountsCmd(), newJumpServersCmd(),
-		newSnapshotCmd(), newChangeSetCmd(), newRouteCmd(), newRuleCmd(), newPlanCmd(), newDiffCmd(),
+		newSnapshotCmd(), newChangeSetCmd(),
 		newCommitCmd(), newRunCmd(), newChecksCmd(), newPathsCmd(),
 	)
 	return root

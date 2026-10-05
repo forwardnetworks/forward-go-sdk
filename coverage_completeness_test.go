@@ -29,16 +29,6 @@ import (
 // narrowing wrapper whose routes are a strict subset of the callee's -- and
 // when a manifest symbol sends no request at all: a stale entry, or a hole in
 // the analysis.
-//
-// prereleaseFiles is the ONE exemption: a file whose routes Forward has not
-// shipped in a released build. Its methods stay out of the manifest because a
-// manifest entry is a claim that the route exists; every exemption names the
-// evidence, and is refused once the file is gone or its symbols join the
-// manifest.
-var prereleaseFiles = map[string]string{
-	"predict_cloud.go": "FWD-59003 Cloud Editing Framework: /change-sets/{cs}/devices/{d}/cloud-objects/... has no @*Mapping at Forward primary 15398425a69 or stable 67e89c87124; CapabilityCloudPredict gates every call (see the file comment)",
-}
-
 func TestCoverageManifestIsComplete(t *testing.T) {
 	graph := analyzeServiceRequests(t)
 
@@ -70,25 +60,10 @@ func TestCoverageManifestIsComplete(t *testing.T) {
 		t.Fatalf("analysis found only %d request-issuing methods against %d catalog symbols; the check would be vacuous", len(graph.issuing), len(sdkCoverageCatalog))
 	}
 
-	var missing, stale, partial, exempt []string
-	exemptFiles := map[string]int{}
+	var missing, stale, partial []string
 	for symbol := range graph.issuing {
-		_, listed := sdkCoverageCatalog[symbol]
-		if reason, ok := prereleaseFiles[graph.file[symbol]]; ok {
-			exemptFiles[graph.file[symbol]]++
-			if listed {
-				t.Errorf("%s is in coverage_manifest.json but %s is exempt as pre-release (%s); drop the exemption", symbol, graph.file[symbol], reason)
-			}
-			exempt = append(exempt, symbol)
-			continue
-		}
-		if !listed {
+		if _, listed := sdkCoverageCatalog[symbol]; !listed {
 			missing = append(missing, symbol)
-		}
-	}
-	for file := range prereleaseFiles {
-		if exemptFiles[file] == 0 {
-			t.Errorf("prereleaseFiles exempts %s, which declares no request-issuing service method any more; delete the exemption", file)
 		}
 	}
 	for symbol, operations := range sdkCoverageCatalog {
@@ -128,8 +103,7 @@ func TestCoverageManifestIsComplete(t *testing.T) {
 		t.Errorf("%d coverage_manifest.json symbols issue no request according to the call-graph walk (stale entry, or a path the walk cannot see):\n  %s",
 			len(stale), strings.Join(stale, "\n  "))
 	}
-	sort.Strings(exempt)
-	t.Logf("%d exported service methods issue a request; %d catalog symbols; %d pre-release exempt: %s", len(graph.issuing), len(sdkCoverageCatalog), len(exempt), strings.Join(exempt, ", "))
+	t.Logf("%d exported service methods issue a request; %d catalog symbols", len(graph.issuing), len(sdkCoverageCatalog))
 }
 
 // narrows reports whether every operation the caller lists is one of the
