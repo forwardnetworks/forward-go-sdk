@@ -16,6 +16,10 @@ import (
 // (/backup-settings, /backups), which Forward never served -- verified against
 // ServletInitializer.getServletMappings at primary 15398425a69 and stable
 // 67e89c87124.
+//
+// Every route here needs the ADMINISTER_SYSTEM system permission, not a particular kind of principal: a person's
+// login that holds it works, and one that lacks it gets a typed 403. The controller exists only on on-prem
+// Kubernetes deployments; elsewhere the routes answer ErrEndpointNotServed.
 type BackupsService service
 
 type StorageType string
@@ -81,7 +85,7 @@ type BackupTriggerRequest struct {
 }
 
 func (s *BackupsService) GetSettings(ctx context.Context, storageType StorageType) (*BackupSettings, *Response, error) {
-	if err := s.requireService(); err != nil {
+	if err := s.requireClient(); err != nil {
 		return nil, nil, err
 	}
 	path := "/api/backup-settings?" + storageTypeQuery(storageType).Encode()
@@ -96,7 +100,7 @@ func (s *BackupsService) GetSettings(ctx context.Context, storageType StorageTyp
 }
 
 func (s *BackupsService) UpdateSettings(ctx context.Context, storageType StorageType, patch BackupSettingsPatch) (*BackupSettings, *Response, error) {
-	if err := s.requireService(); err != nil {
+	if err := s.requireClient(); err != nil {
 		return nil, nil, err
 	}
 	path := "/api/backup-settings?" + storageTypeQuery(storageType).Encode()
@@ -111,7 +115,7 @@ func (s *BackupsService) UpdateSettings(ctx context.Context, storageType Storage
 }
 
 func (s *BackupsService) GetS3Storage(ctx context.Context) (*S3StorageSettings, *Response, error) {
-	if err := s.requireService(); err != nil {
+	if err := s.requireClient(); err != nil {
 		return nil, nil, err
 	}
 	req, err := s.client.newScopedRequest(ctx, http.MethodGet, "/api/backup-settings/storage?storageType=S3", nil, pathScopeBackup, nil)
@@ -128,7 +132,7 @@ func (s *BackupsService) GetS3Storage(ctx context.Context) (*S3StorageSettings, 
 }
 
 func (s *BackupsService) UpdateS3Storage(ctx context.Context, patch S3StorageSettingsPatch) (*S3StorageSettings, *Response, error) {
-	if err := s.requireService(); err != nil {
+	if err := s.requireClient(); err != nil {
 		return nil, nil, err
 	}
 	req, err := s.client.newScopedJSONRequest(ctx, http.MethodPatch, "/api/backup-settings/storage?storageType=S3", patch, pathScopeBackup, nil)
@@ -142,7 +146,7 @@ func (s *BackupsService) UpdateS3Storage(ctx context.Context, patch S3StorageSet
 }
 
 func (s *BackupsService) SetS3BucketOwnership(ctx context.Context, settings S3StorageSettings) (*Response, error) {
-	if err := s.requireService(); err != nil {
+	if err := s.requireClient(); err != nil {
 		return nil, err
 	}
 	req, err := s.client.newScopedJSONRequest(ctx, http.MethodPost, "/api/backup-settings?storageType=S3&action=chown", settings, pathScopeBackup, nil)
@@ -154,7 +158,7 @@ func (s *BackupsService) SetS3BucketOwnership(ctx context.Context, settings S3St
 }
 
 func (s *BackupsService) Trigger(ctx context.Context, input BackupTriggerRequest) (*Response, error) {
-	if err := s.requireService(); err != nil {
+	if err := s.requireClient(); err != nil {
 		return nil, err
 	}
 	query := storageTypeQuery(input.StorageType)
@@ -171,7 +175,7 @@ func (s *BackupsService) Trigger(ctx context.Context, input BackupTriggerRequest
 }
 
 func (s *BackupsService) Last(ctx context.Context, storageType StorageType, triggerType BackupTriggerType) (*BackupResult, *Response, error) {
-	if err := s.requireService(); err != nil {
+	if err := s.requireClient(); err != nil {
 		return nil, nil, err
 	}
 	query := storageTypeQuery(storageType)
@@ -190,12 +194,12 @@ func (s *BackupsService) Last(ctx context.Context, storageType StorageType, trig
 	return &out.Value, response, err
 }
 
-func (s *BackupsService) requireService() error {
+// requireClient only guards a nil service. These routes used to be refused client-side for any principal but a service
+// one; Forward never required that. It requires the ADMINISTER_SYSTEM system permission and answers a typed 403
+// (errors.Is(err, ErrPermissionDenied), MissingPermission) when the caller lacks it, so the SDK now lets it decide.
+func (s *BackupsService) requireClient() error {
 	if s == nil || s.client == nil {
 		return errors.New("forward: backups service is nil")
-	}
-	if s.client.authMode != AuthModeService {
-		return errors.New("forward: backup operations require a service principal")
 	}
 	return nil
 }

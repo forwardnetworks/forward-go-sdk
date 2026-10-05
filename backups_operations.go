@@ -18,10 +18,10 @@ import (
 // routes are not mapped and Forward answers 404 "No endpoint", which the SDK
 // classifies as ErrEndpointNotServed. Backup
 // administration needs the ADMINISTER_SYSTEM system permission, which Forward
-// enforces (403, typed: MissingPermission), so unlike the older Backups methods
-// these do not insist on a service principal. There is NO route to restore a
-// whole cluster; only to restore one snapshot that a backup holds, and to watch
-// and cancel operations.
+// enforces (403, typed: MissingPermission); like every Backups method these do
+// not insist on a particular principal. There is NO route to restore a whole
+// cluster; only to restore one snapshot that a backup holds, and to watch and
+// cancel operations.
 
 // StorageTypeAll names every storage a backup may sit in, for DeleteBackup.
 const StorageTypeAll StorageType = "ALL"

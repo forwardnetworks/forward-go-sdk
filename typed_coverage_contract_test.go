@@ -166,7 +166,7 @@ func TestBrowserSessionAndUnauthenticatedReachability(t *testing.T) {
 // 15398425a69 and stable 67e89c87124). The root paths this test used to
 // assert were never served; the old fake answered them, so the test passed
 // while every real call missed.
-func TestBackupAPIRoutesAndServicePrincipal(t *testing.T) {
+func TestBackupAPIRoutes(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
@@ -232,14 +232,6 @@ func TestBackupAPIRoutesAndServicePrincipal(t *testing.T) {
 	}
 	if _, _, err := client.Backups.UpdateS3Storage(context.Background(), S3StorageSettingsPatch{}); err != nil {
 		t.Fatalf("update s3 storage: %v", err)
-	}
-
-	userClient, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "user", Password: "secret"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := userClient.Backups.GetSettings(context.Background(), StorageTypeS3); err == nil || !strings.Contains(err.Error(), "service principal") {
-		t.Fatalf("user backup error = %v", err)
 	}
 }
 
