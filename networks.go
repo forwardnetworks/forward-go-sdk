@@ -412,3 +412,30 @@ func (s *NetworksService) L7Applications(ctx context.Context) ([]L7Application, 
 	resp, err := s.client.doRequired(req, &out)
 	return out, resp, err
 }
+
+// SecurityZones returns the security zones each device defines, as device name to zone names, for a snapshot (the
+// latest processed one when snapshotID is empty, which sends no parameter so the appserver applies its own default).
+// GET /api/networks/{networkId}/security-zones (SecurityAnalysisController.getSecurityZones; VIEW_SECURITY_ANALYSIS;
+// needs the snapshot to have reached the CREATION stage; on primary 15398425a69 and stable 67e89c87124). Preview: not
+// in the published spec. The zone-to-zone security matrix routes return compressed protobuf and are not modelled.
+func (s *NetworksService) SecurityZones(ctx context.Context, networkID, snapshotID string) (map[string][]string, *Response, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	path := "/api/networks/" + url.PathEscape(networkID) + "/security-zones"
+	if snapshotID = strings.TrimSpace(snapshotID); snapshotID != "" {
+		path += "?" + url.Values{"snapshotId": []string{snapshotID}}.Encode()
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Networks.SecurityZones")
+	zones := map[string][]string{}
+	response, err := s.client.doRequired(req, &zones)
+	if err != nil {
+		return nil, response, err
+	}
+	return zones, response, nil
+}

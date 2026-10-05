@@ -913,6 +913,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Networks.PreviewSnapshotRetention": {
 		{Method: "POST", Route: "/api/networks/{networkId}/snapshotRetentionPolicy/trigger"},
 	},
+	"Networks.SecurityZones": {
+		{Method: "GET", Route: "/api/networks/{networkId}/security-zones"},
+	},
 	"Networks.SetSnapshotRetentionPolicy": {
 		{Method: "PUT", Route: "/api/networks/{networkId}/snapshotRetentionPolicy"},
 	},
