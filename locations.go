@@ -149,6 +149,29 @@ func (s *LocationsService) PatchCluster(ctx context.Context, networkID, location
 	return s.client.Do(req, nil)
 }
 
+// DeleteCluster removes a device cluster from a location; one that is already gone counts as success. A 404 that
+// means the route is not served (ErrEndpointNotServed) is still an error.
+// DELETE /api/networks/{networkId}/locations/{locationId}/clusters/{clusterName} (LocationController.deleteDeviceCluster).
+func (s *LocationsService) DeleteCluster(ctx context.Context, networkID, locationID, clusterName string) (*Response, error) {
+	path, err := s.clusterBase(networkID, locationID)
+	if err != nil {
+		return nil, err
+	}
+	if clusterName = strings.TrimSpace(clusterName); clusterName == "" {
+		return nil, errors.New("forward: cluster name is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path+"/"+url.PathEscape(clusterName), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Locations.DeleteCluster")
+	response, err := s.client.Do(req, nil)
+	if isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed) {
+		return response, nil
+	}
+	return response, err
+}
+
 func (s *LocationsService) base(networkID string) (string, error) {
 	networkID, err := s.client.resolveNetworkID(networkID)
 	if err != nil {

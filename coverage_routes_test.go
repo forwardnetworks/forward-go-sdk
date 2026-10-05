@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 431
+	const minExercised = 439
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -90,6 +90,9 @@ var wireArgOverrides = map[string]map[int]any{
 	"CollectionSchedules.Create":          {2: CollectionScheduleDefinition{Enabled: true, DaysOfTheWeek: []int{1}, Times: []string{"02:00"}}},
 	"CollectionSchedules.Replace":         {3: CollectionScheduleDefinition{Enabled: true, DaysOfTheWeek: []int{1}, Times: []string{"02:00"}}},
 	"Snapshots.Export":                    {2: SnapshotExportOptions{IncludeDevices: []string{"d1"}}, 3: io.Discard},
+	"Integrations.UpdateInfoblox":         {1: "7"},
+	"Integrations.DeleteInfoblox":         {1: "7"},
+	"Webhooks.Update":                     {2: WebhookPatch{Enabled: Ptr(true)}},
 	"Backups.DeleteBackup":                {1: int64(7), 2: StorageTypeAll},
 	"Scorecards.Trends":                   {2: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), 3: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), 4: 30},
 	"Checks.ChecksReport":                 {2: ChecksReportOptions{}, 3: io.Discard},

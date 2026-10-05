@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -247,4 +248,75 @@ func integrationNetworkPath(client *Client, networkID, suffix string) (string, e
 		return "", err
 	}
 	return "/api/networks/" + url.PathEscape(networkID) + suffix, nil
+}
+
+// deleteTolerant sends a DELETE and counts a plain 404 (the thing is already gone) as success. A 404 that means Forward
+// does not serve the route at all (ErrEndpointNotServed) is still an error: nothing was deleted.
+func (s *IntegrationsService) deleteTolerant(ctx context.Context, path, operation string) (*Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, operation)
+	response, err := s.client.Do(req, nil)
+	if isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed) {
+		return response, nil
+	}
+	return response, err
+}
+
+// InfobloxInstanceUpdate changes part of an Infoblox instance. Forward's InfobloxInstanceUpdate carries only these
+// fields: the address of an instance cannot be edited. Password is write-only.
+type InfobloxInstanceUpdate struct {
+	Name     *string `json:"name,omitempty"`
+	Username *string `json:"username,omitempty"`
+	Password *string `json:"password,omitempty"`
+}
+
+// UpdateInfoblox patches one Infoblox instance by its numeric id.
+// PATCH /api/integrations/infoblox/instances/{instanceId} (InfobloxController.updateInstance, MANAGE_INFOBLOX_INTEGRATION; 204).
+func (s *IntegrationsService) UpdateInfoblox(ctx context.Context, instanceID string, patch InfobloxInstanceUpdate) (*Response, error) {
+	path, err := infobloxInstancePath(instanceID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, patch)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Integrations.UpdateInfoblox")
+	return s.client.Do(req, nil)
+}
+
+// DeleteInfoblox removes one Infoblox instance by its numeric id; an instance that is already gone counts as success.
+// DELETE /api/integrations/infoblox/instances/{instanceId} (InfobloxController.deleteInstance, MANAGE_INFOBLOX_INTEGRATION; 204).
+func (s *IntegrationsService) DeleteInfoblox(ctx context.Context, instanceID string) (*Response, error) {
+	path, err := infobloxInstancePath(instanceID)
+	if err != nil {
+		return nil, err
+	}
+	return s.deleteTolerant(ctx, path, "Integrations.DeleteInfoblox")
+}
+
+func infobloxInstancePath(instanceID string) (string, error) {
+	instanceID = strings.TrimSpace(instanceID)
+	if n, err := strconv.Atoi(instanceID); err != nil || n < 0 {
+		return "", errors.New("forward: Infoblox instance id must be the numeric instance id")
+	}
+	return "/api/integrations/infoblox/instances/" + instanceID, nil
+}
+
+// DeleteRapid7 removes a Rapid7 source by name; a source that is already gone counts as success.
+// DELETE /api/networks/{networkId}/rapid7-sources/{sourceName} (EndHostScannerController.deleteRapid7Source,
+// DELETE_COLLECTION_SOURCES; 204).
+func (s *IntegrationsService) DeleteRapid7(ctx context.Context, networkID, name string) (*Response, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, errors.New("forward: Rapid7 source name is required")
+	}
+	path, err := integrationNetworkPath(s.client, networkID, "/rapid7-sources/"+url.PathEscape(name))
+	if err != nil {
+		return nil, err
+	}
+	return s.deleteTolerant(ctx, path, "Integrations.DeleteRapid7")
 }

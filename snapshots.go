@@ -324,6 +324,21 @@ func (s *SnapshotsService) Favorite(ctx context.Context, snapshotID string) (*Re
 	return s.client.Do(req, nil)
 }
 
+// Unfavorite clears a snapshot's favorite flag (Favorite sets it).
+// PATCH /api/snapshots/{snapshotId}?action=unfavorite (SnapshotController.unfavoriteSnapshot).
+func (s *SnapshotsService) Unfavorite(ctx context.Context, snapshotID string) (*Response, error) {
+	path, err := topologySnapshotPath(snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodPatch, path+"?action=unfavorite", nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Snapshots.Unfavorite")
+	return s.client.Do(req, nil)
+}
+
 // Upload imports one or more snapshot ZIP files. The multipart body is
 // streamed, so large snapshots are not buffered in memory by the SDK.
 func (s *SnapshotsService) Upload(

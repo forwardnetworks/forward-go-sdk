@@ -75,3 +75,22 @@ func validateBanner(input CustomBannerRequest) error {
 	}
 	return nil
 }
+
+// Delete removes a custom banner; one that is already gone counts as success. A 404 that means the route is not
+// served (ErrEndpointNotServed) is still an error.
+// DELETE /api/custom-banners/{bannerId} (CustomBannerController.deleteBanner).
+func (s *BannersService) Delete(ctx context.Context, bannerID string) (*Response, error) {
+	if bannerID = strings.TrimSpace(bannerID); bannerID == "" {
+		return nil, errors.New("forward: banner id is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, "/api/custom-banners/"+url.PathEscape(bannerID), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Banners.Delete")
+	response, err := s.client.Do(req, nil)
+	if isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed) {
+		return response, nil
+	}
+	return response, err
+}

@@ -98,11 +98,20 @@ func (s *WebhooksService) Create(ctx context.Context, request WebhookRequest) (*
 // Update patches an existing webhook.
 // WebhookPatch changes part of a webhook. Pointer fields keep "not stated"
 // distinct from "stated as empty" -- disabling a webhook and leaving its state
-// alone are different requests.
+// alone are different requests. The fields mirror Forward's WebhookUpdate
+// (WebhookController.updateWebhook, PATCH /webhooks/{webhookName}). Changing
+// URL, DisableSSLValidation or Credential makes Forward re-test the connection
+// before it answers. Credential replaces the stored one, so it needs both the
+// username and the password.
 type WebhookPatch struct {
-	Description *string `json:"description,omitempty"`
-	URL         *string `json:"url,omitempty"`
-	Enabled     *bool   `json:"enabled,omitempty"`
+	Name                 *string                   `json:"name,omitempty"`
+	Description          *string                   `json:"description,omitempty"`
+	URL                  *string                   `json:"url,omitempty"`
+	DisableSSLValidation *bool                     `json:"disableSslValidation,omitempty"`
+	EventParams          map[string]any            `json:"eventParams,omitempty"`
+	Credential           *WebhookCredentialRequest `json:"credential,omitempty"`
+	Enabled              *bool                     `json:"enabled,omitempty"`
+	Template             json.RawMessage           `json:"template,omitempty"`
 }
 
 func (s *WebhooksService) Update(ctx context.Context, name string, patch WebhookPatch) (*Response, error) {

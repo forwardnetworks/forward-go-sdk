@@ -178,6 +178,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Banners.Create": {
 		{Method: "POST", Route: "/api/custom-banners"},
 	},
+	"Banners.Delete": {
+		{Method: "DELETE", Route: "/api/custom-banners/{bannerId}"},
+	},
 	"Banners.List": {
 		{Method: "GET", Route: "/api/custom-banners"},
 	},
@@ -672,6 +675,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.CreateRapid7": {
 		{Method: "POST", Route: "/api/networks/{networkId}/rapid7-sources"},
 	},
+	"Integrations.DeleteInfoblox": {
+		{Method: "DELETE", Route: "/api/integrations/infoblox/instances/{instanceId}"},
+	},
+	"Integrations.DeleteRapid7": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/rapid7-sources/{sourceName}"},
+	},
 	"Integrations.DeleteServiceNow": {
 		{Method: "DELETE", Route: "/api/integrations/servicenow"},
 	},
@@ -699,6 +708,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.ServiceNowCMDBSchema": {
 		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
 	},
+	"Integrations.UpdateInfoblox": {
+		{Method: "PATCH", Route: "/api/integrations/infoblox/instances/{instanceId}"},
+	},
 	"Integrations.UpdateRapid7": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/rapid7-sources/{sourceName}"},
 	},
@@ -711,8 +723,14 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"JumpServers.CreateWithPassword": {
 		{Method: "POST", Route: "/api/networks/{networkId}/jumpServers"},
 	},
+	"JumpServers.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/jumpServers/{jumpServerId}"},
+	},
 	"JumpServers.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/jumpServers"},
+	},
+	"JumpServers.Update": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/jumpServers/{jumpServerId}"},
 	},
 	"Licensing.Apply": {
 		{Method: "POST", Route: "/api/licenses"},
@@ -755,6 +773,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Locations.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/locations/{locationId}"},
+	},
+	"Locations.DeleteCluster": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}"},
 	},
 	"Locations.Get": {
 		{Method: "GET", Route: "/api/networks/{networkId}/locations/{locationId}"},
@@ -1144,6 +1165,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Snapshots.StartUploadOperation": {
 		{Method: "POST", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.Unfavorite": {
+		{Method: "PATCH", Route: "/api/snapshots/{snapshotId}"},
 	},
 	"Snapshots.Upload": {
 		{Method: "POST", Route: "/api/networks/{networkId}/snapshots"},

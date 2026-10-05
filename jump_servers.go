@@ -133,3 +133,66 @@ func validateJumpValue(value string) error {
 	}
 	return nil
 }
+
+// JumpServerUpdate changes part of a jump server; an unset field is left alone. Password, SSHKey and SSHCert are
+// write-only: Forward never returns them and the SDK never logs them. Shape of Forward's JumpServerUpdate
+// (NetworkSetupController.editJumpServer, EDIT_JUMP_SERVERS).
+type JumpServerUpdate struct {
+	Host                         *string `json:"host,omitempty"`
+	Port                         *int    `json:"port,omitempty"`
+	Username                     *string `json:"username,omitempty"`
+	Password                     *string `json:"password,omitempty"`
+	SSHKey                       *string `json:"sshKey,omitempty"`
+	SSHCert                      *string `json:"sshCert,omitempty"`
+	SupportsPortForwarding       *bool   `json:"supportsPortForwarding,omitempty"`
+	VRF                          *string `json:"vrf,omitempty"`
+	AuthenticationTimeoutSeconds *int    `json:"authenticationTimeoutSeconds,omitempty"`
+	MaxSessions                  *int    `json:"maxSessions,omitempty"`
+	MaxStartups                  *int    `json:"maxStartups,omitempty"`
+}
+
+// Update patches one jump server. A change makes Forward re-handle the devices that go through it.
+// PATCH /api/networks/{networkId}/jumpServers/{jumpServerId} (NetworkSetupController.editJumpServer).
+func (s *JumpServersService) Update(ctx context.Context, networkID, jumpServerID string, patch JumpServerUpdate) (*Response, error) {
+	path, err := s.jumpServerPath(networkID, jumpServerID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, patch)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "JumpServers.Update")
+	return s.client.Do(req, nil)
+}
+
+// Delete removes one jump server; one that is already gone counts as success. A 404 that means the route is not
+// served (ErrEndpointNotServed) is still an error.
+// DELETE /api/networks/{networkId}/jumpServers/{jumpServerId} (NetworkSetupController.deleteJumpServer).
+func (s *JumpServersService) Delete(ctx context.Context, networkID, jumpServerID string) (*Response, error) {
+	path, err := s.jumpServerPath(networkID, jumpServerID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "JumpServers.Delete")
+	response, err := s.client.Do(req, nil)
+	if isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed) {
+		return response, nil
+	}
+	return response, err
+}
+
+func (s *JumpServersService) jumpServerPath(networkID, jumpServerID string) (string, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return "", err
+	}
+	if jumpServerID = strings.TrimSpace(jumpServerID); jumpServerID == "" {
+		return "", errors.New("forward: jump server id is required")
+	}
+	return "/api/networks/" + url.PathEscape(networkID) + "/jumpServers/" + url.PathEscape(jumpServerID), nil
+}
