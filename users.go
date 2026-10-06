@@ -150,6 +150,11 @@ func (s *UsersService) DeleteToken(ctx context.Context, tokenName string) (*Resp
 	return response, err
 }
 
+// CreateToken mints an API token for the signed-in user. POST /api/users/current/tokens (UserController) requires the
+// user's password even on an authenticated session: confirmed live (v1.0.0-261005), where an impersonated cookie session
+// sending no password was answered 400 "Required request parameter 'password' ... is not present" and created nothing.
+// So Client.ImpersonatedClient cannot mint a token for a user whose password nobody holds; that needs the user's own
+// stored password or a mint on the platform side.
 func (s *UsersService) CreateToken(ctx context.Context, tokenName, password string) (*UserTokenRegistration, *Response, error) {
 	tokenName, password = strings.TrimSpace(tokenName), strings.TrimSpace(password)
 	if tokenName == "" || password == "" {

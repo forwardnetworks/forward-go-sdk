@@ -354,7 +354,8 @@ func (s *VersionService) Reachable(ctx context.Context) (bool, *Response, error)
 // Password}) whose user may impersonate (Forward's admin impersonation route). It logs in on a private cookie jar,
 // impersonates, and returns a client carrying only the impersonated session's cookies: c is not changed, and the
 // returned client holds no password, so it cannot sign back in as the administrator. The session ends when Forward
-// expires it; build a new client then.
+// expires it; build a new client then. It does not give a token: Forward requires the user's own password to mint one,
+// even on an impersonated session (see UsersService.CreateToken).
 //
 //	admin, _ := forward.NewClient(forward.Config{BaseURL: u, Username: "admin", Password: pw, AuthMode: forward.AuthModeBrowser})
 //	as, err := admin.ImpersonatedClient(ctx, "2342")
