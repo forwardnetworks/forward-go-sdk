@@ -41,7 +41,9 @@ type ClientPackage struct {
 // client package of packageType for the authenticated user into w and
 // reports its name, size and digest. The client's request timeout does not
 // apply -- a headless collector is ~225 MB -- so bound the download with ctx.
-// Nothing is written to w unless Forward answers 2xx.
+// Nothing is written to w unless Forward answers 2xx. It needs a user login: a collector's own credentials are
+// answered 403 {"message":"Non-collector user required"} (seen live on fwd.app, where a user login got the install4j
+// installer).
 func (s *SoftwareCentralService) DownloadClientPackage(ctx context.Context, packageType ClientPackageType, w io.Writer) (*ClientPackage, *Response, error) {
 	if w == nil {
 		return nil, nil, errors.New("forward: download destination is nil")

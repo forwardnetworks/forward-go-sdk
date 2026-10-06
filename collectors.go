@@ -156,6 +156,9 @@ func (s *CollectorsService) Attachment(ctx context.Context, networkID string) (*
 	return out, response, err
 }
 
+// Attach attaches the collector with the given username to a network. PUT /api/networks/{networkId}/collector
+// (JSON {"username": ...}). The username is the collector's (for example "collector-7ddceb66"), not its name or id.
+// Check the result with Attachment, which reads the same route.
 func (s *CollectorsService) Attach(ctx context.Context, networkID string, input CollectorAttachmentRequest) (*Response, error) {
 	input.Username = strings.TrimSpace(input.Username)
 	if input.Username == "" {
