@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"regexp"
 	"strings"
@@ -346,4 +347,43 @@ func (s *VersionService) Reachable(ctx context.Context) (bool, *Response, error)
 	req = markOperation(req, "Version.Reachable")
 	response, err := s.client.doAccepted(req, nil, true, func(int) bool { return true })
 	return err == nil, response, err
+}
+
+// ImpersonatedClient returns a new client acting as targetUserID, for platforms that own an organization's automation
+// user and never hold a secret for it. c must be a browser-mode client (Config{AuthMode: AuthModeBrowser, Username,
+// Password}) whose user may impersonate (Forward's admin impersonation route). It logs in on a private cookie jar,
+// impersonates, and returns a client carrying only the impersonated session's cookies: c is not changed, and the
+// returned client holds no password, so it cannot sign back in as the administrator. The session ends when Forward
+// expires it; build a new client then.
+//
+//	admin, _ := forward.NewClient(forward.Config{BaseURL: u, Username: "admin", Password: pw, AuthMode: forward.AuthModeBrowser})
+//	as, err := admin.ImpersonatedClient(ctx, "2342")
+func (c *Client) ImpersonatedClient(ctx context.Context, targetUserID string) (*Client, error) {
+	if c == nil || c.httpClient == nil {
+		return nil, errors.New("forward: client is nil")
+	}
+	if c.authMode != AuthModeBrowser {
+		return nil, errors.New("forward: impersonation requires browser authentication mode")
+	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, fmt.Errorf("forward: create cookie jar: %w", err)
+	}
+	httpClient := *c.httpClient
+	httpClient.Jar = jar
+	admin := *c
+	admin.httpClient = &httpClient
+	admin.csrf = &browserCSRFState{}
+	admin.bindServices()
+	if _, err := admin.Browser.Login(ctx); err != nil {
+		return nil, fmt.Errorf("forward: sign in to impersonate: %w", err)
+	}
+	if _, _, err := admin.Browser.Impersonate(ctx, targetUserID); err != nil {
+		return nil, err
+	}
+	as := admin
+	as.username, as.password = "", ""
+	as.csrf = &browserCSRFState{}
+	as.bindServices()
+	return &as, nil
 }

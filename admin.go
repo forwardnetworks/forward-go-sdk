@@ -251,7 +251,7 @@ func (s *AdminService) requireService() error {
 		return errors.New("forward: admin service is nil")
 	}
 	if s.client.authMode != AuthModeService {
-		return errors.New("forward: admin operation requires a service principal")
+		return errors.New("forward: admin operations require a service principal: build the client with Config{AuthMode: AuthModeService}")
 	}
 	return nil
 }

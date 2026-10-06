@@ -222,3 +222,44 @@ func TestBrowserSAMLAssertionConsumerRequiresARegistration(t *testing.T) {
 		t.Fatal("an assertion without a registration id was accepted")
 	}
 }
+
+// ImpersonatedClient must give back a client that writes as the target, leave the administrator's own client signed in as
+// the administrator, and carry no password that could sign back in as the administrator.
+func TestImpersonatedClientActsAsTargetWithoutChangingTheAdmin(t *testing.T) {
+	fake := newFakeForwardSession()
+	server := httptest.NewServer(fake)
+	defer server.Close()
+	admin, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "forward", Password: "pw", AuthMode: AuthModeBrowser})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+
+	as, err := admin.ImpersonatedClient(ctx, "2342")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if as.password != "" || as.username != "" {
+		t.Error("the impersonated client must not carry the administrator's credential")
+	}
+	if len(admin.Browser.Cookies()) != 0 {
+		t.Error("the administrator's own client must not have been logged in or changed")
+	}
+	req, err := as.newScopedRequest(ctx, http.MethodPost, "/api/networks?name=probe", nil, pathScopeAPI, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.Do(req, nil); err != nil {
+		t.Fatalf("write as the impersonated user: %v", err)
+	}
+	if len(fake.writes) != 1 || fake.writes[0] != "user-2342" {
+		t.Errorf("writes = %v, want one as user-2342", fake.writes)
+	}
+	if _, err := admin.ImpersonatedClient(ctx, ""); err == nil {
+		t.Error("an empty target user must be refused")
+	}
+	service, _ := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "svc", Password: "pw", AuthMode: AuthModeService})
+	if _, err := service.ImpersonatedClient(ctx, "2342"); err == nil {
+		t.Error("only a browser-mode client may impersonate")
+	}
+}
