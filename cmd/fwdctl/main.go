@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -55,9 +56,13 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			insecure := flags.insecure
+			if !cmd.Flags().Changed("insecure") {
+				insecure = isLoopbackURL(flags.baseURL)
+			}
 			c, err := forward.NewClient(forward.Config{
 				BaseURL: flags.baseURL, Username: os.Getenv("FWD_USER"), Password: os.Getenv("FWD_PASS"),
-				NetworkID: flags.network, InsecureSkipVerify: flags.insecure, UserAgent: "fwdctl",
+				NetworkID: flags.network, InsecureSkipVerify: insecure, UserAgent: "fwdctl",
 			})
 			if err != nil {
 				return err
@@ -73,7 +78,7 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().StringVar(&flags.baseURL, "url", envOr("FWD_HOST", "https://localhost:8443"),
 		"Forward instance (env FWD_HOST)")
 	root.PersistentFlags().StringVar(&flags.network, "network", os.Getenv("FWD_NETWORK"), "network id (env FWD_NETWORK)")
-	root.PersistentFlags().BoolVar(&flags.insecure, "insecure", true, "skip TLS verification for a self-signed dev Forward")
+	root.PersistentFlags().BoolVar(&flags.insecure, "insecure", false, "skip TLS verification (default: only when --url is localhost, for a self-signed dev Forward)")
 
 	root.AddCommand(
 		newCollectorsCmd(), newCollectorCmd(), newDevicesCmd(), newLocationsCmd(), newCloudAccountsCmd(), newJumpServersCmd(),
@@ -94,4 +99,17 @@ func dump(v any) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+// isLoopbackURL reports whether raw points at this machine, the only place a self-signed certificate is expected.
+func isLoopbackURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	switch u.Hostname() {
+	case "localhost", "127.0.0.1", "::1":
+		return true
+	}
+	return false
 }
