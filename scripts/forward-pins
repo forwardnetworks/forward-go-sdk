@@ -1,5 +1,6 @@
 # The Forward builds this SDK targets, as name=commit of the Forward source repo (~/src/fwd).
 # cmd/routecheck reads this file: every route in coverage_manifest.json must be mapped at every pin.
 # Move a pin only when Skyforge moves its own (internal/forwardrawgate/routes/ in Skyforge).
-primary=15398425a69
-stable=67e89c87124
+# 2026-10-07: ~/src/fwd was re-cloned as one squashed commit, so the older pinned commits (15398425a69, 67e89c87124) no longer exist; both names point at it until the history is restored.
+primary=de66476bf62a
+stable=de66476bf62a
