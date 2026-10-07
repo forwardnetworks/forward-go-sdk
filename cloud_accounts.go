@@ -390,3 +390,50 @@ func (s *CloudAccountsService) Get(ctx context.Context, networkID, name string) 
 	}
 	return nil, resp, fmt.Errorf("%w: %s", ErrCloudAccountNotFound, name)
 }
+
+// CloudAccountPatch is a partial update of a cloud account, with presence semantics: a nil pointer, nil map or nil slice
+// pointer is left out of the body, and Forward leaves that property unchanged (UpdateCloudAccountRequest takes every
+// property as a JsonProp, absent meaning unchanged). Use it instead of CloudAccountRequest for PATCH, whose Collect
+// always serialises and so would switch collection off.
+//
+// Type is required: Forward picks the update class from it ("AWS", "AZURE", "GCP", "ALKIRA", "IBM_CLOUD"). The AWS
+// fields are the ones modelled; Regions maps a region to its connectivity test instant in epoch milliseconds, and
+// Forward rejects a null instant and an empty regions map, so an empty Regions is left out rather than sent.
+// AssumeRoleInfos is a pointer so that a non-nil empty list is sent (it clears the roles) while nil is omitted; account
+// ids in it must be unique. Verified against UpdateCloudAccountRequest and UpdateAwsAccountRequest in the appserver
+// (CloudAccountController.updateCloudAccount; MANAGE_COLLECTION_SOURCES).
+type CloudAccountPatch struct {
+	Type          string  `json:"type"`
+	Name          *string `json:"name,omitempty"`
+	Collect       *bool   `json:"collect,omitempty"`
+	CollectorID   *string `json:"collectorId,omitempty"`
+	ProxyServerID *string `json:"proxyServerId,omitempty"`
+
+	Concurrency              *int64 `json:"concurrency,omitempty"`
+	ConnectionTimeoutSeconds *int64 `json:"connectionTimeoutSeconds,omitempty"`
+	RequestTimeoutSeconds    *int64 `json:"requestTimeoutSeconds,omitempty"`
+
+	Regions               map[string]int64     `json:"regions,omitempty"`
+	RegionToProxyServerID map[string]string    `json:"regionToProxyServerId,omitempty"`
+	AssumeRoleInfos       *[]AWSAssumeRoleInfo `json:"assumeRoleInfos,omitempty"`
+}
+
+// Patch updates part of a cloud account and returns it. PATCH /api/networks/{networkId}/cloudAccounts/{accountName}.
+// Only the properties set on patch are sent; see CloudAccountPatch.
+func (s *CloudAccountsService) Patch(ctx context.Context, networkID, name string, patch CloudAccountPatch) (*CloudAccount, *Response, error) {
+	if strings.TrimSpace(patch.Type) == "" {
+		return nil, nil, errors.New("forward: cloud account patch type is required")
+	}
+	path, err := cloudAccountPath(networkID, name)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, path, patch)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "CloudAccounts.Patch")
+	account := new(CloudAccount)
+	resp, err := s.client.Do(req, account)
+	return account, resp, err
+}

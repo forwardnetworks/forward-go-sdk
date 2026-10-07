@@ -303,6 +303,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"CloudAccounts.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
 	},
+	"CloudAccounts.Patch": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}"},
+	},
 	"CloudAccounts.Test": {
 		{Method: "POST", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}/test"},
 	},
