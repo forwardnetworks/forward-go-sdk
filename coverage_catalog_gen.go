@@ -723,6 +723,15 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.UpdateRapid7": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/rapid7-sources/{sourceName}"},
 	},
+	"Jobs.Cancel": {
+		{Method: "DELETE", Route: "/api/jobs/{cancelLink}"},
+	},
+	"Jobs.ListActive": {
+		{Method: "GET", Route: "/api/jobs/active"},
+	},
+	"Jobs.ListCompleted": {
+		{Method: "GET", Route: "/api/jobs/completed"},
+	},
 	"JumpServers.Create": {
 		{Method: "POST", Route: "/api/networks/{networkId}/jumpServers"},
 	},
