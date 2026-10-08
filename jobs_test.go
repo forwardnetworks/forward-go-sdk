@@ -104,14 +104,18 @@ func TestJobsListCompletedParsesState(t *testing.T) {
 	}
 }
 
-// TestJobsCancelSendsLinkVerbatim pins Cancel to DELETE /api/jobs/{cancelLink}, path-escaped, with the
-// cancelLink taken verbatim from an ActiveJobInfo row -- the SDK must never try to decode or reconstruct it.
+// TestJobsCancelSendsLinkVerbatim pins Cancel to DELETE /api/jobs/{cancelLink} with the cancelLink reaching the
+// wire byte-for-byte unchanged. A real cancelLink is ALREADY percent-encoded by Forward for direct path
+// insertion (Forward's own GUI does exactly `/jobs/${cancelLink}`, no further encoding) -- it contains literal
+// "%2F"/"%3D" text, not raw "/" or "=". r.URL.Path is decoded by net/http and would read the same either way, so
+// this asserts on r.URL.EscapedPath() (and the raw RequestURI), the only way to catch the SDK re-escaping an
+// already-escaped "%" into "%25..." and corrupting it (Forward then answers 400, not the test's 200).
 func TestJobsCancelSendsLinkVerbatim(t *testing.T) {
 	t.Parallel()
-	const link = "QkFTRTY0LUpPQi1JRA=="
-	var gotPath, gotMethod string
+	const link = "IgUI%2F2wQGg%3D%3D" // a real shape: base64 bytes containing '/' and '==', pre-escaped by Forward
+	var gotEscapedPath, gotRequestURI, gotMethod string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath, gotMethod = r.URL.Path, r.Method
+		gotEscapedPath, gotRequestURI, gotMethod = r.URL.EscapedPath(), r.RequestURI, r.Method
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -125,8 +129,11 @@ func TestJobsCancelSendsLinkVerbatim(t *testing.T) {
 	if gotMethod != http.MethodDelete {
 		t.Fatalf("method = %q, want DELETE", gotMethod)
 	}
-	if want := "/api/jobs/" + link; gotPath != want {
-		t.Fatalf("path = %q, want %q", gotPath, want)
+	if want := "/api/jobs/" + link; gotEscapedPath != want {
+		t.Fatalf("wire path = %q, want %q (cancelLink must reach Forward byte-for-byte, not re-escaped)", gotEscapedPath, want)
+	}
+	if want := "/api/jobs/" + link; gotRequestURI != want {
+		t.Fatalf("RequestURI = %q, want %q", gotRequestURI, want)
 	}
 }
 

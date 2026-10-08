@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
@@ -81,13 +80,19 @@ func (s *JobsService) ListCompleted(ctx context.Context) ([]CompletedJobInfo, *R
 // CancelLink field. It stops the tracked execution; whether the underlying worker thread is interrupted
 // immediately or only once it reaches a checkpoint is up to that job's own implementation.
 //
+// cancelLink is already percent-encoded by Forward for direct insertion into the path (Forward's own GUI
+// builds the URL as a bare `/jobs/${cancelLink}` template, with no further encoding) -- it is NOT raw base64,
+// even though it is base64 underneath. Escaping it again here (as a normal path segment would need) corrupts
+// it: a real cancelLink contains literal "%2F"/"%3D" text, and re-escaping that "%" turns it into "%25..." and
+// Forward answers 400 Bad Request, not 404. So this is deliberately NOT url.PathEscape(cancelLink).
+//
 // DELETE /api/jobs/{cancelLink} (JobsController.cancelJob). Returns an error wrapping ErrEndpointNotServed-style
 // "not found" semantics if the job already finished or was already canceled (CANCELATION_STATUS_NOT_FOUND -> 404).
 func (s *JobsService) Cancel(ctx context.Context, cancelLink string) (*Response, error) {
 	if cancelLink = strings.TrimSpace(cancelLink); cancelLink == "" {
 		return nil, errors.New("forward: cancelLink is required")
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodDelete, "/api/jobs/"+url.PathEscape(cancelLink), nil)
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, "/api/jobs/"+cancelLink, nil)
 	if err != nil {
 		return nil, err
 	}
