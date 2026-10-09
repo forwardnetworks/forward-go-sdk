@@ -27,7 +27,11 @@ type ClassicDeviceRequest struct {
 	JumpServerID     string
 	Collect          *bool
 	Note             string
-	Fields           map[string]any
+	// CollectorID pins the device to one collector (wire field collectorId, a
+	// DeviceSetupMeta property). Empty sends nothing, so the network's default
+	// collector applies. Preview: the appserver hides it from the published spec.
+	CollectorID string
+	Fields      map[string]any
 }
 
 // MarshalJSON preserves new appliance fields without weakening the common
@@ -57,6 +61,9 @@ func (r ClassicDeviceRequest) MarshalJSON() ([]byte, error) {
 	if r.Collect != nil {
 		fields["collect"] = *r.Collect
 	}
+	if r.CollectorID != "" {
+		fields["collectorId"] = r.CollectorID
+	}
 	return json.Marshal(fields)
 }
 
@@ -71,6 +78,11 @@ type ClassicDevice struct {
 	HTTPCredentialID string `json:"httpCredentialId,omitempty"`
 	Collect          *bool  `json:"collect,omitempty"`
 	Note             string `json:"note,omitempty"`
+	// CollectorID is the collector this device is pinned to (collectorId in
+	// DeviceSetupMeta, unwrapped into the device object); empty when the read
+	// did not state one, meaning the network's default collector. The appserver
+	// serialises it as "C<n>" (CollectorId's @JsonValue) and accepts "C<n>" or "<n>".
+	CollectorID Identifier `json:"collectorId,omitempty"`
 	// EnableSNMPCollection and SNMPCredentialID say whether Forward polls the device over SNMP, and with which credential -- whether
 	// performance data can exist for it at all. EnableSNMPCollection is nil when the read did not state it.
 	EnableSNMPCollection *bool  `json:"enableSnmpCollection,omitempty"`
@@ -110,6 +122,9 @@ type ClassicDeviceBatchItem struct {
 	// single-device path, which has carried it since the client was written;
 	// this only closes the gap on the batch path Skyforge actually uses.
 	Collect *bool `json:"collect,omitempty"`
+	// CollectorID pins the device to one collector; empty sends nothing, which
+	// leaves the device's current collector alone (see ClassicDeviceRequest).
+	CollectorID string `json:"collectorId,omitempty"`
 }
 
 func (s *ClassicDevicesService) PutBatch(ctx context.Context, networkID string, devices []ClassicDeviceBatchItem) (*Response, error) {

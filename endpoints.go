@@ -31,6 +31,9 @@ type Endpoint struct {
 	DisableSSLValidation *bool  `json:"disableSslValidation,omitempty"`
 	Collect              *bool  `json:"collect,omitempty"`
 	Note                 string `json:"note,omitempty"`
+	// CollectorID pins the endpoint to one collector (collectorId on every New*NetworkEndpoint; hidden from the published spec, so Preview).
+	// Forward writes it "C<n>" and accepts "C<n>" or "<n>". Empty sends nothing, so the network's default collector applies.
+	CollectorID Identifier `json:"collectorId,omitempty"`
 }
 
 // EndpointPatch changes the stated parts of one endpoint; nil fields are left alone. Protocol and JumpServerID apply to CLI endpoints
@@ -42,6 +45,8 @@ type EndpointPatch struct {
 	ProfileID    *string `json:"profileId,omitempty"`
 	JumpServerID *string `json:"jumpServerId,omitempty"`
 	Collect      *bool   `json:"collect,omitempty"`
+	// CollectorID moves the endpoint to another collector; nil leaves it alone.
+	CollectorID *string `json:"collectorId,omitempty"`
 }
 
 // endpointBody is the create body of one endpoint for endpointType. Forward binds each type to its own class
@@ -72,8 +77,9 @@ func endpointBody(endpointType string, e Endpoint) (any, error) {
 			FullCollect  bool   `json:"fullCollectionLog,omitempty"`
 			LargeRTT     bool   `json:"largeRtt,omitempty"`
 			Collect      *bool  `json:"collect,omitempty"`
+			CollectorID  string `json:"collectorId,omitempty"`
 			Note         string `json:"note,omitempty"`
-		}{endpointType, e.Name, e.Host, e.Port, e.Protocol, e.ProfileID, e.CredentialID, e.JumpServerID, e.FullCollect, e.LargeRTT, e.Collect, e.Note}, nil
+		}{endpointType, e.Name, e.Host, e.Port, e.Protocol, e.ProfileID, e.CredentialID, e.JumpServerID, e.FullCollect, e.LargeRTT, e.Collect, string(e.CollectorID), e.Note}, nil
 	case "SNMP", "HTTP":
 		switch {
 		case e.Protocol != "":
@@ -96,8 +102,9 @@ func endpointBody(endpointType string, e Endpoint) (any, error) {
 				CredentialID string `json:"credentialId,omitempty"`
 				FullCollect  bool   `json:"fullCollectionLog,omitempty"`
 				Collect      *bool  `json:"collect,omitempty"`
+				CollectorID  string `json:"collectorId,omitempty"`
 				Note         string `json:"note,omitempty"`
-			}{endpointType, e.Name, e.Host, e.Port, e.ProfileID, e.CredentialID, e.FullCollect, e.Collect, e.Note}, nil
+			}{endpointType, e.Name, e.Host, e.Port, e.ProfileID, e.CredentialID, e.FullCollect, e.Collect, string(e.CollectorID), e.Note}, nil
 		}
 		if e.FullCollect {
 			return nil, notFor("fullCollectionLog")
@@ -111,8 +118,9 @@ func endpointBody(endpointType string, e Endpoint) (any, error) {
 			CredentialID         string `json:"credentialId,omitempty"`
 			DisableSSLValidation *bool  `json:"disableSslValidation,omitempty"`
 			Collect              *bool  `json:"collect,omitempty"`
+			CollectorID          string `json:"collectorId,omitempty"`
 			Note                 string `json:"note,omitempty"`
-		}{endpointType, e.Name, e.Host, e.Port, e.ProfileID, e.CredentialID, e.DisableSSLValidation, e.Collect, e.Note}, nil
+		}{endpointType, e.Name, e.Host, e.Port, e.ProfileID, e.CredentialID, e.DisableSSLValidation, e.Collect, string(e.CollectorID), e.Note}, nil
 	default:
 		return nil, fmt.Errorf("forward: endpoint type must be CLI, SNMP or HTTP, not %q", endpointType)
 	}
