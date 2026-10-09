@@ -274,6 +274,9 @@ type ClassicDevicePatch struct {
 	HTTPCredentialID *string `json:"httpCredentialId,omitempty"`
 	Collect          *bool   `json:"collect,omitempty"`
 	Note             *string `json:"note,omitempty"`
+	// CollectorID moves the device to another collector (ClassicDevicePatch binds
+	// collectorId; hidden from the published spec, so Preview). nil leaves it alone.
+	CollectorID *string `json:"collectorId,omitempty"`
 }
 
 // Patch updates only the fields the patch states.

@@ -94,3 +94,15 @@ func TestEndpointBodiesCarryCollectorIDOnlyWhenSet(t *testing.T) {
 		t.Fatalf("empty patch body = %s, want {}", b)
 	}
 }
+
+// Moving a device between collectors is a PATCH; an unstated CollectorID must
+// not appear, or every other patch would assert a collector on the device.
+func TestClassicDevicePatchSendsCollectorIDOnlyWhenSet(t *testing.T) {
+	id := "C3"
+	if b, _ := json.Marshal(ClassicDevicePatch{CollectorID: &id}); string(b) != `{"collectorId":"C3"}` {
+		t.Fatalf("patch body = %s", b)
+	}
+	if b, _ := json.Marshal(ClassicDevicePatch{}); string(b) != `{}` {
+		t.Fatalf("empty patch body = %s, want {}", b)
+	}
+}
