@@ -265,6 +265,12 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	if path == "" && apiErr.Response.Request != nil && apiErr.Response.Request.URL != nil {
 		path = apiErr.Response.Request.URL.Path
 	}
+	// The appserver's apiUrl is RequestUtils.getRequestString: the URI WITH its query string
+	// ("/api/collector-tasks?networkId=5&type=NETWORK_COLLECTION"), so the routes below must be
+	// matched on the path alone or no real response ever equals one.
+	if i := strings.IndexByte(path, '?'); i >= 0 {
+		path = path[:i]
+	}
 	method := apiErr.Method
 	if method == "" && apiErr.Response.Request != nil {
 		method = apiErr.Response.Request.Method
