@@ -43,8 +43,17 @@ type CollectorRegistration struct {
 	AuthorizationKey string     `json:"authorizationKey"`
 }
 
+// Identity is the collector's own credential, for collector-authenticated calls
+// such as Performance.UploadWithIdentity. AuthorizationKey of the identity is the
+// collector PASSWORD: Forward's authorizationKey is the whole installation key
+// ("collector-x:password", or the V3 base64), so the password is decoded out of
+// it. A value that is not a recognisable key is passed through unchanged.
 func (r CollectorRegistration) Identity() CollectorIdentity {
-	return CollectorIdentity{Username: strings.TrimSpace(r.Username), AuthorizationKey: r.AuthorizationKey}
+	password := r.AuthorizationKey
+	if key, err := ParseCollectorAuthKey(r.AuthorizationKey); err == nil {
+		password = key.Password
+	}
+	return CollectorIdentity{Username: strings.TrimSpace(r.Username), AuthorizationKey: password}
 }
 
 // CollectorAttachment reports whether a Collector is attached to a network.

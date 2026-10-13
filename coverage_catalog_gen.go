@@ -404,6 +404,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Collectors.Register": {
 		{Method: "POST", Route: "/api/collectors"},
 	},
+	"Collectors.ResetKey": {
+		{Method: "POST", Route: "/api/orgs/current/collectors/resetPassword"},
+	},
 	"Collectors.SetPerformanceCollection": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/performance/settings"},
 	},
