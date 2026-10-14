@@ -345,9 +345,16 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	if status == http.StatusNotFound && apiErr.Reason == "" && isNoEndpointMessage(apiErr.Message, method) {
 		return ErrorKindEndpointNotServed
 	}
+	// The words are matched in the message, not the whole body: the body carries the appserver's apiUrl, and
+	// "/api/networks/12/aws-cap-credentials/X" supplies "network" to any "X not found", so a missing child of a
+	// network read as a missing network. The body is the fallback only when there is no message to read.
+	notFoundDetail := detail
+	if apiErr.Message != "" {
+		notFoundDetail = normalizedErrorDetail(apiErr.Code, apiErr.Reason, apiErr.Message)
+	}
 	if status == http.StatusNotFound &&
-		(containsWords(detail, "network", "not", "found") ||
-			containsWords(detail, "network", "does", "not", "exist") ||
+		(containsWords(notFoundDetail, "network", "not", "found") ||
+			containsWords(notFoundDetail, "network", "does", "not", "exist") ||
 			isNetworkResourcePath(path)) {
 		return ErrorKindNetworkNotFound
 	}

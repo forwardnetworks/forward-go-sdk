@@ -300,6 +300,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"CloudAccounts.Get": {
 		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
 	},
+	"CloudAccounts.GetAWSCapCredential": {
+		{Method: "GET", Route: "/api/networks/{networkId}/aws-cap-credentials/{credentialId}"},
+	},
 	"CloudAccounts.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
 	},
