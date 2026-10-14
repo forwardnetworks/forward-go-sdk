@@ -23,7 +23,7 @@ func TestGetAWSCapCredentialDropsTheClientCertificate(t *testing.T) {
 		if r.Method != http.MethodGet || r.URL.EscapedPath() != "/api/networks/net-1/aws-cap-credentials/cred%2F7" {
 			t.Errorf("request = %s %s", r.Method, r.URL.EscapedPath())
 		}
-		_, _ = io.WriteString(w, `{"id":"cred/7","baseCapServerUrl":"https://cap.example.mil","clientCertificateBase64":"`+capSecret+`","certificateAuthorityBase64":"Q0EtYnl0ZXM="}`)
+		_, _ = io.WriteString(w, `{"id":"cred/7","baseCapServerUrl":"https://capAcct.example.mil","clientCertificateBase64":"`+capSecret+`","certificateAuthorityBase64":"Q0EtYnl0ZXM="}`)
 	}))
 	defer server.Close()
 
@@ -31,7 +31,7 @@ func TestGetAWSCapCredentialDropsTheClientCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cred.ID != "cred/7" || cred.BaseCapServerURL != "https://cap.example.mil" || !cred.HasCertificateAuthority {
+	if cred.ID != "cred/7" || cred.BaseCapServerURL != "https://capAcct.example.mil" || !cred.HasCertificateAuthority {
 		t.Fatalf("credential = %+v", cred)
 	}
 	encoded, _ := json.Marshal(cred)
@@ -51,7 +51,7 @@ func TestGetAWSCapCredentialWithoutCAAndOnRefusal(t *testing.T) {
 			_, _ = io.WriteString(w, `{"message":"Missing permission: NetworkOperation.VIEW_DEVICE_CREDENTIALS"}`)
 			return
 		}
-		_, _ = io.WriteString(w, `{"id":"c","baseCapServerUrl":"https://cap.example.mil","clientCertificateBase64":"x"}`)
+		_, _ = io.WriteString(w, `{"id":"c","baseCapServerUrl":"https://capAcct.example.mil","clientCertificateBase64":"x"}`)
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
@@ -93,5 +93,75 @@ func TestMissingChildOfANetworkIsNotAMissingNetwork(t *testing.T) {
 	}
 	if err := missing(`{"apiUrl":"/api/networks/12/aws-cap-credentials/CAP-9","httpMethod":"GET","message":"Network 12 not found"}`); !errors.Is(err, ErrNetworkNotFound) {
 		t.Fatalf("a message naming the network must still classify as a missing network: %v", err)
+	}
+}
+
+// A CAP account is recognised from typed fields, so a caller no longer parses
+// Raw. The embedded certificate-bearing awsCapCredential object has no field
+// (it stays reachable only through Raw), and a plain assume-role account must
+// not read as CAP.
+func TestCloudAccountCarriesTheCAPFields(t *testing.T) {
+	var capAcct, plain CloudAccount
+	if err := json.Unmarshal([]byte(`{"type":"AWS","name":"gov","awsCapCredentialId":"cap-1","awsC2SAccountInfos":[{"accountId":"111122223333","accountRole":"Auditor"}]}`), &capAcct); err != nil {
+		t.Fatal(err)
+	}
+	if capAcct.AWSCapCredentialID != "cap-1" || len(capAcct.AWSC2SAccountInfos) != 1 || capAcct.AWSC2SAccountInfos[0] != (AWSC2SAccountInfo{AccountID: "111122223333", AccountRole: "Auditor"}) || !capAcct.HasCAPCredential() {
+		t.Fatalf("CAP account decoded wrong: %+v", capAcct)
+	}
+	if err := json.Unmarshal([]byte(`{"type":"AWS","name":"main","assumeRoleInfos":[{"accountId":"1","enabled":true}]}`), &plain); err != nil {
+		t.Fatal(err)
+	}
+	if plain.HasCAPCredential() || plain.AWSCapCredentialID != "" || plain.AWSC2SAccountInfos != nil {
+		t.Fatalf("an assume-role account must not read as CAP: %+v", plain)
+	}
+	var embedded CloudAccount
+	if err := json.Unmarshal([]byte(`{"type":"AWS","name":"e","awsCapCredential":{"baseCapServerUrl":"u","clientCertificateBase64":"`+capSecret+`"}}`), &embedded); err != nil {
+		t.Fatal(err)
+	}
+	if !embedded.HasCAPCredential() {
+		t.Fatal("an embedded CAP credential must read as CAP")
+	}
+	if encoded, _ := json.Marshal(embedded); strings.Contains(string(encoded), capSecret) {
+		t.Fatalf("marshalling the account must not emit the embedded certificate: %s", encoded)
+	}
+	for _, empty := range []string{`"awsCapCredential":null`, `"awsCapCredential":{}`} {
+		var account CloudAccount
+		if err := json.Unmarshal([]byte(`{"type":"AWS","name":"n",`+empty+`}`), &account); err != nil {
+			t.Fatal(err)
+		}
+		if account.HasCAPCredential() {
+			t.Fatalf("%s is not a CAP credential", empty)
+		}
+	}
+}
+
+// PATCH takes the CAP filter (UpdateAwsAccountRequest.awsC2SAccountInfos): nil
+// leaves it out, a non-nil empty list is sent and means "every portal account".
+func TestPatchSendsTheCAPFilterOnlyWhenSet(t *testing.T) {
+	var bodies []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, string(raw))
+		_, _ = io.WriteString(w, `{"type":"AWS","name":"gov"}`)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := context.Background()
+	filter := []AWSC2SAccountInfo{{AccountID: "111122223333", AccountRole: "Auditor"}}
+	empty := []AWSC2SAccountInfo{}
+	for _, patch := range []CloudAccountPatch{
+		{Type: "AWS"},
+		{Type: "AWS", AWSC2SAccountInfos: &filter},
+		{Type: "AWS", AWSC2SAccountInfos: &empty},
+	} {
+		if _, _, err := client.CloudAccounts.Patch(ctx, "net-1", "gov", patch); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{`{"type":"AWS"}`, `{"type":"AWS","awsC2SAccountInfos":[{"accountId":"111122223333","accountRole":"Auditor"}]}`, `{"type":"AWS","awsC2SAccountInfos":[]}`}
+	for i := range want {
+		if strings.TrimSpace(bodies[i]) != want[i] {
+			t.Fatalf("body %d = %s, want %s", i, bodies[i], want[i])
+		}
 	}
 }

@@ -33,9 +33,41 @@ type CloudAccount struct {
 	Concurrency                   *int64              `json:"concurrency,omitempty"`
 	ConnectionTimeoutSeconds      *int64              `json:"connectionTimeoutSeconds,omitempty"`
 	RequestTimeoutSeconds         *int64              `json:"requestTimeoutSeconds,omitempty"`
-	// Raw carries fields this SDK version does not model, so an object read
-	// from a newer appserver and written back does not silently lose them.
+	// AWSCapCredentialID is the id of the C2S Access Portal (CAP) credential an
+	// AWS account collects through; read it with CloudAccounts.GetAWSCapCredential.
+	// Empty for an account that does not use CAP.
+	AWSCapCredentialID string `json:"awsCapCredentialId,omitempty"`
+	// AWSC2SAccountInfos is the CAP account filter (AwsAccount.awsC2SAccountInfos).
+	// For a CAP account it, not AssumeRoleInfos or their Enabled flags, decides
+	// which portal accounts are collected, and EMPTY means every account the
+	// portal lists. Change it with CloudAccountPatch.AWSC2SAccountInfos (PATCH
+	// takes it at the pinned build). Create takes it only together with an
+	// embedded CAP credential, which this SDK does not model, so
+	// CloudAccountRequest does not carry it (reach it through Extra).
+	AWSC2SAccountInfos []AWSC2SAccountInfo `json:"awsC2SAccountInfos,omitempty"`
+	// Raw carries the fields this SDK version does not model, as they came on the
+	// wire. It is never marshalled (json:"-"). Do not print or log it for a CAP
+	// account: an embedded awsCapCredential would carry the client certificate.
 	Raw map[string]json.RawMessage `json:"-"`
+}
+
+// AWSC2SAccountInfo names one portal account in a CAP account filter.
+type AWSC2SAccountInfo struct {
+	AccountID   string `json:"accountId"`
+	AccountRole string `json:"accountRole"`
+}
+
+// HasCAPCredential reports whether the account collects through a C2S Access
+// Portal: it names a CAP credential, or the read carried an embedded one. The
+// embedded awsCapCredential object holds the client certificate and is
+// deliberately not a field; it stays in Raw only, so do not print or log Raw
+// of a CAP account.
+func (a CloudAccount) HasCAPCredential() bool {
+	if a.AWSCapCredentialID != "" {
+		return true
+	}
+	embedded := strings.TrimSpace(string(a.Raw["awsCapCredential"]))
+	return embedded != "" && embedded != "null" && embedded != "{}"
 }
 
 func (a *CloudAccount) UnmarshalJSON(data []byte) error {
@@ -416,6 +448,10 @@ type CloudAccountPatch struct {
 	Regions               map[string]int64     `json:"regions,omitempty"`
 	RegionToProxyServerID map[string]string    `json:"regionToProxyServerId,omitempty"`
 	AssumeRoleInfos       *[]AWSAssumeRoleInfo `json:"assumeRoleInfos,omitempty"`
+	// AWSC2SAccountInfos replaces a CAP account's portal-account filter (UpdateAwsAccountRequest.awsC2SAccountInfos,
+	// verified at the pinned build). Nil leaves it unchanged; a non-nil empty list is sent and means "collect every
+	// portal account". Forward rejects a non-empty list on an account that is not a CAP account.
+	AWSC2SAccountInfos *[]AWSC2SAccountInfo `json:"awsC2SAccountInfos,omitempty"`
 }
 
 // Patch updates part of a cloud account and returns it. PATCH /api/networks/{networkId}/cloudAccounts/{accountName}.
