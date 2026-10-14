@@ -33,11 +33,15 @@ type FilesDiffCount struct {
 	Types    map[string]int64 `json:"types"`
 }
 
-// DiffEntry is one added/removed/modified object in a full diff listing.
+// DiffEntry is one added/deleted/modified object in a full diff listing. Before
+// is the older snapshot's object (the appserver's "a", nil when Type is ADDED)
+// and After the newer one's ("b", nil when DELETED). The wire keys are
+// diffType, a and b (cv.diff.DiffEntry); this type read type, before and after
+// until v0.4.13, which no response carries, so every entry decoded empty.
 type DiffEntry[T any] struct {
-	Type   string `json:"type"`
-	Before *T     `json:"before,omitempty"`
-	After  *T     `json:"after,omitempty"`
+	Type   string `json:"diffType"`
+	Before *T     `json:"a,omitempty"`
+	After  *T     `json:"b,omitempty"`
 }
 
 // InventoryDeviceInfo is the device record a devices diff carries. Fields are

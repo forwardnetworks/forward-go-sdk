@@ -590,6 +590,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Devices.Missing": {
 		{Method: "GET", Route: "/api/networks/{networkId}/missing-devices"},
 	},
+	"Diffs.ACLDevices": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/acl"},
+	},
 	"Diffs.Checks": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/checks"},
 	},
@@ -611,6 +614,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/l2"},
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/routing-loop/count"},
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/topology"},
+	},
+	"Diffs.DeviceACL": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/acl/devices/{deviceName}"},
 	},
 	"Diffs.Devices": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/devices"},
