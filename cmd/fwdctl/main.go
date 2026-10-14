@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -27,6 +28,7 @@ type globalFlags struct {
 	baseURL  string
 	network  string
 	insecure bool
+	caBundle string
 }
 
 type ctxKey int
@@ -57,12 +59,22 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			insecure := flags.insecure
-			if !cmd.Flags().Changed("insecure") {
+			if insecure && flags.caBundle != "" {
+				return fmt.Errorf("--insecure and --ca-bundle contradict each other: one turns verification off, the other trusts a CA")
+			}
+			if !cmd.Flags().Changed("insecure") && flags.caBundle == "" {
 				insecure = isLoopbackURL(flags.baseURL)
+			}
+			var roots *x509.CertPool
+			if flags.caBundle != "" {
+				var err error
+				if roots, err = forward.LoadRootCAs(flags.caBundle); err != nil {
+					return err
+				}
 			}
 			c, err := forward.NewClient(forward.Config{
 				BaseURL: flags.baseURL, Username: os.Getenv("FWD_USER"), Password: os.Getenv("FWD_PASS"),
-				NetworkID: flags.network, InsecureSkipVerify: insecure, UserAgent: "fwdctl",
+				NetworkID: flags.network, InsecureSkipVerify: insecure, RootCAs: roots, UserAgent: "fwdctl",
 			})
 			if err != nil {
 				return err
@@ -79,6 +91,9 @@ func newRootCmd() *cobra.Command {
 		"Forward instance (env FWD_HOST)")
 	root.PersistentFlags().StringVar(&flags.network, "network", os.Getenv("FWD_NETWORK"), "network id (env FWD_NETWORK)")
 	root.PersistentFlags().BoolVar(&flags.insecure, "insecure", false, "skip TLS verification (default: only when --url is localhost, for a self-signed dev Forward)")
+
+	root.PersistentFlags().StringVar(&flags.caBundle, "ca-bundle", os.Getenv("FWD_CA_BUNDLE"),
+		"PEM file of CAs to trust for the server certificate, instead of the system roots (env FWD_CA_BUNDLE); keeps verification on")
 
 	root.AddCommand(
 		newCollectorsCmd(), newCollectorCmd(), newDevicesCmd(), newLocationsCmd(), newCloudAccountsCmd(), newJumpServersCmd(),

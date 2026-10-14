@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,6 +45,13 @@ type Config struct {
 	UserAgent          string
 	HTTPClient         *http.Client
 	InsecureSkipVerify bool
+	// RootCAs, when set, replaces the system roots used to verify the server's
+	// certificate, so a Forward behind a private or self-signed CA can be
+	// trusted without turning verification off. Build it with LoadRootCAs, or
+	// start from x509.SystemCertPool to trust the system roots as well. Like
+	// InsecureSkipVerify it needs an *http.Transport (or none) in HTTPClient;
+	// the transport is cloned, never modified.
+	RootCAs *x509.CertPool
 
 	// Hooks receive request lifecycle events. Query strings and bodies are
 	// intentionally omitted so credentials and version-specific values are not
@@ -155,7 +163,7 @@ func NewClient(cfg Config) (*Client, error) {
 		return nil, errors.New("forward: cookies require browser authentication mode")
 	}
 
-	httpClient, err := configureHTTPClient(cfg.HTTPClient, cfg.InsecureSkipVerify)
+	httpClient, err := configureHTTPClient(cfg.HTTPClient, cfg.InsecureSkipVerify, cfg.RootCAs)
 	if err != nil {
 		return nil, err
 	}
@@ -607,14 +615,14 @@ func normalizeBaseURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
-func configureHTTPClient(source *http.Client, insecure bool) (*http.Client, error) {
+func configureHTTPClient(source *http.Client, insecure bool, roots *x509.CertPool) (*http.Client, error) {
 	var client http.Client
 	if source == nil {
 		client = http.Client{Timeout: defaultTimeout}
 	} else {
 		client = *source
 	}
-	if !insecure {
+	if !insecure && roots == nil {
 		return &client, nil
 	}
 
@@ -624,7 +632,7 @@ func configureHTTPClient(source *http.Client, insecure bool) (*http.Client, erro
 	}
 	httpTransport, ok := transport.(*http.Transport)
 	if !ok {
-		return nil, errors.New("forward: InsecureSkipVerify requires an *http.Transport")
+		return nil, errors.New("forward: InsecureSkipVerify and RootCAs require an *http.Transport")
 	}
 	clone := httpTransport.Clone()
 	if clone.TLSClientConfig == nil {
@@ -632,7 +640,12 @@ func configureHTTPClient(source *http.Client, insecure bool) (*http.Client, erro
 	} else {
 		clone.TLSClientConfig = clone.TLSClientConfig.Clone()
 	}
-	clone.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // Explicit opt-in for development appliances.
+	if roots != nil {
+		clone.TLSClientConfig.RootCAs = roots
+	}
+	if insecure {
+		clone.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // Explicit opt-in for development appliances.
+	}
 	client.Transport = clone
 
 	return &client, nil
