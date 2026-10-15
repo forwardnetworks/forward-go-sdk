@@ -175,8 +175,14 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Backups.UpdateSettings": {
 		{Method: "PATCH", Route: "/api/backup-settings"},
 	},
+	"Banners.Announcement": {
+		{Method: "GET", Route: "/api/system-announcement"},
+	},
 	"Banners.Create": {
 		{Method: "POST", Route: "/api/custom-banners"},
+	},
+	"Banners.CriticalStates": {
+		{Method: "GET", Route: "/api/critical-states"},
 	},
 	"Banners.Delete": {
 		{Method: "DELETE", Route: "/api/custom-banners/{bannerId}"},
