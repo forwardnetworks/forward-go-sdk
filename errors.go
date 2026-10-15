@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const maxErrorBody = 1 << 20
@@ -39,6 +40,11 @@ const (
 	// ErrorKindPermissionDenied is a 403 for a missing org or network operation ("Missing permission: OrgOperation.X" or "No
 	// permission for network operation X"); ErrorResponse.Operation names it.
 	ErrorKindPermissionDenied ErrorKind = "permission-denied"
+	// ErrorKindRateLimited is Forward's per-user API rate limiter (RateLimitService; OFF unless the deployment enables API_RATE_LIMITING, an on-premises setting): the user sent more than
+	// MAX_API_REQ_PER_USER_PER_MIN requests in a minute (default 2000) and is LOCKED OUT, every session and client
+	// sharing that login, for API_RATE_LIMITER_LOCKOUT_MINUTES (default 1, at most 60). The 429 carries the remaining
+	// lockout in Retry-After (RateLimitLockout reads it). Not every 429 is this: Forward's one-active-chat 429 is not.
+	ErrorKindRateLimited ErrorKind = "rate-limited"
 	// ErrorKindUnlicensedOperation is a 403 for an operation the org's license tier does not include ("Unlicensed operation: ...") --
 	// a license problem, not a role one.
 	ErrorKindUnlicensedOperation ErrorKind = "unlicensed-operation"
@@ -67,6 +73,7 @@ var (
 	ErrFeatureGated                      = errors.New("forward: feature not available for this organization or deployment")
 	ErrEndpointProfileInUse              = errors.New("forward: endpoint profile is still used by endpoints")
 	ErrPermissionDenied                  = errors.New("forward: missing permission for the operation")
+	ErrRateLimited                       = errors.New("forward: API rate limit exceeded, the user is locked out for a while")
 	ErrUnlicensedOperation               = errors.New("forward: operation not included in the organization's license")
 	ErrEndpointNotServed                 = errors.New("forward: route is not served by this deployment")
 	ErrNetworkNotFound                   = errors.New("forward: network not found")
@@ -154,6 +161,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindEndpointProfileInUse
 	case ErrPermissionDenied:
 		return e.Kind == ErrorKindPermissionDenied
+	case ErrRateLimited:
+		return e.Kind == ErrorKindRateLimited
 	case ErrUnlicensedOperation:
 		return e.Kind == ErrorKindUnlicensedOperation
 	case ErrEndpointNotServed:
@@ -294,6 +303,10 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 			apiErr.GateProperty, apiErr.GateEnabled, apiErr.GateScope = match[1], match[2] == "on", match[3]
 			return ErrorKindFeatureGated
 		}
+	}
+	// RateDetectionFilter / SessionRateLimitFilter: 429 "Rate limit exceeded, please try again later".
+	if status == http.StatusTooManyRequests && strings.HasPrefix(strings.TrimSpace(apiErr.Message), "Rate limit exceeded") {
+		return ErrorKindRateLimited
 	}
 	if status == http.StatusForbidden &&
 		(containsWords(detail, "auth", "fail") || containsWords(detail, "credential") || containsWords(detail, "token")) {
@@ -465,4 +478,17 @@ func isNetworkResourcePath(path string) bool {
 // means Forward does not serve the route at all (ErrEndpointNotServed) does not qualify: nothing was deleted.
 func isGone(err error) bool {
 	return isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed)
+}
+
+// RateLimitLockout reports the lockout Forward's API rate limiter imposed, as
+// the Retry-After of its 429, and false for any other error. The lockout is for
+// the whole user, so every client sharing the login is refused until it ends;
+// requests made during it do not extend it (RateLimitService answers from the
+// existing block before counting), but retrying sooner is pointless.
+func RateLimitLockout(err error) (time.Duration, bool) {
+	var apiErr *ErrorResponse
+	if !errors.As(err, &apiErr) || apiErr.Kind != ErrorKindRateLimited || apiErr.Response == nil {
+		return 0, false
+	}
+	return retryAfter(apiErr.Response.Header.Get("Retry-After"), time.Now())
 }

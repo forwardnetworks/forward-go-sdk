@@ -294,10 +294,24 @@ when doing so cannot duplicate a mutation:
 
 - 429 and 503 mean the request was turned away before it was processed, so any
   method is repeated;
-- a transport error, a 502, a 504 or another 5xx leaves the outcome unknown, so
-  only GET, HEAD, OPTIONS, PUT and DELETE are repeated. A proxy that gave up
-  waiting says nothing about whether the appserver finished a POST;
+- a failure to OBTAIN a connection (a dial error, a TLS handshake timeout)
+  means not a byte of the request was written, so any method is repeated. The
+  client knows this from net/http's own connection trace; a certificate failure
+  is not repeated (it is permanent), and an injected `RoundTripper` that does
+  not fire the trace counts as unknown, below;
+- any other transport error, a 502, a 504 or another 5xx leaves the outcome
+  unknown, so only GET, HEAD, OPTIONS, PUT and DELETE are repeated. A proxy that
+  gave up waiting says nothing about whether the appserver finished a POST;
 - 501 (the route is absent from this build) is never retried.
+
+`DefaultRetryPolicy()` is a sensible starting point: five attempts, exponential
+backoff from one second capped at two minutes, half jitter. Forward's API rate
+limiter locks the whole user out (more than 2000 requests a minute by default,
+for one minute by default and at most 60): the 429 says how long in
+`Retry-After`, `errors.Is(err, ErrRateLimited)` and `RateLimitLockout(err)` read
+it, and with a retry policy every request on the client (and its `ForNetwork`
+clones) shares one cooldown instead of each discovering the lockout itself. A
+lockout longer than `MaxDelay` is returned, not slept through.
 
 Backoff doubles from `Delay` (default 500ms) and is capped at `MaxDelay`
 (default 5 minutes). A `Retry-After` header is honored; when it asks for longer than

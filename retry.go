@@ -1,13 +1,20 @@
 package forward
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"errors"
 	"io"
 	"math"
 	"math/rand/v2"
 	"net/http"
+	"net/http/httptrace"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -28,8 +35,8 @@ type RetryPolicy struct {
 	MaxDelay time.Duration
 	// RefusedOnly retries only 429 and 503 -- the two statuses that say the
 	// request was turned away unprocessed -- and hands every other failure
-	// (transport errors, 500, 502, 504) straight back, even for an idempotent
-	// method. For callers that want a bounded, predictable read rather than
+	// (transport errors, including a connection that could not be
+	// obtained, 500, 502, 504) straight back, even for an idempotent method. For callers that want a bounded, predictable read rather than
 	// one that rides out an unhealthy appserver.
 	RefusedOnly bool
 	// Jitter randomizes each backoff wait downward by up to this fraction
@@ -53,7 +60,9 @@ const (
 // method is repeated -- replaying a POST could create a second snapshot, or a
 // second change set, for a request that already succeeded. That includes 502
 // and 504: a proxy that gave up waiting says nothing about whether the
-// appserver behind it finished the work.
+// appserver behind it finished the work. The one exception is a failure to
+// OBTAIN a connection (a dial error, a TLS handshake timeout): nothing was
+// written, so any method may be repeated (see notConnected).
 func (c *Client) send(req *http.Request) (*http.Response, error) {
 	attempts := c.retry.MaxAttempts
 	if attempts < 1 {
@@ -69,8 +78,32 @@ func (c *Client) send(req *http.Request) (*http.Response, error) {
 	}
 
 	for attempt := 1; ; attempt++ {
-		resp, err := c.httpClient.Do(req)
-		if attempt >= attempts || !retryable(req, resp, err, c.retry.RefusedOnly) {
+		// A rate-limit lockout is per user, so once any request on this client (or
+		// its ForNetwork clones) has been told to wait, the others wait too rather
+		// than each discovering the lockout for itself.
+		if attempts > 1 {
+			if err := c.cooldown.wait(req.Context(), maxDelay); err != nil {
+				return nil, err
+			}
+		}
+		// The trace is the evidence for the one transport failure that is safe to
+		// repeat for any method: no connection was ever obtained (see
+		// notConnected). GetConn fires when net/http's own transport starts to
+		// obtain one, GotConn when it has one. The trace only proves anything on
+		// that transport; an injected RoundTripper never fires either, which
+		// reads as "unknown", so it is retried as before (idempotent methods only).
+		var gotConn, getConn atomic.Bool
+		traced := req.WithContext(httptrace.WithClientTrace(req.Context(), &httptrace.ClientTrace{
+			GetConn: func(string) { getConn.Store(true) },
+			GotConn: func(httptrace.GotConnInfo) { gotConn.Store(true) },
+		}))
+		resp, err := c.httpClient.Do(traced)
+		if attempts > 1 && resp != nil && resp.StatusCode == http.StatusTooManyRequests && isRateLimitBody(resp) {
+			if wait, ok := retryAfter(resp.Header.Get("Retry-After"), time.Now()); ok {
+				c.cooldown.set(time.Now().Add(wait))
+			}
+		}
+		if attempt >= attempts || !retryable(req, resp, err, c.retry.RefusedOnly, notConnected(err, getConn.Load(), gotConn.Load())) {
 			return resp, err
 		}
 		wait, ok := retryWait(resp, delay, attempt, maxDelay, c.retry.Jitter)
@@ -95,7 +128,28 @@ func (c *Client) send(req *http.Request) (*http.Response, error) {
 	}
 }
 
-func retryable(req *http.Request, resp *http.Response, err error, refusedOnly bool) bool {
+// notConnected reports whether err is a failure to OBTAIN a connection (a dial
+// error, a TLS handshake timeout, a proxy CONNECT failure): net/http began to
+// get one (getConn) and never had one (gotConn), so not a byte of the request
+// was written and the server cannot have acted on it, whatever the method. A
+// certificate failure is excluded: it is permanent, not transient. Anything
+// else (a request that was written, a failure on a reused connection, an
+// injected transport) is unknown.
+func notConnected(err error, getConn, gotConn bool) bool {
+	if err == nil || !getConn || gotConn {
+		return false
+	}
+	var certErr *tls.CertificateVerificationError
+	var unknownAuthority x509.UnknownAuthorityError
+	var invalid x509.CertificateInvalidError
+	var hostname x509.HostnameError
+	if errors.As(err, &certErr) || errors.As(err, &unknownAuthority) || errors.As(err, &invalid) || errors.As(err, &hostname) {
+		return false
+	}
+	return true
+}
+
+func retryable(req *http.Request, resp *http.Response, err error, refusedOnly, notConnected bool) bool {
 	// A body that cannot be rewound cannot be sent twice.
 	if req.Body != nil && req.GetBody == nil {
 		return false
@@ -104,7 +158,11 @@ func retryable(req *http.Request, resp *http.Response, err error, refusedOnly bo
 		return false
 	}
 	if err != nil {
-		return !refusedOnly && idempotent(req.Method)
+		if refusedOnly {
+			return false
+		}
+		// Nothing was sent: safe for every method.
+		return notConnected || idempotent(req.Method)
 	}
 	switch resp.StatusCode {
 	case http.StatusTooManyRequests, http.StatusServiceUnavailable:
@@ -182,4 +240,72 @@ func waitOrCancel(ctx context.Context, delay time.Duration) error {
 	case <-timer.C:
 		return nil
 	}
+}
+
+// cooldown is the moment before which a client should not send: set from a
+// rate-limit lockout's Retry-After and shared by every clone of the client.
+type cooldown struct{ until atomic.Int64 } // unix nanoseconds
+
+func (c *cooldown) set(until time.Time) {
+	if c == nil {
+		return
+	}
+	for {
+		current := c.until.Load()
+		if until.UnixNano() <= current || c.until.CompareAndSwap(current, until.UnixNano()) {
+			return
+		}
+	}
+}
+
+// wait sleeps until the cooldown ends, unless that is longer than maxDelay: a
+// lockout that long (Forward allows up to 60 minutes) is not slept through
+// silently; the request is sent and Forward answers it at once with the 429
+// and its Retry-After, for the caller to decide on.
+func (c *cooldown) wait(ctx context.Context, maxDelay time.Duration) error {
+	if c == nil {
+		return nil
+	}
+	remaining := time.Until(time.Unix(0, c.until.Load()))
+	if remaining <= 0 || remaining > maxDelay {
+		return nil
+	}
+	return waitOrCancel(ctx, remaining)
+}
+
+// isRateLimitBody reports whether a 429 is Forward's rate limiter ("Rate limit
+// exceeded, ...") rather than another 429 (the one-active-chat refusal), without
+// consuming the body: what was read is put back in front of the rest.
+func isRateLimitBody(resp *http.Response) bool {
+	head, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	resp.Body = struct {
+		io.Reader
+		io.Closer
+	}{io.MultiReader(bytes.NewReader(head), resp.Body), resp.Body}
+	return isRateLimitMessage(head)
+}
+
+// DefaultRetryPolicy is a sensible opt-in policy for a script or service: five
+// attempts, exponential backoff from one second (doubling, capped at two
+// minutes) with half jitter so clients refused together do not retry together,
+// and a server's Retry-After honored exactly. It retries 429 and 503 for any
+// method, a failure to obtain a connection for any method, and other transport
+// errors and 5xx only for idempotent methods (see RetryPolicy). A rate-limit
+// lockout longer than MaxDelay is returned to the caller (RateLimitLockout)
+// instead of slept through.
+func DefaultRetryPolicy() RetryPolicy {
+	return RetryPolicy{MaxAttempts: 5, Delay: time.Second, MaxDelay: 2 * time.Minute, Jitter: 0.5}
+}
+
+// isRateLimitMessage is the one test for Forward's limiter 429: the JSON
+// message begins "Rate limit exceeded" (RateDetectionFilter and
+// SessionRateLimitFilter). errors.go classifies on the same text.
+func isRateLimitMessage(body []byte) bool {
+	var parsed struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(body, &parsed) != nil {
+		return false
+	}
+	return strings.HasPrefix(strings.TrimSpace(parsed.Message), "Rate limit exceeded")
 }

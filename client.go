@@ -79,7 +79,9 @@ type Client struct {
 	unavailableErr error
 	capabilities   *capabilityRegistry
 	retry          RetryPolicy
-	csrf           *browserCSRFState
+	// cooldown is shared by every clone (ForNetwork) of this client, which share one credential and so one rate limit.
+	cooldown *cooldown
+	csrf     *browserCSRFState
 
 	Version                 *VersionService
 	Networks                *NetworksService
@@ -197,6 +199,7 @@ func NewClient(cfg Config) (*Client, error) {
 		networkID:    strings.TrimSpace(cfg.NetworkID),
 		capabilities: newCapabilityRegistry(cfg.Capabilities),
 		retry:        cfg.Retry,
+		cooldown:     &cooldown{},
 	}
 	c.bindServices()
 
