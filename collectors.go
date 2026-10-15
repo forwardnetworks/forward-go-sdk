@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -91,6 +92,52 @@ type OrgCollectionSettingsPatch struct {
 	DeviceCollectionTimeoutMins *int `json:"deviceCollectionTimeoutMinutes,omitempty"`
 	CommandDelayMS              *int `json:"commandDelayMs,omitempty"`
 	PerDeviceConcurrencyBoost   *int `json:"perDeviceConcurrencyBoost,omitempty"`
+	// DisabledCommands turns built-in collection commands off org-wide, per
+	// device type (the key is Forward's device type name as the classic device
+	// "type" field carries it, e.g. "panos_ssh", "cisco_ios_xe_ssh", "f5_ssh").
+	// nil leaves the setting alone. A non-nil map REPLACES the whole stored map
+	// (OrgCollectionSettingsPatch.disabledCommands is a JsonProp applied as a
+	// whole), so adding one command is read-modify-write: read
+	// OrgCollectionSettings.DisabledCommands, add to a copy, send it. A non-nil
+	// EMPTY map clears every disabled command. Each entry needs a command and
+	// both version bounds; PatchOrganizationSettings checks that before sending.
+	// Forward's release notes list setting disabled commands through this API as
+	// new in 26.8.3 (BUG-27961). A build without it most likely refuses the
+	// property as unrecognised (a 400: Forward's request mapper rejects unknown
+	// properties); that was not tried on an older build. A pointer to a nil map
+	// sends null, which also clears every disabled command; prefer an empty map.
+	// There is no concurrency guard, so two editors can overwrite each other.
+	DisabledCommands *map[string][]DisabledCommand `json:"disabledCommands,omitempty"`
+}
+
+// DisabledCommand switches one built-in collection command off for a device
+// type and a range of device software versions (CollectionDisabledCommand).
+// Command is a case-insensitive Java regular expression matched against the
+// command Forward would run (not checked here: Java and Go syntax differ); the range is inclusive and both bounds are required.
+type DisabledCommand struct {
+	Command string                 `json:"command"`
+	Version DisabledCommandVersion `json:"version"`
+}
+
+// DisabledCommandVersion is the inclusive range of software versions a
+// DisabledCommand applies to (ReleaseVersion strings such as "1.0" to "99.0").
+type DisabledCommandVersion struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
+}
+
+func validateDisabledCommands(commands map[string][]DisabledCommand) error {
+	for deviceType, list := range commands {
+		if strings.TrimSpace(deviceType) == "" {
+			return errors.New("forward: a disabled-commands device type must not be empty")
+		}
+		for i, command := range list {
+			if strings.TrimSpace(command.Command) == "" || strings.TrimSpace(command.Version.Start) == "" || strings.TrimSpace(command.Version.End) == "" {
+				return fmt.Errorf("forward: disabled command %d for %q needs a command and both version.start and version.end", i, deviceType)
+			}
+		}
+	}
+	return nil
 }
 
 type CollectorCollectionSettingsPatch struct {
@@ -199,6 +246,11 @@ func (s *CollectorsService) SetPerformanceCollection(ctx context.Context, networ
 }
 
 func (s *CollectorsService) PatchOrganizationSettings(ctx context.Context, patch OrgCollectionSettingsPatch) (*Response, error) {
+	if patch.DisabledCommands != nil {
+		if err := validateDisabledCommands(*patch.DisabledCommands); err != nil {
+			return nil, err
+		}
+	}
 	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, "/api/collection-settings", patch)
 	if err != nil {
 		return nil, err
@@ -304,7 +356,7 @@ func (s *CollectorsService) GetSettings(ctx context.Context, collectorID string)
 // its default: the Default... constants where there is one; none for
 // PerDeviceConcurrencyBoost (0) and CommandDelayMS (no delay). Timeouts are in
 // the minutes Forward serializes. The settings this type does not model
-// (disabledCommands, the ribRoute* limits, the redaction settings) are in Raw,
+// (the ribRoute* limits, the redaction settings) are in Raw,
 // with every other key of the response.
 type OrgCollectionSettings struct {
 	MaxCommandAuthZPerSecond      *int     `json:"maxCommandAuthZPerSecond,omitempty"`
@@ -325,6 +377,11 @@ type OrgCollectionSettings struct {
 	EnableSNMPCredDiscovery       *bool    `json:"enableSnmpCredDiscovery,omitempty"`
 	PasswordPrompts               []string `json:"passwordPrompts,omitempty"`
 	CollectFullConfigDeviceTypes  []string `json:"collectFullConfigDeviceTypes,omitempty"`
+	// DisabledCommands is the built-in collection commands switched off org-wide,
+	// by device type name (see OrgCollectionSettingsPatch.DisabledCommands); nil
+	// when none (Forward omits an empty map). How far back the read side goes is
+	// unknown; the PATCH side is 26.8.3 and later.
+	DisabledCommands map[string][]DisabledCommand `json:"disabledCommands,omitempty"`
 
 	// Raw is the whole response object.
 	Raw map[string]json.RawMessage `json:"-"`
