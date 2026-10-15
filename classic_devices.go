@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -31,7 +32,21 @@ type ClassicDeviceRequest struct {
 	// DeviceSetupMeta property). Empty sends nothing, so the network's default
 	// collector applies. Preview: the appserver hides it from the published spec.
 	CollectorID string
-	Fields      map[string]any
+	// Collection options (NewClassicDevice). Pointers and empty strings send
+	// nothing, so Forward's own default applies.
+	//   BGPTableType: BOTH, ADJ_RIB_IN or ADJ_RIB_OUT (honoured only when
+	//   CollectBGPAdvertisements is true; default BOTH).
+	//   BGPPeerType: BOTH, EBGP or IBGP (same condition; default BOTH).
+	//   BGPAndBMPFailureHandling: FAIL_DEVICE (default), SWITCH_TO_CLI,
+	//   ALWAYS_USE_CLI, ALWAYS_USE_BMP or CONTINUE_WITHOUT_BGP_DATA.
+	EnableSNMPCollection     *bool
+	CollectBGPAdvertisements *bool
+	BGPTableType             string
+	BGPPeerType              string
+	BGPAndBMPFailureHandling string
+	DisableIPv6Collection    *bool
+	FullCollectionLog        *bool
+	Fields                   map[string]any
 }
 
 // MarshalJSON preserves new appliance fields without weakening the common
@@ -64,6 +79,21 @@ func (r ClassicDeviceRequest) MarshalJSON() ([]byte, error) {
 	if r.CollectorID != "" {
 		fields["collectorId"] = r.CollectorID
 	}
+	for key, value := range map[string]string{
+		"bgpTableType": r.BGPTableType, "bgpPeerType": r.BGPPeerType, "bgpAndBmpFailureHandling": r.BGPAndBMPFailureHandling,
+	} {
+		if value != "" {
+			fields[key] = value
+		}
+	}
+	for key, value := range map[string]*bool{
+		"enableSnmpCollection": r.EnableSNMPCollection, "collectBgpAdvertisements": r.CollectBGPAdvertisements,
+		"disableIpv6Collection": r.DisableIPv6Collection, "fullCollectionLog": r.FullCollectionLog,
+	} {
+		if value != nil {
+			fields[key] = *value
+		}
+	}
 	return json.Marshal(fields)
 }
 
@@ -87,6 +117,24 @@ type ClassicDevice struct {
 	// performance data can exist for it at all. EnableSNMPCollection is nil when the read did not state it.
 	EnableSNMPCollection *bool  `json:"enableSnmpCollection,omitempty"`
 	SNMPCredentialID     string `json:"snmpCredentialId,omitempty"`
+	// CLICredential2ID is the PRIVILEGED_MODE credential (Cisco-like, Checkpoint)
+	// or SHELL credential (Avi); CLICredential3ID is the EXPERT_MODE one
+	// (Checkpoint). Empty when none is set.
+	CLICredential2ID string `json:"cliCredential2Id,omitempty"`
+	CLICredential3ID string `json:"cliCredential3Id,omitempty"`
+	JumpServerID     string `json:"jumpServerId,omitempty"`
+	// Per-device collection options, nil/empty when the read did not state them.
+	// Forward leaves bgpTableType and bgpPeerType out of the response when they
+	// are BOTH, so empty with CollectBGPAdvertisements true means BOTH.
+	// BGPTableType: BOTH, ADJ_RIB_IN, ADJ_RIB_OUT. BGPPeerType: BOTH, EBGP, IBGP.
+	// BGPAndBMPFailureHandling: FAIL_DEVICE, SWITCH_TO_CLI, ALWAYS_USE_CLI,
+	// ALWAYS_USE_BMP, CONTINUE_WITHOUT_BGP_DATA.
+	CollectBGPAdvertisements *bool  `json:"collectBgpAdvertisements,omitempty"`
+	BGPTableType             string `json:"bgpTableType,omitempty"`
+	BGPPeerType              string `json:"bgpPeerType,omitempty"`
+	BGPAndBMPFailureHandling string `json:"bgpAndBmpFailureHandling,omitempty"`
+	DisableIPv6Collection    *bool  `json:"disableIpv6Collection,omitempty"`
+	FullCollectionLog        *bool  `json:"fullCollectionLog,omitempty"`
 	// Raw carries fields this SDK version does not model, so an object read
 	// from a newer appserver and written back does not silently lose them.
 	Raw map[string]json.RawMessage `json:"-"`
@@ -107,10 +155,12 @@ type ClassicDeviceBatchItem struct {
 	EnableSNMPCollection     bool   `json:"enableSnmpCollection"`
 	// Collect is Forward's per-device collection toggle -- the switch in the
 	// Sources table. A POINTER, and deliberately so: this batch is a PUT, and
-	// the three states have to stay distinguishable. Absent means "leave the
-	// device's current toggle alone", which is what every existing caller
-	// wants and gets for free by not setting the field. A non-nil false is an
-	// explicit request to onboard the device and NOT collect it.
+	// the three states have to stay distinguishable. Absent sends nothing, so
+	// Forward applies its default (collect on): putBatch builds the stored
+	// device from the request alone (ClassicDeviceService.saveDevices ->
+	// NewClassicDevice.toStored) and replaces the existing one, so absent does
+	// NOT keep the device's current toggle. A non-nil false is an explicit
+	// request to onboard the device and NOT collect it.
 	//
 	// That third state is the point. A device can be present in the inventory,
 	// carrying its credentials, its jump server and its type, with collection
@@ -122,9 +172,24 @@ type ClassicDeviceBatchItem struct {
 	// single-device path, which has carried it since the client was written;
 	// this only closes the gap on the batch path Skyforge actually uses.
 	Collect *bool `json:"collect,omitempty"`
-	// CollectorID pins the device to one collector; empty sends nothing, which
-	// leaves the device's current collector alone (see ClassicDeviceRequest).
+	// CollectorID pins the device to one collector; empty sends nothing, so the
+	// network's default collector applies. putBatch replaces the stored device
+	// with one built from this item alone, so empty does NOT keep a collector
+	// the device already had; state it again on every PUT.
 	CollectorID string `json:"collectorId,omitempty"`
+	// CLICredential2ID (PRIVILEGED_MODE, or SHELL for Avi) and CLICredential3ID
+	// (EXPERT_MODE, Checkpoint) are omitted when empty. HTTPCredentialID is not
+	// modelled on this type. The four BGP/SNMP fields above are always sent, as
+	// before. Because putBatch replaces the device, every field left empty or
+	// nil here (the new ones included) resets to Forward's default; state them
+	// all on every PUT, or use Patch for a partial change. BGPAndBMPFailureHandling
+	// is FAIL_DEVICE, SWITCH_TO_CLI, ALWAYS_USE_CLI, ALWAYS_USE_BMP or
+	// CONTINUE_WITHOUT_BGP_DATA; empty and nil send nothing.
+	CLICredential2ID         string `json:"cliCredential2Id,omitempty"`
+	CLICredential3ID         string `json:"cliCredential3Id,omitempty"`
+	BGPAndBMPFailureHandling string `json:"bgpAndBmpFailureHandling,omitempty"`
+	DisableIPv6Collection    *bool  `json:"disableIpv6Collection,omitempty"`
+	FullCollectionLog        *bool  `json:"fullCollectionLog,omitempty"`
 }
 
 func (s *ClassicDevicesService) PutBatch(ctx context.Context, networkID string, devices []ClassicDeviceBatchItem) (*Response, error) {
@@ -277,6 +342,71 @@ type ClassicDevicePatch struct {
 	// CollectorID moves the device to another collector (ClassicDevicePatch binds
 	// collectorId; hidden from the published spec, so Preview). nil leaves it alone.
 	CollectorID *string `json:"collectorId,omitempty"`
+
+	// CLICredential2ID is the PRIVILEGED_MODE (or Avi SHELL) credential and
+	// CLICredential3ID the EXPERT_MODE one (Checkpoint).
+	CLICredential2ID *string `json:"cliCredential2Id,omitempty"`
+	CLICredential3ID *string `json:"cliCredential3Id,omitempty"`
+	SNMPCredentialID *string `json:"snmpCredentialId,omitempty"`
+	JumpServerID     *string `json:"jumpServerId,omitempty"`
+	// Collection options. BGPTableType and BGPPeerType take effect only when
+	// collection of BGP advertisements is on: set CollectBGPAdvertisements=true
+	// in the same patch, or Forward drops them. BGPTableType: BOTH, ADJ_RIB_IN,
+	// ADJ_RIB_OUT. BGPPeerType: BOTH, EBGP, IBGP. BGPAndBMPFailureHandling: FAIL_DEVICE,
+	// SWITCH_TO_CLI, ALWAYS_USE_CLI, ALWAYS_USE_BMP, CONTINUE_WITHOUT_BGP_DATA.
+	EnableSNMPCollection     *bool   `json:"enableSnmpCollection,omitempty"`
+	CollectBGPAdvertisements *bool   `json:"collectBgpAdvertisements,omitempty"`
+	BGPTableType             *string `json:"bgpTableType,omitempty"`
+	BGPPeerType              *string `json:"bgpPeerType,omitempty"`
+	BGPAndBMPFailureHandling *string `json:"bgpAndBmpFailureHandling,omitempty"`
+	DisableIPv6Collection    *bool   `json:"disableIpv6Collection,omitempty"`
+	FullCollectionLog        *bool   `json:"fullCollectionLog,omitempty"`
+
+	// Clear names wire properties to send as an explicit JSON null, which
+	// Forward reads as "clear it back to unset" (the collector falls back to the
+	// network's default, an auto-associated credential is chosen again, an
+	// option returns to its default). A pointer field can only omit, so this is
+	// the only way to clear. Allowed names: cliCredentialId, cliCredential2Id,
+	// cliCredential3Id, httpCredentialId, snmpCredentialId, jumpServerId,
+	// collectorId, note, port, enableSnmpCollection, collectBgpAdvertisements,
+	// bgpTableType, bgpPeerType, bgpAndBmpFailureHandling, disableIpv6Collection,
+	// fullCollectionLog. Naming a property that the patch also sets is an error.
+	Clear []string `json:"-"`
+}
+
+var classicDevicePatchClearable = map[string]bool{
+	"cliCredentialId": true, "cliCredential2Id": true, "cliCredential3Id": true, "httpCredentialId": true,
+	"snmpCredentialId": true, "jumpServerId": true, "collectorId": true, "note": true, "port": true,
+	"enableSnmpCollection": true, "collectBgpAdvertisements": true, "bgpTableType": true, "bgpPeerType": true,
+	"bgpAndBmpFailureHandling": true, "disableIpv6Collection": true, "fullCollectionLog": true,
+}
+
+// MarshalJSON writes the set properties and a JSON null for each name in Clear.
+func (p ClassicDevicePatch) MarshalJSON() ([]byte, error) {
+	type plain ClassicDevicePatch
+	raw, err := json.Marshal(plain(p))
+	if err != nil {
+		return nil, err
+	}
+	if len(p.Clear) == 0 {
+		return raw, nil
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return nil, err
+	}
+	cleared := map[string]bool{}
+	for _, name := range p.Clear {
+		if !classicDevicePatchClearable[name] {
+			return nil, fmt.Errorf("forward: classic device property %q cannot be cleared with null", name)
+		}
+		if _, set := fields[name]; set && !cleared[name] {
+			return nil, fmt.Errorf("forward: classic device patch both sets and clears %q", name)
+		}
+		cleared[name] = true
+		fields[name] = json.RawMessage("null")
+	}
+	return json.Marshal(fields)
 }
 
 // Patch updates only the fields the patch states.

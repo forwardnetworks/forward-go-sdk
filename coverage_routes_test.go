@@ -94,6 +94,7 @@ var wireArgOverrides = map[string]map[int]any{
 	"Integrations.DeleteInfoblox":         {1: "7"},
 	"Webhooks.Update":                     {2: WebhookPatch{Enabled: Ptr(true)}},
 	"CloudAccounts.Patch":                 {3: CloudAccountPatch{Type: "AWS"}},
+	"ClassicDevices.Patch":                {3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"Backups.DeleteBackup":                {1: int64(7), 2: StorageTypeAll},
 	"Scorecards.Trends":                   {2: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), 3: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), 4: 30},
 	"Checks.ChecksReport":                 {2: ChecksReportOptions{}, 3: io.Discard},
