@@ -344,3 +344,72 @@ func TestWithIdempotentChangesNothingElse(t *testing.T) {
 		t.Error("a body that cannot be rewound is never sent twice, marked or not")
 	}
 }
+
+// A client with a retry policy for its reads can still send one write exactly
+// once: WithoutRetry returns the first 503 instead of repeating a POST whose
+// duplicate is worse than its failure.
+func TestWithoutRetrySendsOnceAndReturnsTheFirstAnswer(t *testing.T) {
+	var served atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if served.Add(1) == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	client := unsentRetryClient(t, server.URL, privateHTTPClient())
+	post := func(ctx context.Context) error {
+		req, err := client.newJSONRequest(ctx, http.MethodPost, "/api/networks/1/snapshots", map[string]any{"a": 1})
+		if err != nil {
+			return err
+		}
+		_, err = client.Do(req, nil)
+		return err
+	}
+	if err := post(WithoutRetry(context.Background())); !isStatus(err, http.StatusServiceUnavailable) || served.Load() != 1 {
+		t.Fatalf("the opted-out POST must be sent once and return the 503: err=%v served=%d", err, served.Load())
+	}
+	served.Store(0)
+	if err := post(context.Background()); err != nil || served.Load() != 2 {
+		t.Fatalf("the same POST without the opt-out is retried on 503: err=%v served=%d", err, served.Load())
+	}
+}
+
+// WithoutRetry keeps the rest of the policy's guarantees: the first 429 and the
+// first transport error come back unretried, it wins over WithIdempotent, and a
+// marked call still waits out a rate-limit cooldown another request set (and
+// sets it on a limiter 429) rather than sending into the lockout.
+func TestWithoutRetryKeepsTheCooldownAndWinsOverIdempotent(t *testing.T) {
+	var served atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served.Add(1)
+		if r.URL.Path == "/api/limited" {
+			rateLimited(w, "30", "Rate limit exceeded, please try again later")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	client := unsentRetryClient(t, server.URL, privateHTTPClient())
+	client.retry = RetryPolicy{MaxAttempts: 4, Delay: time.Millisecond, MaxDelay: 2 * time.Second}
+	get := func(ctx context.Context, path string) error {
+		req, _ := client.NewRequest(ctx, http.MethodGet, path, nil)
+		_, err := client.Do(req, nil)
+		return err
+	}
+
+	both := WithIdempotent(WithoutRetry(context.Background()))
+	if err := get(both, "/api/limited"); !errors.Is(err, ErrRateLimited) || served.Load() != 1 {
+		t.Fatalf("a marked call returns the first limiter 429 unretried, even with WithIdempotent: err=%v served=%d", err, served.Load())
+	}
+	if client.cooldown.until.Load() == 0 {
+		t.Fatal("a marked call still records the limiter's lockout for the others")
+	}
+	// A pending cooldown short enough to wait is waited out by a marked call.
+	client.cooldown.until.Store(time.Now().Add(300 * time.Millisecond).UnixNano())
+	started := time.Now()
+	if err := get(WithoutRetry(context.Background()), "/api/ok"); err != nil || time.Since(started) < 200*time.Millisecond {
+		t.Fatalf("a marked call must wait out an active cooldown, not send into the lockout: err=%v after %s", err, time.Since(started))
+	}
+}

@@ -292,8 +292,9 @@ Retries are opt-in. The zero `Config.Retry` retries nothing. With a
 `RetryPolicy{MaxAttempts, Delay, MaxDelay}`, the client repeats a request only
 when doing so cannot duplicate a mutation:
 
-- 429 and 503 mean the request was turned away before it was processed, so any
-  method is repeated;
+- 429 and 503 usually mean the request was turned away before it was processed,
+  so any method is repeated (usually, not provably: `WithoutRetry` is the
+  per-call opt-out);
 - a failure to OBTAIN a connection (a dial error, a TLS handshake timeout)
   means not a byte of the request was written, so any method is repeated. The
   client knows this from net/http's own connection trace; a certificate failure
@@ -310,6 +311,12 @@ PATCH that sets a value), so a transport error after the request was written or
 a 5xx is retried for them too; it enables nothing by itself, `RefusedOnly`
 still overrides it, 501 is still never retried, and it covers every request made
 with that context, so keep it off composite calls that also create something.
+
+`WithoutRetry(ctx)` is the opposite: requests made with it are sent once and the
+first answer, a 429 or 503 included, is returned, for a write whose duplicate is
+worse than its failure on a client whose policy is set for reads. A 503 is not
+proof a request went unprocessed (Spring maps an asynchronous handler's timeout
+to 503, which can come after the work started). It wins over `WithIdempotent`.
 
 `DefaultRetryPolicy()` is a sensible starting point: five attempts, exponential
 backoff from one second capped at two minutes, half jitter. Forward's API rate

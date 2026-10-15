@@ -33,8 +33,8 @@ type RetryPolicy struct {
 	// (Skyforge's BusyRetry waits out Forward's one-active-chat 429 with 5s
 	// doubling to 160s) keeps every wait it asked for.
 	MaxDelay time.Duration
-	// RefusedOnly retries only 429 and 503 -- the two statuses that say the
-	// request was turned away unprocessed -- and hands every other failure
+	// RefusedOnly retries only 429 and 503 -- the two statuses that usually
+	// mean the request was turned away unprocessed -- and hands every other failure
 	// (transport errors, including a connection that could not be
 	// obtained, 500, 502, 504) straight back, even for an idempotent method. For callers that want a bounded, predictable read rather than
 	// one that rides out an unhealthy appserver.
@@ -54,9 +54,9 @@ const (
 // send performs one request, retrying while the policy allows and the failure
 // looks transient.
 //
-// What is safe to repeat depends on the method. A 429 or a 503 says the
+// What is safe to repeat depends on the method. A 429 or a 503 usually says the
 // request was turned away before it was processed, so any method may be
-// repeated. Everything else leaves the outcome unknown, so only an idempotent
+// repeated (usually, not provably: see WithoutRetry for the opt-out). Everything else leaves the outcome unknown, so only an idempotent
 // method is repeated -- replaying a POST could create a second snapshot, or a
 // second change set, for a request that already succeeded. That includes 502
 // and 504: a proxy that gave up waiting says nothing about whether the
@@ -66,6 +66,12 @@ const (
 func (c *Client) send(req *http.Request) (*http.Response, error) {
 	attempts := c.retry.MaxAttempts
 	if attempts < 1 {
+		attempts = 1
+	}
+	// The cooldown below applies whenever the client has a policy, even for a
+	// call that opted out of retrying: not sending into a lockout is not a retry.
+	policyOn := attempts > 1
+	if noRetryCall(req.Context()) {
 		attempts = 1
 	}
 	delay := c.retry.Delay
@@ -81,7 +87,7 @@ func (c *Client) send(req *http.Request) (*http.Response, error) {
 		// A rate-limit lockout is per user, so once any request on this client (or
 		// its ForNetwork clones) has been told to wait, the others wait too rather
 		// than each discovering the lockout for itself.
-		if attempts > 1 {
+		if policyOn {
 			if err := c.cooldown.wait(req.Context(), maxDelay); err != nil {
 				return nil, err
 			}
@@ -98,7 +104,7 @@ func (c *Client) send(req *http.Request) (*http.Response, error) {
 			GotConn: func(httptrace.GotConnInfo) { gotConn.Store(true) },
 		}))
 		resp, err := c.httpClient.Do(traced)
-		if attempts > 1 && resp != nil && resp.StatusCode == http.StatusTooManyRequests && isRateLimitBody(resp) {
+		if policyOn && resp != nil && resp.StatusCode == http.StatusTooManyRequests && isRateLimitBody(resp) {
 			if wait, ok := retryAfter(resp.Header.Get("Retry-After"), time.Now()); ok {
 				c.cooldown.set(time.Now().Add(wait))
 			}
@@ -331,5 +337,30 @@ func WithIdempotent(ctx context.Context) context.Context {
 
 func idempotentCall(ctx context.Context) bool {
 	marked, _ := ctx.Value(idempotentKey{}).(bool)
+	return marked
+}
+
+type noRetryKey struct{}
+
+// WithoutRetry opts the requests made with the returned context out of the
+// client's retry policy: each is sent once and its first answer, 429 or 503
+// included, is returned. For a write whose duplicate is worse than its failure
+// (a network create, a device batch put), on a client whose policy is set for
+// the reads. The policy treats a 503 as "turned away unprocessed", but that is
+// usual, not proven: Spring answers 503 when an asynchronous handler's timeout
+// fires (AsyncRequestTimeoutException; WebMvcConfig sets a 10s default), which
+// can be after the work started (cloud discovery and the CAP connectivity test
+// are asynchronous writes), and a proxy in front can answer one too. It wins
+// over WithIdempotent if a context carries both. The mark covers every request
+// made with the context, so do not put it on a composite call whose follow-up
+// reads (polling an import) should keep their retries. The client's shared
+// rate-limit cooldown still applies, so a call does not send into a lockout
+// another request already met.
+func WithoutRetry(ctx context.Context) context.Context {
+	return context.WithValue(ctx, noRetryKey{}, true)
+}
+
+func noRetryCall(ctx context.Context) bool {
+	marked, _ := ctx.Value(noRetryKey{}).(bool)
 	return marked
 }
