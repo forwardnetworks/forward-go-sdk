@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 458
+	const minExercised = 460
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -96,6 +96,9 @@ var wireArgOverrides = map[string]map[int]any{
 	"CloudAccounts.Patch":                  {3: CloudAccountPatch{Type: "AWS"}},
 	"Collectors.Metrics":                   {2: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), 3: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC), 4: 0},
 	"Collectors.PatchOrganizationSettings": {1: OrgCollectionSettingsPatch{CommandDelayMS: Ptr(1)}},
+	"ClassicDevices.PatchMany":             {2: []string{"sw1"}, 3: ClassicDevicePatch{Note: Ptr("v1")}},
+	"ClassicDevices.GetMany":               {2: []string{"sw1"}},
+	"NQE.RunAll":                           {3: NQEQueryRequest{Query: "v1"}, 4: NQEPagedOptions{KeyColumn: "name"}},
 	"ClassicDevices.Patch":                 {3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"Backups.DeleteBackup":                 {1: int64(7), 2: StorageTypeAll},
 	"Scorecards.Trends":                    {2: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), 3: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), 4: 30},

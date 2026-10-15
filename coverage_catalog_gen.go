@@ -279,6 +279,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"ClassicDevices.Get": {
 		{Method: "GET", Route: "/api/networks/{networkId}/classic-devices/{deviceName}"},
 	},
+	"ClassicDevices.GetMany": {
+		{Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
+	},
 	"ClassicDevices.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/classic-devices"},
 	},
@@ -287,6 +290,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"ClassicDevices.Patch": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/classic-devices/{deviceName}"},
+	},
+	"ClassicDevices.PatchMany": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/classic-devices"},
 	},
 	"ClassicDevices.Put": {
 		{Method: "PUT", Route: "/api/networks/{networkId}/classic-devices/{deviceName}"},
@@ -856,6 +862,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/networks/{networkId}/nqe-executions/{executionKey}/result"},
 	},
 	"NQE.Run": {
+		{Method: "POST", Route: "/api/nqe"},
+	},
+	"NQE.RunAll": {
 		{Method: "POST", Route: "/api/nqe"},
 	},
 	"NQE.RunMetrics": {
