@@ -31,7 +31,7 @@ func TestHelpTopicsCarryTheCaveats(t *testing.T) {
 	root := newRootCmd()
 	for name, mustSay := range map[string][]string{
 		"tls":         {"--ca-bundle", "REPLACES the system roots"},
-		"writes":      {"PutBatch REPLACES", "PatchMany", "Clear", "REPLACES the whole stored map", "RateLimitLockout", "OBTAIN a connection"},
+		"writes":      {"PutBatch REPLACES", "PatchMany", "Clear", "REPLACES the whole stored map", "RateLimitLockout", "OBTAIN a connection", "WithIdempotent"},
 		"reads":       {"NQE.RunAll", "EMPTY awsC2SAccountInfos does NOT", "CUMULATIVE", "no documented row order"},
 		"permissions": {"DEBUG_NQE", "DEBUG_COLLECTORS", "MissingPermission"},
 	} {

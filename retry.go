@@ -161,8 +161,10 @@ func retryable(req *http.Request, resp *http.Response, err error, refusedOnly, n
 		if refusedOnly {
 			return false
 		}
-		// Nothing was sent: safe for every method.
-		return notConnected || idempotent(req.Method)
+		// notConnected: nothing was sent, safe for every method. Otherwise the
+		// outcome is unknown, so only a method that is idempotent, or a call the
+		// caller marked idempotent (WithIdempotent), is repeated.
+		return notConnected || idempotent(req.Method) || idempotentCall(req.Context())
 	}
 	switch resp.StatusCode {
 	case http.StatusTooManyRequests, http.StatusServiceUnavailable:
@@ -176,7 +178,7 @@ func retryable(req *http.Request, resp *http.Response, err error, refusedOnly, n
 		// Permanent: the route is absent from this build, not overloaded.
 		return false
 	}
-	return resp.StatusCode >= 500 && idempotent(req.Method)
+	return resp.StatusCode >= 500 && (idempotent(req.Method) || idempotentCall(req.Context()))
 }
 
 // retryWait is the wait before the next attempt: the server's Retry-After when
@@ -308,4 +310,26 @@ func isRateLimitMessage(body []byte) bool {
 		return false
 	}
 	return strings.HasPrefix(strings.TrimSpace(parsed.Message), "Rate limit exceeded")
+}
+
+type idempotentKey struct{}
+
+// WithIdempotent marks every request made with the returned context as safe to
+// repeat, whatever its method: the caller asserts that applying it twice has
+// the effect of applying it once (a PATCH that sets a field to a value, a
+// PatchMany with the same patch). The retry policy then treats it like a GET or
+// PUT, so a transport error after the request was written, a 502, a 504 or
+// another 5xx is retried too, where it otherwise would not be because the
+// outcome is unknown. It changes nothing else: it does not turn retries on
+// (Config.Retry still decides), and 501 is never retried. Only claim it for a
+// call that really is idempotent: a repeated POST that creates something is
+// not. The mark covers every request made with the context, so do not put it
+// on a composite call that also creates something (a read followed by a create).
+func WithIdempotent(ctx context.Context) context.Context {
+	return context.WithValue(ctx, idempotentKey{}, true)
+}
+
+func idempotentCall(ctx context.Context) bool {
+	marked, _ := ctx.Value(idempotentKey{}).(bool)
+	return marked
 }

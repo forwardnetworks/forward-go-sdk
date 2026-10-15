@@ -304,6 +304,13 @@ when doing so cannot duplicate a mutation:
   gave up waiting says nothing about whether the appserver finished a POST;
 - 501 (the route is absent from this build) is never retried.
 
+`WithIdempotent(ctx)` marks the calls made with that context as safe to repeat
+(the caller asserts that applying them twice is applying them once, as for a
+PATCH that sets a value), so a transport error after the request was written or
+a 5xx is retried for them too; it enables nothing by itself, `RefusedOnly`
+still overrides it, 501 is still never retried, and it covers every request made
+with that context, so keep it off composite calls that also create something.
+
 `DefaultRetryPolicy()` is a sensible starting point: five attempts, exponential
 backoff from one second capped at two minutes, half jitter. Forward's API rate
 limiter locks the whole user out (more than 2000 requests a minute by default,

@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -264,5 +265,82 @@ func TestOnlyTheRateLimiters429SetsTheSharedCooldown(t *testing.T) {
 	}
 	if clone := client.ForNetwork("net-2"); clone.cooldown != client.cooldown {
 		t.Fatal("a ForNetwork clone shares one credential and so one rate limit: it must share the cooldown")
+	}
+}
+
+// A caller that knows its write is idempotent in effect (the same patch applied
+// twice) can say so for one call, and a request cut off after it was written is
+// then repeated; the same request without the mark is not. The mark turns
+// nothing on by itself: with no retry policy nothing is repeated.
+func TestWithIdempotentRepeatsAWriteCutOffAfterItWasSent(t *testing.T) {
+	var served atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if served.Add(1) == 1 {
+			if conn, _, err := w.(http.Hijacker).Hijack(); err == nil {
+				_ = conn.Close() // read and acted on; the answer never arrives
+			}
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	patch := func(ctx context.Context, client *Client) error {
+		req, err := client.newJSONRequest(ctx, http.MethodPatch, "/api/networks/1/classic-devices", map[string]any{"names": []string{"a"}})
+		if err != nil {
+			return err
+		}
+		_, err = client.Do(req, nil)
+		return err
+	}
+
+	if err := patch(context.Background(), unsentRetryClient(t, server.URL, privateHTTPClient())); err == nil || served.Load() != 1 {
+		t.Fatalf("without the mark a written PATCH is not repeated: err=%v served=%d", err, served.Load())
+	}
+	served.Store(0)
+	if err := patch(WithIdempotent(context.Background()), unsentRetryClient(t, server.URL, privateHTTPClient())); err != nil || served.Load() != 2 {
+		t.Fatalf("with the mark it is repeated once and succeeds: err=%v served=%d", err, served.Load())
+	}
+	served.Store(0)
+	noRetry, err := NewClient(Config{BaseURL: server.URL, Username: "u", Password: "p", HTTPClient: privateHTTPClient()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := patch(WithIdempotent(context.Background()), noRetry); err == nil || served.Load() != 1 {
+		t.Fatalf("the mark does not enable retries by itself: err=%v served=%d", err, served.Load())
+	}
+}
+
+// The mark widens exactly one thing: what is repeated after an outcome-unknown
+// failure. It never overrides RefusedOnly, a body that cannot be rewound, or the
+// 501 that means the route is absent.
+func TestWithIdempotentChangesNothingElse(t *testing.T) {
+	marked := func() *http.Request {
+		req, _ := http.NewRequestWithContext(WithIdempotent(context.Background()), http.MethodPatch, "http://x/api", nil)
+		return req
+	}
+	plain, _ := http.NewRequest(http.MethodPatch, "http://x/api", nil)
+	status := func(code int) *http.Response { return &http.Response{StatusCode: code} }
+	for name, tc := range map[string]struct {
+		req         *http.Request
+		resp        *http.Response
+		err         error
+		refusedOnly bool
+		want        bool
+	}{
+		"marked 502 is repeated":             {marked(), status(502), nil, false, true},
+		"unmarked PATCH 502 is not":          {plain, status(502), nil, false, false},
+		"marked 501 is never repeated":       {marked(), status(501), nil, false, false},
+		"marked 500 under RefusedOnly":       {marked(), status(500), nil, true, false},
+		"marked transport error repeated":    {marked(), nil, errors.New("reset"), false, true},
+		"marked transport under RefusedOnly": {marked(), nil, errors.New("reset"), true, false},
+	} {
+		if got := retryable(tc.req, tc.resp, tc.err, tc.refusedOnly, false); got != tc.want {
+			t.Errorf("%s: retryable = %v, want %v", name, got, tc.want)
+		}
+	}
+	unrewindable, _ := http.NewRequestWithContext(WithIdempotent(context.Background()), http.MethodPatch, "http://x/api", io.NopCloser(strings.NewReader("{}")))
+	unrewindable.GetBody = nil
+	if retryable(unrewindable, status(502), nil, false, false) {
+		t.Error("a body that cannot be rewound is never sent twice, marked or not")
 	}
 }
