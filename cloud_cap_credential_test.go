@@ -136,7 +136,7 @@ func TestCloudAccountCarriesTheCAPFields(t *testing.T) {
 }
 
 // PATCH takes the CAP filter (UpdateAwsAccountRequest.awsC2SAccountInfos): nil
-// leaves it out, a non-nil empty list is sent and means "every portal account".
+// leaves it out, a non-nil empty list is sent and clears the filter (which collection rejects).
 func TestPatchSendsTheCAPFilterOnlyWhenSet(t *testing.T) {
 	var bodies []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

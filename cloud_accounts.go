@@ -37,10 +37,27 @@ type CloudAccount struct {
 	// AWS account collects through; read it with CloudAccounts.GetAWSCapCredential.
 	// Empty for an account that does not use CAP.
 	AWSCapCredentialID string `json:"awsCapCredentialId,omitempty"`
+	// SubscriptionIDs is an Azure setup's explicit subscription selection. EMPTY
+	// means "collect from every subscription discovered at collection time"
+	// (AzureAccount.subscriptionIds). DiscoveredSubscriptionIDs is everything
+	// discovery found, a superset of SubscriptionIDs, and TestResults holds a
+	// result only for subscriptions tested with the current configuration, so
+	// discovered subscriptions with no TestResults entry were never tested.
+	SubscriptionIDs           []string `json:"subscriptionIds,omitempty"`
+	DiscoveredSubscriptionIDs []string `json:"discoveredSubscriptionIds,omitempty"`
+	// ProjectIDs is a GCP setup's explicit project selection; EMPTY means every
+	// project (GcpAccount.projectIds). DiscoveredProjectIDs is every project
+	// found by connectivity tests.
+	ProjectIDs           []string `json:"projectIds,omitempty"`
+	DiscoveredProjectIDs []string `json:"discoveredProjectIds,omitempty"`
 	// AWSC2SAccountInfos is the CAP account filter (AwsAccount.awsC2SAccountInfos).
 	// For a CAP account it, not AssumeRoleInfos or their Enabled flags, decides
-	// which portal accounts are collected, and EMPTY means every account the
-	// portal lists. Change it with CloudAccountPatch.AWSC2SAccountInfos (PATCH
+	// which portal accounts are collected. EMPTY does NOT mean "every account":
+	// collection fails on it (AwsPipelineContext.getEffectiveAccounts requires a
+	// non-empty list before any portal call), and only discovery and the setup
+	// test treat empty as "no filter". A wrong id or role matches nothing,
+	// silently; CloudAccounts.Discover lists the pairs the portal really
+	// offers. Change it with CloudAccountPatch.AWSC2SAccountInfos (PATCH
 	// takes it at the pinned build). Create takes it only together with an
 	// embedded CAP credential, which this SDK does not model, so
 	// CloudAccountRequest does not carry it (reach it through Extra).
@@ -449,8 +466,9 @@ type CloudAccountPatch struct {
 	RegionToProxyServerID map[string]string    `json:"regionToProxyServerId,omitempty"`
 	AssumeRoleInfos       *[]AWSAssumeRoleInfo `json:"assumeRoleInfos,omitempty"`
 	// AWSC2SAccountInfos replaces a CAP account's portal-account filter (UpdateAwsAccountRequest.awsC2SAccountInfos,
-	// verified at the pinned build). Nil leaves it unchanged; a non-nil empty list is sent and means "collect every
-	// portal account". Forward rejects a non-empty list on an account that is not a CAP account.
+	// verified at the pinned build). Nil leaves it unchanged; a non-nil empty list is sent and clears the filter,
+	// which does NOT collect every portal account: collection of a CAP setup fails on an empty filter (see
+	// CloudAccount.AWSC2SAccountInfos). Forward rejects a non-empty list on an account that is not a CAP account.
 	AWSC2SAccountInfos *[]AWSC2SAccountInfo `json:"awsC2SAccountInfos,omitempty"`
 }
 

@@ -297,6 +297,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"CloudAccounts.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}"},
 	},
+	"CloudAccounts.Discover": {
+		{Method: "POST", Route: "/api/networks/{networkId}/cloudAccounts/{accountName}/discovery"},
+	},
 	"CloudAccounts.Get": {
 		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
 	},
@@ -304,6 +307,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/networks/{networkId}/aws-cap-credentials/{credentialId}"},
 	},
 	"CloudAccounts.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
+	},
+	"CloudAccounts.NewlyDiscovered": {
 		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts"},
 	},
 	"CloudAccounts.Patch": {
