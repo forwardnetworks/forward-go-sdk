@@ -2,14 +2,23 @@ package forward
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 const capSecret = "TUlJS3NlY3JldC1wMTItYnl0ZXM="
@@ -30,6 +39,9 @@ func TestGetAWSCapCredentialDropsTheClientCertificate(t *testing.T) {
 	cred, _, err := newTestClient(t, server.URL).CloudAccounts.GetAWSCapCredential(context.Background(), "net-1", "cred/7")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if cred.ClientCertificateNotAfterReason != CapClientCertificateNotParsed {
+		t.Fatalf("with no stored password the reason is that the SDK does not parse PKCS#12: %+v", cred)
 	}
 	if cred.ID != "cred/7" || cred.BaseCapServerURL != "https://capAcct.example.mil" || !cred.HasCertificateAuthority {
 		t.Fatalf("credential = %+v", cred)
@@ -163,5 +175,95 @@ func TestPatchSendsTheCAPFilterOnlyWhenSet(t *testing.T) {
 		if strings.TrimSpace(bodies[i]) != want[i] {
 			t.Fatalf("body %d = %s, want %s", i, bodies[i], want[i])
 		}
+	}
+}
+
+func caCertPEM(t *testing.T, name string, notBefore, notAfter time.Time) []byte {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(time.Now().UnixNano()), Subject: pkix.Name{CommonName: name},
+		NotBefore: notBefore, NotAfter: notAfter, IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+}
+
+// A portal CA that expires takes the whole AWS collection down, so the read
+// derives the bundle's validity: how many certificates parsed, the EARLIEST
+// NotAfter and the LATEST NotBefore. Unreadable material is "absent" (zero),
+// never an error; the client .p12 can only report why its expiry is unknown;
+// and no CA byte reaches any formatting or JSON of the result.
+func TestGetAWSCapCredentialDerivesCAValidityWithoutKeepingBytes(t *testing.T) {
+	soon := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	later := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+	bundle := append(caCertPEM(t, "ca-a", time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), later),
+		caCertPEM(t, "ca-b", time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), soon)...)
+	encoded := base64.StdEncoding.EncodeToString(bundle)
+
+	respond := func(ca string) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = io.WriteString(w, `{"id":"c","baseCapServerUrl":"https://cap.example.mil","clientCertificateBase64":"`+capSecret+`","clientCertificatePasswordId":"SEC-1","certificateAuthorityBase64":"`+ca+`"}`)
+		}))
+	}
+	read := func(ca string) *AWSCapCredential {
+		server := respond(ca)
+		defer server.Close()
+		cred, _, err := newTestClient(t, server.URL).CloudAccounts.GetAWSCapCredential(context.Background(), "net-1", "c")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return cred
+	}
+
+	cred := read(encoded)
+	if cred.CertificateAuthorityCount != 2 || !cred.CertificateAuthorityNotAfter.Equal(soon) ||
+		!cred.CertificateAuthorityNotBefore.Equal(time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Fatalf("bundle validity = %+v", cred)
+	}
+	if cred.ClientCertificateNotAfter != (time.Time{}) || cred.ClientCertificateNotAfterReason != CapClientCertificatePasswordRequired {
+		t.Fatalf("with a stored password the .p12 expiry is unreadable and must say why: %+v", cred)
+	}
+	encodedJSON, _ := json.Marshal(cred)
+	for name, text := range map[string]string{"%+v": fmt.Sprintf("%+v", cred), "json": string(encodedJSON)} {
+		if strings.Contains(text, encoded[:40]) || strings.Contains(text, capSecret) || strings.Contains(text, "BEGIN CERTIFICATE") {
+			t.Fatalf("%s carries certificate bytes: %s", name, text)
+		}
+	}
+
+	// Forward loads only PEM text, so a bare DER certificate is NOT a usable CA
+	// and must not read as one; padding-free, whitespace-wrapped base64, a
+	// non-certificate block and an already-expired certificate are the cases
+	// the PEM path has to get right.
+	block, _ := pem.Decode(caCertPEM(t, "der", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), later))
+	if der := read(base64.StdEncoding.EncodeToString(block.Bytes)); !der.HasCertificateAuthority || der.CertificateAuthorityCount != 0 {
+		t.Fatalf("a bare DER CA is not loaded by Forward and must read as unreadable: %+v", der)
+	}
+	expired := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	mixed := append([]byte("-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n"), caCertPEM(t, "old", time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), expired)...)
+	wrapped := base64.RawStdEncoding.EncodeToString(mixed)
+	wrapped = wrapped[:60] + "\n" + wrapped[60:]
+	if got := read(strings.ReplaceAll(wrapped, "\n", "\\n")); got.CertificateAuthorityCount != 1 || !got.CertificateAuthorityNotAfter.Equal(expired) {
+		t.Fatalf("an expired cert in an unpadded, wrapped bundle with a key block must count once: %+v", got)
+	}
+	// Forward keys CAs by subject and the last one wins, so a renewed root must
+	// replace the superseded one rather than report its old expiry.
+	oldRoot := caCertPEM(t, "same-subject", time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), expired)
+	renewed := caCertPEM(t, "same-subject", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), later)
+	if got := read(base64.StdEncoding.EncodeToString(append(oldRoot, renewed...))); got.CertificateAuthorityCount != 1 || !got.CertificateAuthorityNotAfter.Equal(later) {
+		t.Fatalf("a renewed root must supersede the old one: %+v", got)
+	}
+	// Present but unreadable: HasCertificateAuthority stays true, the count and dates are zero, and there is no error.
+	if bad := read("Q0EtYnl0ZXM="); !bad.HasCertificateAuthority || bad.CertificateAuthorityCount != 0 || !bad.CertificateAuthorityNotAfter.IsZero() {
+		t.Fatalf("unreadable bundle = %+v", bad)
+	}
+	if none := read(""); none.HasCertificateAuthority || none.CertificateAuthorityCount != 0 {
+		t.Fatalf("no bundle = %+v", none)
 	}
 }
