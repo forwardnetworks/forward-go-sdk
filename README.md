@@ -281,6 +281,13 @@ This lets consumers migrate incrementally without blocking on complete API
 generation or forcing a generated transport abstraction on Terraform and
 Encore.
 
+What the calls do that their names do not say (a `PutBatch` replaces the whole
+device, a disabled-commands patch replaces the whole map, an empty C2S filter
+fails collection, offset/limit NQE pages have no stable order, GC time is a
+cumulative counter, which permission a typed 403 names) is in the `fwdctl` help
+topics, which need no credentials: `go run ./cmd/fwdctl help writes`, `reads`,
+`permissions`, `tls`. The method doc comments carry the evidence for each.
+
 Retries are opt-in. The zero `Config.Retry` retries nothing. With a
 `RetryPolicy{MaxAttempts, Delay, MaxDelay}`, the client repeats a request only
 when doing so cannot duplicate a mutation:

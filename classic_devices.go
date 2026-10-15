@@ -241,6 +241,10 @@ func (d *ClassicDevice) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// List reads every classic device of the network in one request: GET
+// /api/networks/{networkId}/classic-devices takes no offset or limit
+// (ClassicDeviceController.getClassicDevices), so there is no paging to be
+// unstable. For a subset by name use GetMany.
 func (s *ClassicDevicesService) List(ctx context.Context, networkID string, with ...string) ([]ClassicDevice, *Response, error) {
 	path, err := classicDevicesPath(networkID)
 	if err != nil {

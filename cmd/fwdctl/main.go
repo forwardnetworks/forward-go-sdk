@@ -53,11 +53,22 @@ func main() {
 func newRootCmd() *cobra.Command {
 	flags := &globalFlags{}
 	root := &cobra.Command{
-		Use:           "fwdctl",
-		Short:         "Drive a Forward instance one SDK call at a time",
+		Use:   "fwdctl",
+		Short: "Drive a Forward instance one SDK call at a time",
+		Long: `Drive a Forward instance one SDK call at a time.
+
+Credentials come from FWD_USER and FWD_PASS, the URL from --url or FWD_HOST, the network from --network or FWD_NETWORK.
+
+What the SDK calls do that their names do not say is in the help topics: fwdctl help tls, writes, reads, permissions.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Help and the shell-completion generator need no Forward, so they must
+			// not demand credentials.
+			if cmd.Name() == "help" || cmd.Name() == "completion" || cmd.Name() == cobra.ShellCompRequestCmd || cmd.Name() == cobra.ShellCompNoDescRequestCmd ||
+				cmd.Parent() != nil && cmd.Parent().Name() == "completion" {
+				return nil
+			}
 			insecure := flags.insecure
 			if insecure && flags.caBundle != "" {
 				return fmt.Errorf("--insecure and --ca-bundle contradict each other: one turns verification off, the other trusts a CA")
@@ -95,6 +106,7 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().StringVar(&flags.caBundle, "ca-bundle", os.Getenv("FWD_CA_BUNDLE"),
 		"PEM file of CAs to trust for the server certificate, instead of the system roots (env FWD_CA_BUNDLE); keeps verification on")
 
+	addHelpTopics(root)
 	root.AddCommand(
 		newCollectorsCmd(), newCollectorCmd(), newDevicesCmd(), newLocationsCmd(), newCloudAccountsCmd(), newJumpServersCmd(),
 		newSnapshotCmd(), newChangeSetCmd(),
