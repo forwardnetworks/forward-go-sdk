@@ -837,6 +837,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"NQE.Diff": {
 		{Method: "POST", Route: "/api/nqe-diffs/{before}/{after}"},
 	},
+	"NQE.ExplainPath": {
+		{Method: "POST", Route: "/api/internal/users/current/nqe/queries/explain"},
+	},
+	"NQE.ExplainQuery": {
+		{Method: "POST", Route: "/api/internal/nqe/queries/{queryId}/explain"},
+	},
 	"NQE.ListQueries": {
 		{Method: "GET", Route: "/api/nqe/queries"},
 	},
@@ -848,6 +854,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"NQE.Run": {
 		{Method: "POST", Route: "/api/nqe"},
+	},
+	"NQE.RunMetrics": {
+		{Method: "GET", Route: "/api/nqe-run-metrics"},
 	},
 	"NQE.Schema": {
 		{Method: "GET", Route: "/api/nqe/schema"},
