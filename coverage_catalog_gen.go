@@ -410,6 +410,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Collectors.List": {
 		{Method: "GET", Route: "/api/collectors"},
 	},
+	"Collectors.Metrics": {
+		{Method: "GET", Route: "/api/collectors/{collectorName}/metrics"},
+	},
 	"Collectors.PatchOrganizationSettings": {
 		{Method: "PATCH", Route: "/api/collection-settings"},
 	},
