@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 460
+	const minExercised = 462
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -98,6 +98,7 @@ var wireArgOverrides = map[string]map[int]any{
 	"Collectors.PatchOrganizationSettings": {1: OrgCollectionSettingsPatch{CommandDelayMS: Ptr(1)}},
 	"ClassicDevices.PatchMany":             {2: []string{"sw1"}, 3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"ClassicDevices.GetMany":               {2: []string{"sw1"}},
+	"ControllerManagedSetups.Test":         {3: ControllerAndManagedDeviceSelection{SetupNames: []string{"sdwan"}}},
 	"NQE.RunAll":                           {3: NQEQueryRequest{Query: "v1"}, 4: NQEPagedOptions{KeyColumn: "name"}},
 	"ClassicDevices.Patch":                 {3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"Backups.DeleteBackup":                 {1: int64(7), 2: StorageTypeAll},

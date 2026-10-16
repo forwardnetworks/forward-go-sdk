@@ -455,6 +455,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"ControllerManagedSetups.Create": {
 		{Method: "POST", Route: "/api/networks/{networkId}/controller-managed-setups"},
 	},
+	"ControllerManagedSetups.CreateMigratingClassic": {
+		{Method: "POST", Route: "/api/networks/{networkId}/controller-managed-setups"},
+	},
 	"ControllerManagedSetups.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
 	},
@@ -463,6 +466,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"ControllerManagedSetups.Patch": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
+	},
+	"ControllerManagedSetups.Test": {
+		{Method: "POST", Route: "/api/networks/{networkId}/controller-managed-setups"},
 	},
 	"Credentials.CreateCLI": {
 		{Method: "POST", Route: "/api/networks/{networkId}/cli-credentials"},

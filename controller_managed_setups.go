@@ -12,7 +12,8 @@ import (
 // the record that tells Forward a controller (vManage, vBond, vSmart) owns a
 // set of devices, rather than each device being collected classically.
 //
-// Preview: these routes are not in the published OpenAPI set.
+// Published in Forward's OpenAPI (controller-managed-setups.yaml) but tagged Experimental: the contract may change without
+// deprecation.
 type ControllerManagedSetupsService service
 
 // ControllerManagedSetup is a setup as Forward returns it.
@@ -150,7 +151,28 @@ func (s *ControllerManagedSetupsService) List(ctx context.Context, networkID str
 }
 
 // Create adds a controller-managed setup.
+//
+// Names are unique across every collection source in the network, so a controller or guest that a classic device
+// already holds under the same name is refused with a 400; CreateMigratingClassic is the one atomic way to take such
+// devices over.
 func (s *ControllerManagedSetupsService) Create(ctx context.Context, networkID string, input NewControllerManagedSetup) (*ControllerManagedSetup, *Response, error) {
+	return s.create(ctx, networkID, input, "", "ControllerManagedSetups.Create")
+}
+
+// CreateMigratingClassic adds a controller-managed setup and, in the same transaction, DELETES every classic device
+// whose name matches one of the setup's controllers or managed devices (POST ...controller-managed-setups?action=migrate,
+// addControllerManagedSetupWithMigration, published as Experimental). It is how the UI moves devices that were added
+// as classic devices into a setup: if the setup is refused, nothing is deleted; if it is accepted, the classic devices are
+// gone, with their per-device settings (credentials, collection options), their connectivity test results and their device tags.
+// Only the setup's controllers and managed devices are matched, not the setup's own name (a classic device called that is
+// still a 400). A name held by a
+// non-classic source (another setup, an endpoint) is still a 400 and rolls the whole thing back. Names that match no
+// classic device are simply added. Read the classic devices you are about to replace first.
+func (s *ControllerManagedSetupsService) CreateMigratingClassic(ctx context.Context, networkID string, input NewControllerManagedSetup) (*ControllerManagedSetup, *Response, error) {
+	return s.create(ctx, networkID, input, "?action=migrate", "ControllerManagedSetups.CreateMigratingClassic")
+}
+
+func (s *ControllerManagedSetupsService) create(ctx context.Context, networkID string, input NewControllerManagedSetup, query, operation string) (*ControllerManagedSetup, *Response, error) {
 	if strings.TrimSpace(input.Name) == "" {
 		return nil, nil, errors.New("forward: controller-managed setup name is required")
 	}
@@ -161,14 +183,53 @@ func (s *ControllerManagedSetupsService) Create(ctx context.Context, networkID s
 	if err != nil {
 		return nil, nil, err
 	}
-	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, input)
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path+query, input)
 	if err != nil {
 		return nil, nil, err
 	}
-	req = markOperation(req, "ControllerManagedSetups.Create")
+	req = markOperation(req, operation)
 	out := new(ControllerManagedSetup)
 	resp, err := s.client.Do(req, out)
 	return out, resp, err
+}
+
+// ControllerAndManagedDeviceSelection picks the devices a setup test runs on: by device name, or by setup name (every
+// controller and managed device of those setups). Exactly one of the two must be non-empty (Forward's own rule).
+type ControllerAndManagedDeviceSelection struct {
+	Names      []string `json:"names,omitempty"`
+	SetupNames []string `json:"setupNames,omitempty"`
+}
+
+// Test queues a connectivity test of the selected controllers and managed devices (POST
+// ...controller-managed-setups?action=test, testControllerManagedSetups, published as Experimental; the UI's "Test" button). Forward answers
+// 204 as soon as the tests are queued, not when they finish: read each device's testResult afterwards (the UI lists the
+// setups with ?with=testResult). SetupNames are matched case-sensitively against the stored (lowercase) names, so Test folds
+// them to lowercase; a name that matches no setup tests nothing and still answers 204. collectorID, when not empty, runs them through that collector instead of the setup's own.
+func (s *ControllerManagedSetupsService) Test(ctx context.Context, networkID, collectorID string, selection ControllerAndManagedDeviceSelection) (*Response, error) {
+	if (len(selection.Names) == 0) == (len(selection.SetupNames) == 0) {
+		return nil, errors.New("forward: exactly one of names or setupNames must be given")
+	}
+	path, err := s.base(networkID)
+	if err != nil {
+		return nil, err
+	}
+	if len(selection.SetupNames) != 0 {
+		folded := make([]string, len(selection.SetupNames))
+		for i, name := range selection.SetupNames {
+			folded[i] = strings.ToLower(strings.TrimSpace(name))
+		}
+		selection.SetupNames = folded
+	}
+	query := url.Values{"action": []string{"test"}}
+	if collectorID = strings.TrimSpace(collectorID); collectorID != "" {
+		query.Set("collectorId", collectorID)
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path+"?"+query.Encode(), selection)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "ControllerManagedSetups.Test")
+	return s.client.Do(req, nil)
 }
 
 // Delete removes a setup by name. A 404 is success: the desired state, that
