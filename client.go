@@ -573,13 +573,26 @@ func (c *Client) resolveScoped(path string, scope pathScope) (*url.URL, error) {
 	if rel.IsAbs() || rel.Host != "" || rel.User != nil {
 		return nil, errors.New("forward: request path must not be an absolute URL")
 	}
-	allowed := strings.HasPrefix(rel.Path, "/api/") || rel.Path == "/api"
+	// ResolveReference removes "." and ".." path segments (RFC 3986), so an ID or name of ".." would climb out of its route: a
+	// device named ".." read as the network, "." sent to the whole-network start. No Forward route contains such a segment, so a
+	// path that does is refused rather than silently resolved to another route. Go does not collapse a segment that is only
+	// ENCODED dots ("%2e%2e"), but a server may normalise it, so that is refused too. Segments and the scope check use the
+	// escaped path, which is what goes on the wire: an ID with an escaped separator ("a%2F..%2Fb", which PathEscape produces)
+	// stays one harmless segment, and "/api%2F..%2Flogin" does not pass as an /api/ path.
+	escaped := rel.EscapedPath()
+	for _, segment := range strings.Split(escaped, "/") {
+		decoded, err := url.PathUnescape(segment)
+		if err != nil || decoded == "." || decoded == ".." {
+			return nil, fmt.Errorf("forward: request path %q contains a %q segment, which would resolve to a different route", escaped, segment)
+		}
+	}
+	allowed := strings.HasPrefix(escaped, "/api/") || escaped == "/api"
 	switch scope {
 	case pathScopeBackup:
-		allowed = rel.Path == "/api/backup-settings" || rel.Path == "/api/backup-settings/storage" || rel.Path == "/api/backups"
+		allowed = escaped == "/api/backup-settings" || escaped == "/api/backup-settings/storage" || escaped == "/api/backups"
 	case pathScopeBrowser:
-		allowed = allowed || rel.Path == "/login" || rel.Path == "/public/csrf" ||
-			strings.HasPrefix(rel.Path, "/saml2/authenticate/") || strings.HasPrefix(rel.Path, "/login/saml2/sso/")
+		allowed = allowed || escaped == "/login" || escaped == "/public/csrf" ||
+			strings.HasPrefix(escaped, "/saml2/authenticate/") || strings.HasPrefix(escaped, "/login/saml2/sso/")
 	}
 	if !allowed {
 		return nil, errors.New("forward: request path is outside the typed service scope")
