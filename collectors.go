@@ -92,6 +92,26 @@ type OrgCollectionSettingsPatch struct {
 	DeviceCollectionTimeoutMins *int `json:"deviceCollectionTimeoutMinutes,omitempty"`
 	CommandDelayMS              *int `json:"commandDelayMs,omitempty"`
 	PerDeviceConcurrencyBoost   *int `json:"perDeviceConcurrencyBoost,omitempty"`
+	// PerDeviceSNMPConcurrency is the concurrent SNMP transactions allowed per device (1 to 100, anything else is a 400; Forward's
+	// default is DefaultPerDeviceSNMPConcurrency).
+	PerDeviceSNMPConcurrency *int `json:"perDeviceSnmpConcurrency,omitempty"`
+	// The three collection retry properties are one stored CollectionRetryConfig; Forward merges whichever are present into
+	// it and keeps the others, so setting one does not reset the rest. CollectionRetries counts retries AFTER the first
+	// attempt (0 turns retries off); the delays double from CollectionRetryDelayMillis up to CollectionMaxRetryDelayMillis.
+	// Negative values are a 400. Defaults: DefaultCollectionRetries, DefaultCollectionRetryDelayMillis,
+	// DefaultCollectionMaxRetryDelayMillis.
+	CollectionRetries             *int `json:"collectionRetries,omitempty"`
+	CollectionRetryDelayMillis    *int `json:"collectionRetryDelayMillis,omitempty"`
+	CollectionMaxRetryDelayMillis *int `json:"collectionMaxRetryDelayMillis,omitempty"`
+	// Clear names wire properties to send as an explicit JSON null, which RESETS them to unset so Forward's default applies.
+	// That is not the same as setting the default's value: a stored 15000 stays 15000 if Forward's default later changes, and
+	// reads back as set (a non-nil field), whereas a cleared property reads back nil. Clearable: maxDeviceAuthNPerSecond,
+	// maxScanConnectionsPerSecond, deviceCollectionTimeoutMinutes, commandDelayMs, perDeviceConcurrencyBoost,
+	// perDeviceSnmpConcurrency, collectionRetries, collectionRetryDelayMillis, collectionMaxRetryDelayMillis,
+	// maxCommandAuthZPerSecond, deviceDiscoveryTimeoutMinutes, generalJobTimeoutMinutes, snapshotCollectionTimeoutMinutes
+	// (the last four have no field here, so Clear is the only way to reset them). Naming a
+	// property that is also set is an error.
+	Clear []string `json:"-"`
 	// DisabledCommands turns built-in collection commands off org-wide, per
 	// device type (the key is Forward's device type name as the classic device
 	// "type" field carries it, e.g. "panos_ssh", "cisco_ios_xe_ssh", "f5_ssh").
@@ -108,6 +128,40 @@ type OrgCollectionSettingsPatch struct {
 	// sends null, which also clears every disabled command; prefer an empty map.
 	// There is no concurrency guard, so two editors can overwrite each other.
 	DisabledCommands *map[string][]DisabledCommand `json:"disabledCommands,omitempty"`
+}
+
+var orgCollectionSettingsClearable = map[string]bool{
+	"maxDeviceAuthNPerSecond": true, "maxScanConnectionsPerSecond": true, "deviceCollectionTimeoutMinutes": true,
+	"commandDelayMs": true, "perDeviceConcurrencyBoost": true, "perDeviceSnmpConcurrency": true,
+	"collectionRetries": true, "collectionRetryDelayMillis": true, "collectionMaxRetryDelayMillis": true,
+	"maxCommandAuthZPerSecond": true, "deviceDiscoveryTimeoutMinutes": true, "generalJobTimeoutMinutes": true,
+	"snapshotCollectionTimeoutMinutes": true,
+}
+
+// MarshalJSON writes the set properties and a JSON null for each name in Clear.
+func (p OrgCollectionSettingsPatch) MarshalJSON() ([]byte, error) {
+	type plain OrgCollectionSettingsPatch
+	raw, err := json.Marshal(plain(p))
+	if err != nil {
+		return nil, err
+	}
+	if len(p.Clear) == 0 {
+		return raw, nil
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return nil, err
+	}
+	for _, name := range p.Clear {
+		if !orgCollectionSettingsClearable[name] {
+			return nil, fmt.Errorf("forward: organization collection setting %q cannot be cleared with null", name)
+		}
+		if value, set := fields[name]; set && string(value) != "null" {
+			return nil, fmt.Errorf("forward: organization collection settings patch both sets and clears %q", name)
+		}
+		fields[name] = json.RawMessage("null")
+	}
+	return json.Marshal(fields)
 }
 
 // DisabledCommand switches one built-in collection command off for a device

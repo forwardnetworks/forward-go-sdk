@@ -179,19 +179,28 @@ func TestControllerManagedCreateSendsCollectorID(t *testing.T) {
 	}
 }
 
-// A DeviceTestResult is also what a caller caches or re-sends inside a setup
-// body, so it must encode under the same keys it decodes from, or a cached
-// failure reads back as a pass.
+// A DeviceTestResult is what a caller caches, so it must encode under the same
+// keys it decodes from, or a cached failure reads back as a pass. Every field is
+// set in the input and checked non-zero, so a mistyped tag or decode key on any
+// one of them fails here instead of round-tripping as an empty value.
 func TestDeviceTestResultRoundTrips(t *testing.T) {
 	t.Parallel()
 
-	in := []byte(`{"error":"AUTHENTICATION_FAILED","errorPhase":"AUTHENTICATION","savedAt":1790859432171,"endTime":"2026-10-16T01:00:00Z"}`)
+	in := []byte(`{"error":"AUTHENTICATION_FAILED","errorPhase":"AUTHENTICATION","hostIps":["10.0.0.1"],"unauthorizedCommands":["show run"],"managedDevices":[{"name":"edge1","ipAddress":"10.0.1.1"}],"discoveredCliCredentialId":"L-3","discoveredHttpCredentialId":"H-4","discoveredSnmpCredentialId":"S-5","discoveredType":"cisco_sdwan_vsmart_ssh","controllerInfos":[{"name":"vs1","ipAddress":"10.0.2.1"}],"nameAliases":["vs1.example"],"dependentNameAndAliases":["edge1"],"startTime":"2026-10-16T00:59:00Z","savedAt":"2026-10-16T01:00:01Z","endTime":"2026-10-16T01:00:00Z"}`)
 	var first DeviceTestResult
 	if err := json.Unmarshal(in, &first); err != nil {
 		t.Fatal(err)
 	}
-	if first.Error != "AUTHENTICATION_FAILED" || first.SavedAt != "1790859432171" || first.EndTime != "2026-10-16T01:00:00Z" {
+	if len(first.HostIPs) != 1 || len(first.UnauthorizedCommands) != 1 || len(first.ManagedDevices) != 1 || first.ManagedDevices[0].IPAddress != "10.0.1.1" || first.DiscoveredCLICredentialID != "L-3" {
+		t.Fatalf("phase details lost: %+v", first)
+	}
+	if first.Error != "AUTHENTICATION_FAILED" || first.SavedAt != "2026-10-16T01:00:01Z" || first.EndTime != "2026-10-16T01:00:00Z" {
 		t.Fatalf("decoded %+v", first)
+	}
+	for i, value := 0, reflect.ValueOf(first); i < value.NumField(); i++ {
+		if value.Field(i).IsZero() {
+			t.Errorf("field %s was not decoded from the input", value.Type().Field(i).Name)
+		}
 	}
 	out, err := json.Marshal(first)
 	if err != nil {

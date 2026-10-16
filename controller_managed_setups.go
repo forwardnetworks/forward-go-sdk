@@ -102,7 +102,8 @@ type ManagedDevice struct {
 // the phase it failed in; it decodes exactly as SourceTestStatus does.
 //
 // Forward returns the LAST SAVED result, so right after Test the previous one is still here until the new test finishes:
-// compare EndTime (Forward's endTime, epoch milliseconds or an ISO time as the build writes it) with when you queued the test.
+// compare EndTime with when you queued the test. Forward writes the times as ISO-8601 strings (an epoch number is kept as its digits);
+// parse them before comparing, because ISO strings with different fractional digits do not sort as text.
 // An object with no known key decodes to an all-empty value, which reads as "no error", so check EndTime before treating
 // empty as a pass.
 type DeviceTestResult struct {
@@ -112,6 +113,28 @@ type DeviceTestResult struct {
 	ControllerInfos []ControllerInfo `json:"controllerInfos,omitempty"`
 	SavedAt         string           `json:"savedAt,omitempty"`
 	EndTime         string           `json:"endTime,omitempty"`
+	StartTime       string           `json:"startTime,omitempty"`
+
+	// ManagedDevices is, for a controller, the devices its QUERY phase reported managing (name and address; Forward's hidden
+	// managedDevices, "only used for controller-managed setups"). It is not the guest list HOST_NOT_REPORTING_ANY_GUEST is
+	// raised from: that comes from the SETUP phase (SetupPhaseResult.getDependentsFromMaster), and Forward does not serialize
+	// it, the per-phase results, the device's host/guest role, or the request's operation id and connection params. No phase
+	// result records the commands that were run; only UnauthorizedCommands is on the wire. An empty ManagedDevices on a controller whose
+	// error is HOST_NOT_REPORTING_ANY_GUEST (a SETUP-phase error) is therefore consistent, and a non-empty one is not proof
+	// the setup phase found guests.
+	ManagedDevices []ControllerInfo `json:"managedDevices,omitempty"`
+	// DependentNameAndAliases is, for a guest, the names and aliases it reported (hidden; used to match it to its controller).
+	DependentNameAndAliases []string `json:"dependentNameAndAliases,omitempty"`
+	// NameAliases are the hostnames and aliases the QUERY phase found for the device (hidden).
+	NameAliases []string `json:"nameAliases,omitempty"`
+	// HostIPs are the addresses the connection phase reached; UnauthorizedCommands the commands the authorization phase found
+	// the account may not run.
+	HostIPs              []string `json:"hostIps,omitempty"`
+	UnauthorizedCommands []string `json:"unauthorizedCommands,omitempty"`
+	// The credentials the test found working (a controller or guest left to auto-association shows them here).
+	DiscoveredCLICredentialID  string `json:"discoveredCliCredentialId,omitempty"`
+	DiscoveredHTTPCredentialID string `json:"discoveredHttpCredentialId,omitempty"`
+	DiscoveredSNMPCredentialID string `json:"discoveredSnmpCredentialId,omitempty"`
 }
 
 func (r *DeviceTestResult) UnmarshalJSON(data []byte) error {
@@ -120,9 +143,17 @@ func (r *DeviceTestResult) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*r = DeviceTestResult{Error: status.ConnectivityError, ErrorPhase: status.ErrorPhase, DiscoveredType: status.DiscoveredType, ControllerInfos: status.ControllerInfos}
-	var times map[string]any
-	if json.Unmarshal(data, &times) == nil {
-		r.SavedAt, r.EndTime = firstAnyString(times, "savedAt"), firstAnyString(times, "endTime")
+	var fields map[string]any
+	if json.Unmarshal(data, &fields) == nil {
+		r.SavedAt, r.EndTime, r.StartTime = firstAnyString(fields, "savedAt"), firstAnyString(fields, "endTime"), firstAnyString(fields, "startTime")
+		r.DiscoveredCLICredentialID = firstAnyString(fields, "discoveredCliCredentialId")
+		r.DiscoveredHTTPCredentialID = firstAnyString(fields, "discoveredHttpCredentialId")
+		r.DiscoveredSNMPCredentialID = firstAnyString(fields, "discoveredSnmpCredentialId")
+		r.ManagedDevices = controllerInfoList(fields["managedDevices"])
+		r.DependentNameAndAliases = stringList(fields["dependentNameAndAliases"])
+		r.NameAliases = stringList(fields["nameAliases"])
+		r.HostIPs = stringList(fields["hostIps"])
+		r.UnauthorizedCommands = stringList(fields["unauthorizedCommands"])
 	}
 	return nil
 }
@@ -368,4 +399,26 @@ func (s *ControllerManagedSetupsService) Patch(
 	out := new(ControllerManagedSetup)
 	resp, err := s.client.Do(req, out)
 	return out, resp, err
+}
+
+func stringList(raw any) []string {
+	items, _ := raw.([]any)
+	var out []string
+	for _, item := range items {
+		if value := anyString(item); value != "" {
+			out = append(out, value)
+		}
+	}
+	return out
+}
+
+func controllerInfoList(raw any) []ControllerInfo {
+	items, _ := raw.([]any)
+	var out []ControllerInfo
+	for _, item := range items {
+		if object, ok := item.(map[string]any); ok {
+			out = append(out, ControllerInfo{Name: firstAnyString(object, "name"), IPAddress: firstAnyString(object, "ipAddress")})
+		}
+	}
+	return out
 }
