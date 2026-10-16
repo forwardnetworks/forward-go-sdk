@@ -325,7 +325,10 @@ for one minute by default and at most 60): the 429 says how long in
 `Retry-After`, `errors.Is(err, ErrRateLimited)` and `RateLimitLockout(err)` read
 it, and with a retry policy every request on the client (and its `ForNetwork`
 clones) shares one cooldown instead of each discovering the lockout itself. A
-lockout longer than `MaxDelay` is returned, not slept through.
+lockout longer than `MaxDelay` is returned, not slept through. A different lock
+is the account lock after repeated failed logins: a 401, `ErrAccountLocked`
+(it still matches `ErrAuthentication`), no `Retry-After`, never retried; stop
+sending the credential rather than retrying it.
 
 Backoff doubles from `Delay` (default 500ms) and is capped at `MaxDelay`
 (default 5 minutes). A `Retry-After` header is honored; when it asks for longer than

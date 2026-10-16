@@ -63,8 +63,10 @@ func (s *NQEService) ExplainQuery(ctx context.Context, queryID, commitID, snapsh
 // library path without the repository, as the UI sends it (for example
 // "/Operations/my query"). POST /api/internal/users/current/nqe/queries/explain
 // (NqeController.explainInUserWorkspace, Preview and internal; org
-// VIEW_NQE_LIBRARY). Whether a draft at a path that has no committed query
-// yet resolves here was not traced.
+// VIEW_NQE_LIBRARY). A draft at a path with no committed query yet resolves
+// (getUserEffectiveSourceSet reads the workspace change first and needs a
+// committed query only for an unedited path); a path the workspace has deleted,
+// moved away from, or that exists nowhere, is a 404.
 func (s *NQEService) ExplainPath(ctx context.Context, path, snapshotID string, params map[string]any) (string, *Response, error) {
 	if strings.TrimSpace(path) == "" {
 		return "", nil, errors.New("forward: NQE query path is required")

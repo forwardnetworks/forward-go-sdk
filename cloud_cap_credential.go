@@ -77,6 +77,10 @@ func (s *CloudAccountsService) GetAWSCapCredential(ctx context.Context, networkI
 	if credentialID = strings.TrimSpace(credentialID); credentialID == "" {
 		return nil, nil, errors.New("forward: CAP credential id is required")
 	}
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
 	path, err := networkPath(networkID)
 	if err != nil {
 		return nil, nil, err

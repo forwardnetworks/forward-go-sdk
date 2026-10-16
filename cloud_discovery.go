@@ -27,7 +27,7 @@ type DiscoveredCloudAccount struct {
 // in "collect all" mode (no assumeRoleInfos) is not in the result at all. Use
 // Discover for the portal's accounts.
 func (s *CloudAccountsService) NewlyDiscovered(ctx context.Context, networkID string) (map[string][]DiscoveredCloudAccount, *Response, error) {
-	path, err := cloudAccountsPath(networkID)
+	path, err := cloudAccountsPath(s.client, networkID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -92,7 +92,7 @@ func (s *CloudAccountsService) Discover(ctx context.Context, networkID, name str
 	if name = strings.TrimSpace(name); name == "" {
 		return nil, nil, errors.New("forward: cloud account name is required")
 	}
-	path, err := cloudAccountPath(networkID, name)
+	path, err := cloudAccountPath(s.client, networkID, name)
 	if err != nil {
 		return nil, nil, err
 	}

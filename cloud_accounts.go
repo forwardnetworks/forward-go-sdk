@@ -295,7 +295,7 @@ type AWSAssumeRoleExternalIDResponse struct {
 }
 
 func (s *CloudAccountsService) List(ctx context.Context, networkID string) ([]CloudAccount, *Response, error) {
-	path, err := cloudAccountsPath(networkID)
+	path, err := cloudAccountsPath(s.client, networkID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -309,7 +309,7 @@ func (s *CloudAccountsService) List(ctx context.Context, networkID string) ([]Cl
 }
 
 func (s *CloudAccountsService) Create(ctx context.Context, networkID string, request CloudAccountRequest) (*CloudAccount, *Response, error) {
-	path, err := cloudAccountsPath(networkID)
+	path, err := cloudAccountsPath(s.client, networkID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -323,7 +323,7 @@ func (s *CloudAccountsService) Create(ctx context.Context, networkID string, req
 }
 
 func (s *CloudAccountsService) Update(ctx context.Context, networkID, name string, request CloudAccountRequest) (*CloudAccount, *Response, error) {
-	path, err := cloudAccountPath(networkID, name)
+	path, err := cloudAccountPath(s.client, networkID, name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -337,7 +337,7 @@ func (s *CloudAccountsService) Update(ctx context.Context, networkID, name strin
 }
 
 func (s *CloudAccountsService) UpdateCredential(ctx context.Context, networkID, name string, request CloudAccountCredentialRequest) (*Response, error) {
-	path, err := cloudAccountPath(networkID, name)
+	path, err := cloudAccountPath(s.client, networkID, name)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +349,7 @@ func (s *CloudAccountsService) UpdateCredential(ctx context.Context, networkID, 
 }
 
 func (s *CloudAccountsService) Delete(ctx context.Context, networkID, name string) (*Response, error) {
-	path, err := cloudAccountPath(networkID, name)
+	path, err := cloudAccountPath(s.client, networkID, name)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +362,7 @@ func (s *CloudAccountsService) Delete(ctx context.Context, networkID, name strin
 
 // Test triggers the account connectivity probe.
 func (s *CloudAccountsService) Test(ctx context.Context, networkID, name string) (*Response, error) {
-	base, err := cloudAccountsPath(networkID)
+	base, err := cloudAccountsPath(s.client, networkID)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +379,7 @@ func (s *CloudAccountsService) Test(ctx context.Context, networkID, name string)
 }
 
 func (s *CloudAccountsService) AWSAssumeRoleExternalID(ctx context.Context, networkID string) (string, *Response, error) {
-	path, err := cloudAccountsPath(networkID)
+	path, err := cloudAccountsPath(s.client, networkID)
 	if err != nil {
 		return "", nil, err
 	}
@@ -394,7 +394,12 @@ func (s *CloudAccountsService) AWSAssumeRoleExternalID(ctx context.Context, netw
 	return result.ExternalID, resp, err
 }
 
-func cloudAccountsPath(networkID string) (string, error) {
+// cloudAccountsPath resolves an empty networkID from the client's bound network, like the other network-scoped services.
+func cloudAccountsPath(client *Client, networkID string) (string, error) {
+	networkID, err := client.resolveNetworkID(networkID)
+	if err != nil {
+		return "", err
+	}
 	path, err := networkPath(networkID)
 	if err != nil {
 		return "", err
@@ -402,8 +407,8 @@ func cloudAccountsPath(networkID string) (string, error) {
 	return path + "/cloudAccounts", nil
 }
 
-func cloudAccountPath(networkID, name string) (string, error) {
-	path, err := cloudAccountsPath(networkID)
+func cloudAccountPath(client *Client, networkID, name string) (string, error) {
+	path, err := cloudAccountsPath(client, networkID)
 	if err != nil {
 		return "", err
 	}
@@ -478,7 +483,7 @@ func (s *CloudAccountsService) Patch(ctx context.Context, networkID, name string
 	if strings.TrimSpace(patch.Type) == "" {
 		return nil, nil, errors.New("forward: cloud account patch type is required")
 	}
-	path, err := cloudAccountPath(networkID, name)
+	path, err := cloudAccountPath(s.client, networkID, name)
 	if err != nil {
 		return nil, nil, err
 	}

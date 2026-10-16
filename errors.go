@@ -54,9 +54,16 @@ const (
 	// SaaS-only, the backup and restore routes on-prem Kubernetes only), and also what a mistyped path or a route from a
 	// newer Forward looks like, so it means "not served here", never "the thing you asked for is missing". Contrast
 	// ErrorKindNetworkNotFound, a route that exists and found no such network.
-	ErrorKindEndpointNotServed                 ErrorKind = "endpoint-not-served"
-	ErrorKindNetworkNotFound                   ErrorKind = "network-not-found"
-	ErrorKindAuthentication                    ErrorKind = "authentication-failure"
+	ErrorKindEndpointNotServed ErrorKind = "endpoint-not-served"
+	ErrorKindNetworkNotFound   ErrorKind = "network-not-found"
+	ErrorKindAuthentication    ErrorKind = "authentication-failure"
+	// ErrorKindAccountLocked is a 401 because the login or access key is locked out after repeated failed attempts, not because
+	// this request's credentials were wrong (UserAuthService / ApiTokenAuthenticationProvider: "User account is locked: <name>",
+	// "Account is locked"). Forward counts failed attempts and locks whatever the deployment flags (after every third failure: 1, 5, 15
+	// minutes, then 1 and 3 hours); API_RATE_LIMITING only decides whether a locked identifier is refused before its credentials are
+	// checked. The lock is per identifier and carries no Retry-After, so its length is unknown. A locked 401 matches ErrAuthentication,
+	// which every 401 does, but IsErrorKind(err, ErrorKindAuthentication) is false for it. Never retried: a 401 is not.
+	ErrorKindAccountLocked                     ErrorKind = "account-locked"
 	ErrorKindTrustedCertificateApplyInProgress ErrorKind = "trusted-certificate-apply-in-progress"
 	// ErrorKindUnknownOrgProperty is the appserver refusing an org property
 	// NAME its OrgProperty enum does not define (Spring's 400 "No enum constant
@@ -73,6 +80,7 @@ var (
 	ErrFeatureGated                      = errors.New("forward: feature not available for this organization or deployment")
 	ErrEndpointProfileInUse              = errors.New("forward: endpoint profile is still used by endpoints")
 	ErrPermissionDenied                  = errors.New("forward: missing permission for the operation")
+	ErrAccountLocked                     = errors.New("forward: account is locked out after repeated failed authentication")
 	ErrRateLimited                       = errors.New("forward: API rate limit exceeded, the user is locked out for a while")
 	ErrUnlicensedOperation               = errors.New("forward: operation not included in the organization's license")
 	ErrEndpointNotServed                 = errors.New("forward: route is not served by this deployment")
@@ -170,7 +178,9 @@ func (e *ErrorResponse) Is(target error) bool {
 	case ErrNetworkNotFound:
 		return e.Kind == ErrorKindNetworkNotFound
 	case ErrAuthentication:
-		return e.Kind == ErrorKindAuthentication
+		return e.Kind == ErrorKindAuthentication || e.Kind == ErrorKindAccountLocked
+	case ErrAccountLocked:
+		return e.Kind == ErrorKindAccountLocked
 	case ErrTrustedCertificateApplyInProgress:
 		return e.Kind == ErrorKindTrustedCertificateApplyInProgress
 	case ErrUnknownOrgProperty:
@@ -267,6 +277,10 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	}
 	status := apiErr.Response.StatusCode
 	if status == http.StatusUnauthorized {
+		// The form login's JsonAuthenticationFailureHandler answers {"error":"locked"} with no message.
+		if message := strings.TrimSpace(apiErr.Message); strings.HasPrefix(message, "User account is locked") || message == "Account is locked" || apiErr.Code == "locked" {
+			return ErrorKindAccountLocked
+		}
 		return ErrorKindAuthentication
 	}
 
