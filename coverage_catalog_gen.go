@@ -303,6 +303,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"ClassicDevices.PutBatch": {
 		{Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
 	},
+	"ClassicDevices.ResolveGlobs": {
+		{Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
+	},
 	"CloudAccounts.AWSAssumeRoleExternalID": {
 		{Method: "GET", Route: "/api/networks/{networkId}/cloudAccounts/aws/assumeRole/externalId"},
 	},
@@ -541,6 +544,24 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Credentials.UpdateSNMP": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},
+	},
+	"CustomCommandGroups.Create": {
+		{Method: "POST", Route: "/api/networks/{networkId}/custom-command-groups"},
+	},
+	"CustomCommandGroups.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/custom-command-groups/{groupName}"},
+	},
+	"CustomCommandGroups.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/custom-command-groups"},
+	},
+	"CustomCommandGroups.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/custom-command-groups"},
+	},
+	"CustomCommandGroups.Update": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/custom-command-groups/{groupName}"},
+	},
+	"CustomCommandGroups.Validate": {
+		{Method: "POST", Route: "/api/networks/{networkId}/custom-command-groups"},
 	},
 	"Dashboards.Defaults": {
 		{Method: "GET", Route: "/api/networks/{networkId}/dashboards"},

@@ -235,6 +235,37 @@ func (s *ClassicDevicesService) ListTestStatuses(ctx context.Context, networkID 
 	return result.Items, response, err
 }
 
+// ResolveGlobs says which of the network's classic devices of the given connection types each glob matches (POST
+// ...classic-devices?action=resolveGlobs, ClassicDeviceController.resolveGlobs; VIEW_COLLECTION_SOURCES; a read, nothing changes).
+// A custom command group's Devices are such globs, so this answers "which devices would this group's commands run on". The
+// result maps each glob, as sent, to the matching device names; a glob that matches nothing may be missing from the map (Forward
+// sends {} when no classic device of those types exists), so read it with a lookup. Globs match ignoring case. Globs and connTypes must be non-empty,
+// and no glob blank.
+func (s *ClassicDevicesService) ResolveGlobs(ctx context.Context, networkID string, globs, connTypes []string) (map[string][]string, *Response, error) {
+	if len(globs) == 0 || len(connTypes) == 0 {
+		return nil, nil, errors.New("forward: globs and connection types are required")
+	}
+	for _, glob := range globs {
+		if strings.TrimSpace(glob) == "" {
+			return nil, nil, errors.New("forward: a glob is blank")
+		}
+	}
+	path, err := classicDevicesPath(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path+"?action=resolveGlobs", map[string]any{"globs": globs, "connTypes": connTypes})
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "ClassicDevices.ResolveGlobs")
+	var out struct {
+		GlobToResolvedDevices map[string][]string `json:"globToResolvedDevices"`
+	}
+	resp, err := s.client.doRequired(req, &out)
+	return out.GlobToResolvedDevices, resp, err
+}
+
 func (d *ClassicDevice) UnmarshalJSON(data []byte) error {
 	type plain ClassicDevice
 	var value plain

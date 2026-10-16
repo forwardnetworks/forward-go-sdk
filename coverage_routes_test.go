@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 470
+	const minExercised = 477
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -99,6 +99,9 @@ var wireArgOverrides = map[string]map[int]any{
 	"ClassicDevices.PatchMany":             {2: []string{"sw1"}, 3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"ClassicDevices.GetMany":               {2: []string{"sw1"}},
 	"ConnectivityTests.BulkStart":          {2: []string{"sw1"}},
+	"CustomCommandGroups.Create":           {2: NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"cisco_ios_xe_ssh"}, Commands: []string{"show version"}}},
+	"CustomCommandGroups.Validate":         {2: []string{"cisco_ios_xe_ssh"}, 3: []string{"show version"}},
+	"ClassicDevices.ResolveGlobs":          {2: []string{"edge*"}, 3: []string{"cisco_ios_xe_ssh"}},
 	"ConnectivityTests.BulkStop":           {2: []string{"sw1"}},
 	"DeviceDiscovery.Start":                {3: SubnetScanParams{Subnets: []string{"10.0.0.0/24"}}},
 	"DeviceDiscovery.CreateScheduled":      {2: ScheduledDiscoveryDefinition{Name: "d", Params: SeededDiscoveryParams{SeedDevices: []string{"10.0.0.1"}}}},

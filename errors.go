@@ -381,6 +381,9 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	}
 	// ScheduledDiscoveryController words a missing schedule as 'Network "5" with scheduled discovery "7" not found'.
 	missingSchedule := strings.Contains(notFoundDetail, "with scheduled discovery")
+	// CustomCommandGroupRepo words a missing group 'Custom command group "x" not found': a group named like "network-checks"
+	// would otherwise supply the word "network" to the rule below.
+	missingSchedule = missingSchedule || strings.HasPrefix(notFoundDetail, "custom command group")
 	if status == http.StatusNotFound && !missingSchedule &&
 		(containsWords(notFoundDetail, "network", "not", "found") ||
 			containsWords(notFoundDetail, "network", "does", "not", "exist") ||

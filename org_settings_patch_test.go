@@ -8,8 +8,8 @@ import (
 	"testing"
 )
 
-// Wells set collectionRetryDelayMillis to 30000 and perDeviceSnmpConcurrency to
-// 1 and wants them back at Forward's defaults. The patch must be able to say
+// An operator raised collectionRetryDelayMillis to 30000 and set perDeviceSnmpConcurrency
+// to 1 and wants them back at Forward's defaults. The patch must be able to say
 // both things Forward's JsonProp distinguishes: set a value (the retry fields
 // merge into one stored config, so touching one leaves the others) and reset it
 // with an explicit null, which leaves the property unset (reads back nil)
