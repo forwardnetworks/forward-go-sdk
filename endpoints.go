@@ -224,12 +224,21 @@ type EndpointProfileRequest struct {
 }
 
 type SourceTestStatus struct {
-	Name                 string `json:"name,omitempty"`
-	SourceKind           string `json:"sourceKind,omitempty"`
-	TestResultPresent    bool   `json:"testResultPresent,omitempty"`
-	ConnectivityError    string `json:"connectivityError,omitempty"`
-	ConnectivityErrorRaw string `json:"connectivityErrorRaw,omitempty"`
-	ErrorPhase           string `json:"errorPhase,omitempty"`
+	Name string `json:"name,omitempty"`
+	// Type is the connection type the device is configured with (empty when it is left to auto-discovery). For a classic device it
+	// is a ConnTypes ID; Endpoints.ListTestStatuses fills it with the endpoint's own type (CLI, SNMP or HTTP), which is not.
+	Type string `json:"type,omitempty"`
+	// DiscoveredType is the type the last connectivity test discovered (testResult.discoveredType; empty when none was). It can
+	// be "unknown" or a non-device type; treat those as absent and fall back to Type, as Forward does, before joining on ConnTypes.
+	DiscoveredType string `json:"discoveredType,omitempty"`
+	// ControllerInfos are the controllers the last connectivity test found for the device (testResult.controllerInfos), each
+	// {name, ipAddress}. Non-empty means the device is managed through a controller.
+	ControllerInfos      []ControllerInfo `json:"controllerInfos,omitempty"`
+	SourceKind           string           `json:"sourceKind,omitempty"`
+	TestResultPresent    bool             `json:"testResultPresent,omitempty"`
+	ConnectivityError    string           `json:"connectivityError,omitempty"`
+	ConnectivityErrorRaw string           `json:"connectivityErrorRaw,omitempty"`
+	ErrorPhase           string           `json:"errorPhase,omitempty"`
 	// SNMPCollectionStatus is the error type of the device's last SNMP collection when it failed (NO_RESPONSE, NOT_AUTHORIZED, ...),
 	// and empty when it succeeded or was not reported.
 	SNMPCollectionStatus string `json:"snmpCollectionStatus,omitempty"`
@@ -242,6 +251,12 @@ type SourceTestStatus struct {
 	SNMPLastCollectedAt     string `json:"snmpLastCollectedAt,omitempty"`
 	SNMPCollectionErrorType string `json:"snmpCollectionErrorType,omitempty"`
 	SNMPCollectionError     string `json:"snmpCollectionError,omitempty"`
+}
+
+// ControllerInfo is a controller's hostname and address (Forward's NameAndIpAddress); either may be empty.
+type ControllerInfo struct {
+	Name      string `json:"name,omitempty"`
+	IPAddress string `json:"ipAddress,omitempty"`
 }
 
 func (s *EndpointsService) List(ctx context.Context, networkID string) ([]Endpoint, *Response, error) {

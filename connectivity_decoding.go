@@ -45,6 +45,15 @@ func (s *SourceTestStatus) UnmarshalJSON(data []byte) error {
 		}
 		s.ConnectivityError = normalizeErrorCode(s.ConnectivityError)
 		s.ErrorPhase = firstAnyString(result, "errorPhase", "phase")
+		s.DiscoveredType = firstAnyString(result, "discoveredType")
+		if infos, ok := result["controllerInfos"].([]any); ok {
+			s.ControllerInfos = nil
+			for _, raw := range infos {
+				if object, ok := raw.(map[string]any); ok {
+					s.ControllerInfos = append(s.ControllerInfos, ControllerInfo{Name: firstAnyString(object, "name"), IPAddress: firstAnyString(object, "ipAddress")})
+				}
+			}
+		}
 	}
 	if raw := item["snmpCollectionStatus"]; raw != nil {
 		s.SNMPCollectionReported = true

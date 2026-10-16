@@ -270,6 +270,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Checks.ListPredefined": {
 		{Method: "GET", Route: "/api/predefinedChecks"},
 	},
+	"ClassicDevices.ConnTypes": {
+		{Method: "GET", Route: "/api/deviceConnTypes"},
+	},
 	"ClassicDevices.Create": {
 		{Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
 	},
