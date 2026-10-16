@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -221,5 +222,44 @@ func TestNewControllerManagedSetupOmitsGuestsWhenThereAreNone(t *testing.T) {
 		if !strings.Contains(gotBody, tc.wantSub) {
 			t.Errorf("%s: body\n got %s\nwant substring %s", name, gotBody, tc.wantSub)
 		}
+	}
+}
+
+// A setup is pinned to one collector, so moving it (or unpinning it back to the
+// network's default) has to be possible without delete and recreate. Forward's
+// patch treats an absent collectorId as "keep", a value as "replace" and an
+// explicit null as "use the default", and the SDK must be able to say all three.
+func TestControllerManagedPatchCollector(t *testing.T) {
+	t.Parallel()
+
+	var bodies []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, string(body))
+		_, _ = w.Write([]byte(`{"name":"sdwan"}`))
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := context.Background()
+
+	for _, patch := range []ControllerManagedSetupPatch{
+		{CollectorID: "C4"},
+		{ClearCollector: true},
+		{ManagedDevices: &[]ManagedDevice{}},
+		{ManagedDevices: &[]ManagedDevice{}, ClearCollector: true},
+	} {
+		if _, _, err := client.ControllerManagedSetups.Patch(ctx, "5", "sdwan", patch); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{`{"collectorId":"C4"}`, `{"collectorId":null}`, `{"managedDevices":[]}`, `{"collectorId":null,"managedDevices":[]}`}
+	for i := range want {
+		if bodies[i] != want[i] {
+			t.Errorf("body %d = %s, want %s", i, bodies[i], want[i])
+		}
+	}
+	sent := len(bodies)
+	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "5", "sdwan", ControllerManagedSetupPatch{CollectorID: "C4", ClearCollector: true}); err == nil || len(bodies) != sent {
+		t.Fatal("setting and clearing the collector together must be refused before the request")
 	}
 }

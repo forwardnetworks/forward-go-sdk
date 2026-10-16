@@ -345,7 +345,7 @@ func (s *ControllerManagedSetupsService) Delete(ctx context.Context, networkID, 
 
 // ControllerManagedSetupPatch is a partial update of a setup.
 //
-// Every field is a pointer because Forward's ControllerManagedSetupPatch uses
+// Fields are pointers (or, for the collector, an id plus a clear flag) because Forward's ControllerManagedSetupPatch uses
 // JsonProp<T>, which distinguishes three states, not two: ABSENT leaves the
 // existing value alone, present-and-null clears it, and present-and-set
 // replaces it. A plain slice cannot say "leave the guests as they are" and
@@ -356,6 +356,39 @@ type ControllerManagedSetupPatch struct {
 	// Point it at an empty slice to remove every guest; leave it nil to keep
 	// the stored list untouched.
 	ManagedDevices *[]ManagedDevice `json:"managedDevices,omitempty"`
+
+	// CollectorID moves the whole setup to that collector ("C<n>"; ControllerManagedSetupPatch.collectorId replaces the stored
+	// one). Leave it empty to keep the current collector. To drop the pin so the network's default collector applies, set
+	// ClearCollector instead; naming both is an error.
+	CollectorID Identifier `json:"collectorId,omitempty"`
+	// Forward checks only that the collector belongs to the organization, not that it is assigned to this network; a collector that
+	// does not exist is a 404 "Collector with ID ... is not found" that reads like a missing setup (it has no ErrorKind). "4" is
+	// accepted as well as "C4". Forward re-checks the stored collector on every real change, so a setup pinned to a collector
+	// that has since been deleted answers 404 even to a guests-only patch; ClearCollector is the way out of that.
+	// ClearCollector sends collectorId as an explicit null, which unpins the setup (Forward: "can be explicitly set to null to use
+	// default collector").
+	ClearCollector bool `json:"-"`
+}
+
+// MarshalJSON writes the set properties, and a JSON null for collectorId when ClearCollector is set.
+func (p ControllerManagedSetupPatch) MarshalJSON() ([]byte, error) {
+	type plain ControllerManagedSetupPatch
+	if p.ClearCollector && p.CollectorID != "" {
+		return nil, errors.New("forward: controller-managed setup patch both sets and clears the collector")
+	}
+	if !p.ClearCollector {
+		return json.Marshal(plain(p))
+	}
+	raw, err := json.Marshal(plain(p))
+	if err != nil {
+		return nil, err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return nil, err
+	}
+	fields["collectorId"] = json.RawMessage("null")
+	return json.Marshal(fields)
 }
 
 // Patch applies a partial update to an existing setup and returns it as stored.
@@ -381,6 +414,9 @@ func (s *ControllerManagedSetupsService) Patch(
 	setupName = strings.TrimSpace(setupName)
 	if setupName == "" {
 		return nil, nil, errors.New("forward: controller-managed setup name is required")
+	}
+	if patch.ClearCollector && patch.CollectorID != "" {
+		return nil, nil, errors.New("forward: controller-managed setup patch both sets and clears the collector")
 	}
 	base, err := s.base(networkID)
 	if err != nil {
