@@ -590,6 +590,27 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DataFiles.Schema": {
 		{Method: "GET", Route: "/api/data-files/{dataFileName}/schema"},
 	},
+	"DeviceDiscovery.CreateScheduled": {
+		{Method: "POST", Route: "/api/networks/{networkId}/scheduled-discoveries"},
+	},
+	"DeviceDiscovery.DeleteScheduled": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/scheduled-discoveries/{scheduledDiscoveryId}"},
+	},
+	"DeviceDiscovery.GetScheduled": {
+		{Method: "GET", Route: "/api/networks/{networkId}/scheduled-discoveries/{scheduledDiscoveryId}"},
+	},
+	"DeviceDiscovery.ListDiscovered": {
+		{Method: "GET", Route: "/api/networks/{networkId}/discovered-devices"},
+	},
+	"DeviceDiscovery.ListScheduled": {
+		{Method: "GET", Route: "/api/networks/{networkId}/scheduled-discoveries"},
+	},
+	"DeviceDiscovery.Start": {
+		{Method: "POST", Route: "/api/networks/{networkId}/deviceDiscovery"},
+	},
+	"DeviceDiscovery.Stop": {
+		{Method: "POST", Route: "/api/networks/{networkId}/deviceDiscovery"},
+	},
 	"DeviceTags.AddBatch": {
 		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
 	},

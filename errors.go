@@ -379,7 +379,9 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	if apiErr.Message != "" {
 		notFoundDetail = normalizedErrorDetail(apiErr.Code, apiErr.Reason, apiErr.Message)
 	}
-	if status == http.StatusNotFound &&
+	// ScheduledDiscoveryController words a missing schedule as 'Network "5" with scheduled discovery "7" not found'.
+	missingSchedule := strings.Contains(notFoundDetail, "with scheduled discovery")
+	if status == http.StatusNotFound && !missingSchedule &&
 		(containsWords(notFoundDetail, "network", "not", "found") ||
 			containsWords(notFoundDetail, "network", "does", "not", "exist") ||
 			isNetworkResourcePath(path)) {

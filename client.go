@@ -88,6 +88,7 @@ type Client struct {
 	Devices                 *DevicesService
 	ClassicDevices          *ClassicDevicesService
 	ControllerManagedSetups *ControllerManagedSetupsService
+	DeviceDiscovery         *DeviceDiscoveryService
 	CloudManagedSetups      *CloudManagedSetupsService
 	SyntheticNodes          *SyntheticNodesService
 	Credentials             *CredentialsService
@@ -266,6 +267,7 @@ func (c *Client) bindServices() {
 	c.Devices = (*DevicesService)(&service{client: c})
 	c.ClassicDevices = (*ClassicDevicesService)(&service{client: c})
 	c.ControllerManagedSetups = (*ControllerManagedSetupsService)(&service{client: c})
+	c.DeviceDiscovery = (*DeviceDiscoveryService)(&service{client: c})
 	c.CloudManagedSetups = (*CloudManagedSetupsService)(&service{client: c})
 	c.SyntheticNodes = (*SyntheticNodesService)(&service{client: c})
 	c.Credentials = (*CredentialsService)(&service{client: c})
