@@ -54,3 +54,34 @@ func TestPathDotSegmentsAreRefused(t *testing.T) {
 		t.Fatalf("%d requests reached the server", sent.Load())
 	}
 }
+
+// Diffs.Count builds its path from a DiffKind that is not escaped (the routing
+// loop family is "routing-loop/count"), so a kind with a query, fragment,
+// escape or space must be refused rather than reshape the request; every
+// family the SDK itself lists stays accepted.
+func TestDiffKindCannotReshapeTheRequest(t *testing.T) {
+	t.Parallel()
+
+	var sent atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sent.Add(1)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := context.Background()
+
+	for _, bad := range []DiffKind{"devices?x=1", "devices#f", "a b", "%2e%2e", "../x", "devices/", "/devices", "Devices", "a//b", "devices\n", "devices%3Fx", "a_b"} {
+		if _, _, err := client.Diffs.Count(ctx, "1", "2", bad); err == nil {
+			t.Errorf("%q must be refused", bad)
+		}
+	}
+	if sent.Load() != 0 {
+		t.Fatalf("%d refused kinds reached the server", sent.Load())
+	}
+	for _, kind := range CountableDiffKinds {
+		if _, _, err := client.Diffs.Count(ctx, "1", "2", kind); err != nil {
+			t.Errorf("%q must stay accepted: %v", kind, err)
+		}
+	}
+}

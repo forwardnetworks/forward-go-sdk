@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -73,6 +74,8 @@ const (
 // would report them.
 var CountableDiffKinds = []DiffKind{DiffDevices, DiffInterfaces, DiffTopology, DiffL2, DiffACL, DiffCloudObjects, DiffCloudACL, DiffRoutingLoop}
 
+var diffKindPattern = regexp.MustCompile(`^[a-z0-9]+(?:[-/][a-z0-9]+)*$`)
+
 func diffsPath(snapshotA, snapshotB string, tail string) (string, error) {
 	snapshotA = strings.TrimSpace(snapshotA)
 	snapshotB = strings.TrimSpace(snapshotB)
@@ -83,10 +86,17 @@ func diffsPath(snapshotA, snapshotB string, tail string) (string, error) {
 }
 
 // Count returns the diff count for one family. routing-loop's path already
-// ends in /count and takes no query.
+// ends in /count and takes no query. kind is a path tail, so it must be lowercase letters and digits separated by single dashes
+// or slashes (every family in CountableDiffKinds is); anything else is refused before a request is sent. Count is for the
+// families that answer ?count, plus routing-loop.
 func (s *DiffsService) Count(ctx context.Context, snapshotA, snapshotB string, kind DiffKind) (*DiffCount, *Response, error) {
 	if kind == "" {
 		return nil, nil, errors.New("forward: diff kind is required")
+	}
+	// The kind is a path tail that is not escaped (routing-loop/count has a slash), so anything that could end or reshape the
+	// path -- a query, fragment, escape or space -- is refused rather than sent as a different request.
+	if !diffKindPattern.MatchString(string(kind)) {
+		return nil, nil, fmt.Errorf("forward: %q is not a valid diff kind (lowercase letters, digits, dash and slash)", kind)
 	}
 	path, err := diffsPath(snapshotA, snapshotB, string(kind))
 	if err != nil {
