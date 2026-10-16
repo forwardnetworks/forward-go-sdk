@@ -452,6 +452,24 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Configuration.SetDeployment": {
 		{Method: "PUT", Route: "/api/deployment-config/{property}"},
 	},
+	"ConnectivityTests.BulkStart": {
+		{Method: "POST", Route: "/api/networks/{networkId}/connectivityTests/bulkStart"},
+	},
+	"ConnectivityTests.BulkStop": {
+		{Method: "POST", Route: "/api/networks/{networkId}/connectivityTests/bulkStop"},
+	},
+	"ConnectivityTests.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/connectivityTests/{deviceName}"},
+	},
+	"ConnectivityTests.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/connectivityTests"},
+	},
+	"ConnectivityTests.Start": {
+		{Method: "POST", Route: "/api/networks/{networkId}/connectivityTests/{deviceName}/start"},
+	},
+	"ConnectivityTests.Stop": {
+		{Method: "POST", Route: "/api/networks/{networkId}/connectivityTests/{deviceName}/stop"},
+	},
 	"ControllerManagedSetups.Create": {
 		{Method: "POST", Route: "/api/networks/{networkId}/controller-managed-setups"},
 	},

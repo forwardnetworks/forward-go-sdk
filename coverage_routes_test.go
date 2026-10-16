@@ -98,6 +98,8 @@ var wireArgOverrides = map[string]map[int]any{
 	"Collectors.PatchOrganizationSettings": {1: OrgCollectionSettingsPatch{CommandDelayMS: Ptr(1)}},
 	"ClassicDevices.PatchMany":             {2: []string{"sw1"}, 3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"ClassicDevices.GetMany":               {2: []string{"sw1"}},
+	"ConnectivityTests.BulkStart":          {2: []string{"sw1"}},
+	"ConnectivityTests.BulkStop":           {2: []string{"sw1"}},
 	"DeviceDiscovery.Start":                {3: SubnetScanParams{Subnets: []string{"10.0.0.0/24"}}},
 	"DeviceDiscovery.CreateScheduled":      {2: ScheduledDiscoveryDefinition{Name: "d", Params: SeededDiscoveryParams{SeedDevices: []string{"10.0.0.1"}}}},
 	"ControllerManagedSetups.Test":         {3: ControllerAndManagedDeviceSelection{SetupNames: []string{"sdwan"}}},
