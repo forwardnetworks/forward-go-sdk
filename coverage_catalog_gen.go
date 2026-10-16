@@ -464,6 +464,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"ControllerManagedSetups.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/controller-managed-setups"},
 	},
+	"ControllerManagedSetups.ListWithTestResults": {
+		{Method: "GET", Route: "/api/networks/{networkId}/controller-managed-setups"},
+	},
 	"ControllerManagedSetups.Patch": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
 	},

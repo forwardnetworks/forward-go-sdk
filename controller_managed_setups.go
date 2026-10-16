@@ -2,6 +2,7 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -27,6 +28,10 @@ type ControllerManagedSetup struct {
 	// does not register them: a setup whose test just found four guests still
 	// reads back managedDevices null until someone writes them.
 	ManagedDevices []ManagedDevice `json:"managedDevices,omitempty"`
+
+	// CollectorID is the setup's preferred collector (StoredControllerManagedSetup.collectorId), one for the whole setup:
+	// its controllers and guests are collected through it ("C<n>"). Empty means the network's default collector.
+	CollectorID Identifier `json:"collectorId,omitempty"`
 }
 
 // ControllerDevice is one controller within a setup.
@@ -45,6 +50,10 @@ type ControllerDevice struct {
 	JumpServerID                      string                `json:"jumpServerId,omitempty"`
 	BGPAdvertisementCollectionOptions *BGPCollectionOptions `json:"bgpAdvertisementCollectionOptions,omitempty"`
 	SNMPCollectionConfig              *SNMPCollectionConfig `json:"snmpCollectionConfig,omitempty"`
+
+	// TestResult is the device's last connectivity test; only ListWithTestResults fills it, and it stays nil for a device
+	// that has never been tested.
+	TestResult *DeviceTestResult `json:"testResult,omitempty"`
 }
 
 // ManagedDevice is one guest device collected THROUGH a setup's controller
@@ -83,6 +92,39 @@ type ManagedDevice struct {
 	// Collect is DeviceSetupMeta.collect. Absent means true (Forward's
 	// isCollectionEnabled treats null as enabled), so leave it nil to collect.
 	Collect *bool `json:"collect,omitempty"`
+
+	// TestResult is the device's last connectivity test; only ListWithTestResults fills it.
+	TestResult *DeviceTestResult `json:"testResult,omitempty"`
+}
+
+// DeviceTestResult is the part of a device's connectivity test result (Forward's SourceConnectivityResult) the SDK models.
+// Error is the normalised error code (AUTHENTICATION_FAILED, PING_FAILED, ...; empty when the test passed) and ErrorPhase
+// the phase it failed in; it decodes exactly as SourceTestStatus does.
+//
+// Forward returns the LAST SAVED result, so right after Test the previous one is still here until the new test finishes:
+// compare EndTime (Forward's endTime, epoch milliseconds or an ISO time as the build writes it) with when you queued the test.
+// An object with no known key decodes to an all-empty value, which reads as "no error", so check EndTime before treating
+// empty as a pass.
+type DeviceTestResult struct {
+	Error           string           `json:"error,omitempty"`
+	ErrorPhase      string           `json:"errorPhase,omitempty"`
+	DiscoveredType  string           `json:"discoveredType,omitempty"`
+	ControllerInfos []ControllerInfo `json:"controllerInfos,omitempty"`
+	SavedAt         string           `json:"savedAt,omitempty"`
+	EndTime         string           `json:"endTime,omitempty"`
+}
+
+func (r *DeviceTestResult) UnmarshalJSON(data []byte) error {
+	var status SourceTestStatus
+	if err := status.UnmarshalJSON([]byte(`{"testResult":` + string(data) + `}`)); err != nil {
+		return err
+	}
+	*r = DeviceTestResult{Error: status.ConnectivityError, ErrorPhase: status.ErrorPhase, DiscoveredType: status.DiscoveredType, ControllerInfos: status.ControllerInfos}
+	var times map[string]any
+	if json.Unmarshal(data, &times) == nil {
+		r.SavedAt, r.EndTime = firstAnyString(times, "savedAt"), firstAnyString(times, "endTime")
+	}
+	return nil
 }
 
 type BGPCollectionOptions struct {
@@ -105,6 +147,10 @@ type NewControllerManagedSetup struct {
 	Name           string             `json:"name"`
 	Controllers    []ControllerDevice `json:"controllers"`
 	ManagedDevices []ManagedDevice    `json:"managedDevices,omitempty"`
+	// CollectorID pins the whole setup to one collector. Empty sends nothing, so the network's default collector applies.
+	// A setup's devices have no collector pin that takes effect (Forward stores a hidden collectorId on a device if one is
+	// written, but only the setup's is used).
+	CollectorID Identifier `json:"collectorId,omitempty"`
 }
 
 func (s *ControllerManagedSetupsService) base(networkID string) (string, error) {
@@ -128,6 +174,17 @@ func (s *ControllerManagedSetupsService) base(networkID string) (string, error) 
 // ERROR, not an empty list -- an HTML login page or {"error":...} must not
 // read as "this network has no setups".
 func (s *ControllerManagedSetupsService) List(ctx context.Context, networkID string) ([]ControllerManagedSetup, *Response, error) {
+	return s.list(ctx, networkID, "", "ControllerManagedSetups.List")
+}
+
+// ListWithTestResults is List with ?with=testResult: each controller and guest carries its last connectivity test
+// (DeviceTestResult), which is where the outcome of Test shows up. The same read is available per device on classic devices
+// through ClassicDevices.ListTestStatuses.
+func (s *ControllerManagedSetupsService) ListWithTestResults(ctx context.Context, networkID string) ([]ControllerManagedSetup, *Response, error) {
+	return s.list(ctx, networkID, "?with=testResult", "ControllerManagedSetups.ListWithTestResults")
+}
+
+func (s *ControllerManagedSetupsService) list(ctx context.Context, networkID, query, operation string) ([]ControllerManagedSetup, *Response, error) {
 	path, err := s.base(networkID)
 	if err != nil {
 		return nil, nil, err
@@ -141,11 +198,11 @@ func (s *ControllerManagedSetupsService) List(ctx context.Context, networkID str
 	result := listResponse[ControllerManagedSetup]{
 		Keys: []string{"setups", "data", "items", "results"},
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path+query, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	req = markOperation(req, "ControllerManagedSetups.List")
+	req = markOperation(req, operation)
 	resp, err := s.client.doRequired(req, &result)
 	return result.Items, resp, err
 }
@@ -202,8 +259,8 @@ type ControllerAndManagedDeviceSelection struct {
 
 // Test queues a connectivity test of the selected controllers and managed devices (POST
 // ...controller-managed-setups?action=test, testControllerManagedSetups, published as Experimental; the UI's "Test" button). Forward answers
-// 204 as soon as the tests are queued, not when they finish: read each device's testResult afterwards (the UI lists the
-// setups with ?with=testResult). SetupNames are matched case-sensitively against the stored (lowercase) names, so Test folds
+// 204 as soon as the tests are queued, not when they finish: read each device's testResult afterwards (ListWithTestResults, or
+// ClassicDevices.ListTestStatuses for a device still held as a classic one). SetupNames are matched case-sensitively against the stored (lowercase) names, so Test folds
 // them to lowercase; a name that matches no setup tests nothing and still answers 204. collectorID, when not empty, runs them through that collector instead of the setup's own.
 func (s *ControllerManagedSetupsService) Test(ctx context.Context, networkID, collectorID string, selection ControllerAndManagedDeviceSelection) (*Response, error) {
 	if (len(selection.Names) == 0) == (len(selection.SetupNames) == 0) {
