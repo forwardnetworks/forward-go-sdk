@@ -233,12 +233,18 @@ type SourceTestStatus struct {
 	DiscoveredType string `json:"discoveredType,omitempty"`
 	// ControllerInfos are the controllers the last connectivity test found for the device (testResult.controllerInfos), each
 	// {name, ipAddress}. Non-empty means the device is managed through a controller.
-	ControllerInfos      []ControllerInfo `json:"controllerInfos,omitempty"`
-	SourceKind           string           `json:"sourceKind,omitempty"`
-	TestResultPresent    bool             `json:"testResultPresent,omitempty"`
-	ConnectivityError    string           `json:"connectivityError,omitempty"`
-	ConnectivityErrorRaw string           `json:"connectivityErrorRaw,omitempty"`
-	ErrorPhase           string           `json:"errorPhase,omitempty"`
+	ControllerInfos   []ControllerInfo `json:"controllerInfos,omitempty"`
+	SourceKind        string           `json:"sourceKind,omitempty"`
+	TestResultPresent bool             `json:"testResultPresent,omitempty"`
+	// TestStartTime, TestEndTime and TestSavedAt are when the STORED test result's test started, ended and was saved
+	// (testResult.startTime, endTime, savedAt; ISO-8601 strings, empty when there is no test result). A result is only as
+	// fresh as these: Forward keeps the last one until the next test replaces it.
+	TestStartTime        string `json:"testStartTime,omitempty"`
+	TestEndTime          string `json:"testEndTime,omitempty"`
+	TestSavedAt          string `json:"testSavedAt,omitempty"`
+	ConnectivityError    string `json:"connectivityError,omitempty"`
+	ConnectivityErrorRaw string `json:"connectivityErrorRaw,omitempty"`
+	ErrorPhase           string `json:"errorPhase,omitempty"`
 	// SNMPCollectionStatus is the error type of the device's last SNMP collection when it failed (NO_RESPONSE, NOT_AUTHORIZED, ...),
 	// and empty when it succeeded or was not reported.
 	SNMPCollectionStatus string `json:"snmpCollectionStatus,omitempty"`

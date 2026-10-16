@@ -46,6 +46,7 @@ func (s *SourceTestStatus) UnmarshalJSON(data []byte) error {
 		s.ConnectivityError = normalizeErrorCode(s.ConnectivityError)
 		s.ErrorPhase = firstAnyString(result, "errorPhase", "phase")
 		s.DiscoveredType = firstAnyString(result, "discoveredType")
+		s.TestStartTime, s.TestEndTime, s.TestSavedAt = firstAnyString(result, "startTime"), firstAnyString(result, "endTime"), firstAnyString(result, "savedAt")
 		if infos, ok := result["controllerInfos"].([]any); ok {
 			s.ControllerInfos = nil
 			for _, raw := range infos {

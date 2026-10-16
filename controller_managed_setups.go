@@ -145,7 +145,7 @@ func (r *DeviceTestResult) UnmarshalJSON(data []byte) error {
 	*r = DeviceTestResult{Error: status.ConnectivityError, ErrorPhase: status.ErrorPhase, DiscoveredType: status.DiscoveredType, ControllerInfos: status.ControllerInfos}
 	var fields map[string]any
 	if json.Unmarshal(data, &fields) == nil {
-		r.SavedAt, r.EndTime, r.StartTime = firstAnyString(fields, "savedAt"), firstAnyString(fields, "endTime"), firstAnyString(fields, "startTime")
+		r.SavedAt, r.EndTime, r.StartTime = status.TestSavedAt, status.TestEndTime, status.TestStartTime
 		r.DiscoveredCLICredentialID = firstAnyString(fields, "discoveredCliCredentialId")
 		r.DiscoveredHTTPCredentialID = firstAnyString(fields, "discoveredHttpCredentialId")
 		r.DiscoveredSNMPCredentialID = firstAnyString(fields, "discoveredSnmpCredentialId")

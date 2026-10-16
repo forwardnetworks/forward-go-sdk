@@ -135,6 +135,15 @@ type ClassicDevice struct {
 	BGPAndBMPFailureHandling string `json:"bgpAndBmpFailureHandling,omitempty"`
 	DisableIPv6Collection    *bool  `json:"disableIpv6Collection,omitempty"`
 	FullCollectionLog        *bool  `json:"fullCollectionLog,omitempty"`
+	// Who created and last changed the device, and when (Forward's Attribution, unwrapped into the device; the read fills the
+	// usernames, which are empty for a deleted user). Empty when Forward states none, as for a device created before it
+	// recorded them. Times are ISO-8601 strings.
+	CreatedBy   string     `json:"createdBy,omitempty"`
+	CreatedByID Identifier `json:"createdById,omitempty"`
+	CreatedAt   string     `json:"createdAt,omitempty"`
+	UpdatedBy   string     `json:"updatedBy,omitempty"`
+	UpdatedByID Identifier `json:"updatedById,omitempty"`
+	UpdatedAt   string     `json:"updatedAt,omitempty"`
 	// Raw carries fields this SDK version does not model, so an object read
 	// from a newer appserver and written back does not silently lose them.
 	Raw map[string]json.RawMessage `json:"-"`
