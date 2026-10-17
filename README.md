@@ -269,8 +269,11 @@ corpus as `ErrCheckCorpusIncomplete` too.
 
 Predict callers must use `Predict.StageBGPAdvertisement` for new BGP
 originations. On affected builds, CLI `network <prefix>` becomes a CONFIG seed
-that Predict silently discards. Forward Predict does not model withdrawal, and
-the SDK deliberately exposes no withdrawal action.
+that Predict silently discards. Forward Predict does model withdrawal:
+`Predict.WithdrawBGPAdvertisement(s)` withdraws a received advertisement by key
+and `Predict.RestoreBGPAdvertisement(s)` drops what is staged for a key. A CLI
+`shutdown` of a neighbor outside the snapshot removes the session but not the
+routes learned from it, so model a peer loss with a withdrawal.
 
 ## Design direction
 

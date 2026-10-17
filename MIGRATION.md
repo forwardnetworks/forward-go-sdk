@@ -125,9 +125,9 @@ runtime evidence shared by scoped clones.
    `NewChangeSetMeta` fields and removes interactive CLI wrappers. Never encode a
    BGP origination as CLI `network <prefix>`: affected builds divert the resulting
    CONFIG seed and Predict installs no CONFIG strategy, so it disappears from the
-   predicted model. Only the structured advertisement endpoint is valid. Forward
-   Predict does not model withdrawal; reject a change requiring withdrawal before
-   claiming a Predict result.
+   predicted model. Only the structured advertisement endpoint is valid. A
+   withdrawal is `Predict.WithdrawBGPAdvertisement(s)` (by key); do not drop one
+   silently, and do not claim a Predict result for a withdrawal that was not staged.
 
 8. **Port the remaining typed families.** Map `AddTags`, `AddTagsTo`, and
    `ListTags` to `DeviceTags`; map `UploadPerformance` to `Performance.Upload`

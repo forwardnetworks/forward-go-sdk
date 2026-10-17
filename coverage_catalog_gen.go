@@ -1177,6 +1177,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.RemoveSecurityRule": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
 	},
+	"Predict.RestoreBGPAdvertisement": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
+	},
+	"Predict.RestoreBGPAdvertisements": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
+	},
 	"Predict.RestoreCommit": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
 	},
@@ -1210,6 +1216,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.ValidateCommands": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/commands"},
+	},
+	"Predict.WithdrawBGPAdvertisement": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
+	},
+	"Predict.WithdrawBGPAdvertisements": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
 	},
 	"Properties.ClearCurrent": {
 		{Method: "DELETE", Route: "/api/config/{property}"},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -42,7 +43,16 @@ func (s *PredictService) StageBGPAdvertisements(
 		return nil, nil
 	}
 	body := make([]BGPAdvertisement, 0, len(advertisements))
+	// Forward stores two staged advertisements with the same key and peer type from one bulk body as given, then fails when the
+	// change set runs (its seed-route map has no merge for equal keys). Refuse that here; to change one, stage it once.
+	type stagedKey struct{ vrf, peer, prefix, kind string }
+	seen := map[stagedKey]bool{}
 	for _, advertisement := range advertisements {
+		key := stagedKey{strings.TrimSpace(advertisement.VRF), strings.TrimSpace(advertisement.ExternalPeer), strings.TrimSpace(advertisement.Prefix), strings.ToUpper(strings.TrimSpace(advertisement.Type))}
+		if seen[key] {
+			return nil, fmt.Errorf("forward: BGP advertisement %s %s %s (%s) is staged twice in one call", key.vrf, key.peer, key.prefix, key.kind)
+		}
+		seen[key] = true
 		if advertisement.ASPath == nil {
 			advertisement.ASPath = []int64{}
 		}

@@ -24,7 +24,7 @@ every controller shipped by every Forward release.
 | Checks | Preview | snapshot list/evaluate; persistent create; name index; non-empty scoring guard |
 | Device tags/performance | Preview | tag definitions/assignments; metrics/history/health; synthetic generation; collector-authenticated binary upload |
 | NQE | Published | sync, async, wait, results/JSONL, diff, query listing |
-| Predict | Preview | change sets, normalized CLI/structured-BGP drafts, execution/history/wait; no withdrawal |
+| Predict | Preview | change sets, normalized CLI/structured-BGP drafts (inject, modify, withdraw, restore), execution/history/wait |
 | AI and AI Assist | Preview | chats/messages/wait; NQE/docs/Predict/diff assists |
 | Organizations/properties | Preview | current/admin org lifecycle; dynamic property keys |
 | Webhooks | Preview | list/create/update/delete/test |
