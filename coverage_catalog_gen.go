@@ -1120,17 +1120,68 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.DeleteChangeSet": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{id}"},
 	},
+	"Predict.DeleteCommit": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
+	},
+	"Predict.DiscardDraftDevice": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}"},
+	},
+	"Predict.DiscardSecurityRuleChange": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
+	},
+	"Predict.DuplicateChangeSet": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	},
+	"Predict.DuplicateChangeSetToNetwork": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	},
+	"Predict.EditCommitNote": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
+	},
+	"Predict.EditSecurityRule": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
+	},
+	"Predict.GetCommit": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
+	},
+	"Predict.GetCommittedConfig": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}/devices/{device}/config"},
+	},
+	"Predict.GetDraft": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft"},
+	},
+	"Predict.GetDraftConfig": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/config"},
+	},
+	"Predict.GetHeadCommit": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/head"},
+	},
 	"Predict.ListChangeSetChecks": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/checks"},
 	},
 	"Predict.ListChangeSets": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets"},
 	},
+	"Predict.ListCommits": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits"},
+	},
 	"Predict.ListPredictedSnapshots": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/predicted-snapshots"},
 	},
+	"Predict.MoveSecurityRule": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
+	},
+	"Predict.PreviewCommandsConfig": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/config"},
+	},
 	"Predict.RemoveSecurityRule": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
+	},
+	"Predict.RestoreCommit": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
+	},
+	"Predict.RestoreCommitAsNew": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
 	},
 	"Predict.Run": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
@@ -1138,6 +1189,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.RunOperation": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	},
+	"Predict.SaveDeviceConfig": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/config"},
 	},
 	"Predict.SecurityRulesDiff": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/security-rules-diff"},
@@ -1150,6 +1204,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.StageCommands": {
 		{Method: "PUT", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands"},
+	},
+	"Predict.UpdateChangeSet": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
 	},
 	"Predict.ValidateCommands": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/commands"},

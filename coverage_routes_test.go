@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 477
+	const minExercised = 494
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -99,6 +99,7 @@ var wireArgOverrides = map[string]map[int]any{
 	"ClassicDevices.PatchMany":             {2: []string{"sw1"}, 3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"ClassicDevices.GetMany":               {2: []string{"sw1"}},
 	"ConnectivityTests.BulkStart":          {2: []string{"sw1"}},
+	"Predict.EditSecurityRule":             {7: SecurityRuleDefinition{Name: "r"}},
 	"ControllerManagedSetups.Patch":        {3: ControllerManagedSetupPatch{CollectorID: "C4"}},
 	"CustomCommandGroups.Create":           {2: NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"cisco_ios_xe_ssh"}, Commands: []string{"show version"}}},
 	"CustomCommandGroups.Validate":         {2: []string{"cisco_ios_xe_ssh"}, 3: []string{"show version"}},
