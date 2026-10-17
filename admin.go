@@ -206,6 +206,13 @@ func (s *AdminService) DeleteUser(ctx context.Context, userID string) (*Response
 	return response, err
 }
 
+// SetSupportedOrganizations REPLACES a Forward support user's whole set of supported orgs (PUT /api/users/{id}/supported-orgs, a
+// support-admin route; the user must be in the Forward org, the org named "Forward Networks", and not a Forward admin, a chatbot or
+// supporting its own org). Orgs not listed are removed at once (this is also the only way to remove one: there is no per-org delete).
+// There is no expiry parameter: EVERY listed org, including ones already granted, is rewritten with last-active = now and 30 days, so
+// a grant made with AddSupportedOrganization for longer drops back to 30 days here. A grant stays valid for expires-in-days after the
+// user's last activity in that org (each impersonation refreshes it), not after the grant was made. Read the current set with
+// Users.Roles (SupportedOrgIDs) first.
 func (s *AdminService) SetSupportedOrganizations(ctx context.Context, userID string, orgIDs []string) (*Response, error) {
 	if err := s.requireService(); err != nil {
 		return nil, err
@@ -222,6 +229,11 @@ func (s *AdminService) SetSupportedOrganizations(ctx context.Context, userID str
 	return s.client.Do(req, nil)
 }
 
+// AddSupportedOrganization grants or renews ONE supported org (POST /api/users/{id}/supported-orgs?orgId=&expiresIn=, a support-admin
+// route with the same rules as SetSupportedOrganizations). expiresDays is how long the grant stays valid after the user's last activity
+// in that org (impersonating refreshes it). Forward's own default is 30 and its maximum 365, and a value of 0 expires the grant by the end
+// of the current minute; this SDK, unlike Forward, sends 365 for any value of 0 or less, so it cannot send 0 (revoke with
+// SetSupportedOrganizations instead).
 func (s *AdminService) AddSupportedOrganization(ctx context.Context, userID, orgID string, expiresDays int) (*Response, error) {
 	if err := s.requireService(); err != nil {
 		return nil, err

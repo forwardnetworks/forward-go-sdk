@@ -180,8 +180,16 @@ func (s *UsersService) CreateToken(ctx context.Context, tokenName, password stri
 // admin is not idempotent on the wire and re-granting flaps a user's
 // network-scoped permissions.
 type UserRoles struct {
+	// System are Forward-internal roles (ADMIN, ARTIFACT_UPLOADER, SUPPORT_ADMIN, FREE_TRIAL_PROVISIONER); empty for an ordinary user.
+	// There is no SUPPORT system role: a user supports an org through SupportedOrgIDs.
+	System  []string            `json:"system,omitempty"`
 	Org     []string            `json:"org"`
 	Network map[string][]string `json:"network"`
+	// SupportedOrgIDs are the orgs a Forward support user can currently impersonate into: grants (Admin.SetSupportedOrganizations,
+	// Admin.AddSupportedOrganization) that have not expired. A grant is valid for its expires-in-days after the user's last activity in that
+	// org, not after it was made, and an expired grant is not listed. It is always empty for a Forward ADMIN, who can reach every org
+	// without grants, so an empty list does not mean no support access there.
+	SupportedOrgIDs []string `json:"supportedOrgIds,omitempty"`
 }
 
 // UnmarshalJSON accepts both network-role shapes. Forward's UserRoles maps
@@ -190,12 +198,16 @@ type UserRoles struct {
 // the whole response as soon as a user held any network role.
 func (r *UserRoles) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Org     []string                   `json:"org"`
-		Network map[string]json.RawMessage `json:"network"`
+		System          []string                   `json:"system"`
+		Org             []string                   `json:"org"`
+		Network         map[string]json.RawMessage `json:"network"`
+		SupportedOrgIDs []string                   `json:"supportedOrgIds"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
+	r.System = raw.System
+	r.SupportedOrgIDs = raw.SupportedOrgIDs
 	r.Org = raw.Org
 	r.Network = nil
 	if raw.Network == nil {
