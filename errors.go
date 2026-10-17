@@ -358,6 +358,14 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 			strings.Contains(detail, "processing timed out for snapshot")) {
 		return ErrorKindSnapshotProcessingFailed
 	}
+	// SnapshotProcessingInterceptor.handleAdvancedReachability answers a snapshot that has not finished advanced reachability (the
+	// stage interesting-path searches need) with a 400 and 'Advanced reachability <STATE> for snapshot <id>.' on any route.
+	if status == http.StatusBadRequest && strings.Contains(detail, "advanced reachability") && strings.Contains(detail, "for snapshot") {
+		if strings.Contains(detail, "canceled") || strings.Contains(detail, "timed_out") || strings.Contains(detail, "timed out") || strings.Contains(detail, "failed") {
+			return ErrorKindSnapshotProcessingFailed
+		}
+		return ErrorKindSnapshotNotProcessed
+	}
 	if strings.HasPrefix(path, "/api/snapshots/") &&
 		(status == http.StatusBadRequest || status == http.StatusConflict || status == http.StatusTooEarly) &&
 		(status == http.StatusConflict && requestHasNoQuery(apiErr.Response) ||

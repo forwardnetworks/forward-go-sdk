@@ -1030,6 +1030,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Networks.GetSnapshotRetentionPolicy": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshotRetentionPolicy"},
 	},
+	"Networks.InterestingPaths": {
+		{Method: "GET", Route: "/api/networks/{networkId}/interesting-path-queries"},
+	},
 	"Networks.L7Applications": {
 		{Method: "GET", Route: "/api/l7-applications"},
 	},
