@@ -831,6 +831,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Jobs.Cancel": {
 		{Method: "DELETE", Route: "/api/jobs/{cancelLink}"},
 	},
+	"Jobs.DebugView": {
+		{Method: "GET", Route: "/api/debug/jobs"},
+	},
 	"Jobs.ListActive": {
 		{Method: "GET", Route: "/api/jobs/active"},
 	},
@@ -1363,6 +1366,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Snapshots.ProcessEstimate": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/processEstimate"},
+	},
+	"Snapshots.ProcessingQueue": {
+		{Method: "GET", Route: "/api/snapshot-processing-queue"},
 	},
 	"Snapshots.Progress": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/progress"},
