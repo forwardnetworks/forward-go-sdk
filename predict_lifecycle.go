@@ -413,3 +413,36 @@ func (s *PredictService) DiscardSecurityRuleChange(ctx context.Context, networkI
 	}
 	return s.doJSON(ctx, http.MethodPost, path+"/security-rules/"+url.PathEscape(strings.TrimSpace(ruleID))+"?action=discardChanges", nil, nil, "Predict.DiscardSecurityRuleChange")
 }
+
+// ChangeSetSummary is a change set's base information and the ServiceNow change requests linked to it: its name, description, tags and
+// the network and snapshot it is based on, without its device changes (the full content is in ListChangeSets, GetDraft and the commits).
+type ChangeSetSummary struct {
+	Name        string     `json:"name"`
+	Description string     `json:"description,omitempty"`
+	NetworkID   Identifier `json:"networkId"`
+	SnapshotID  Identifier `json:"snapshotId"`
+	Tags        []string   `json:"tags,omitempty"`
+	// ServiceNowChangeRequests are the change requests linked to the change set (number and sys_id); empty when none are linked or
+	// ServiceNow is not set up.
+	ServiceNowChangeRequests []ServiceNowChangeRequestRef `json:"serviceNowChangeRequests,omitempty"`
+}
+
+// ServiceNowChangeRequestRef identifies a ServiceNow change request by its number and sys_id.
+type ServiceNowChangeRequestRef struct {
+	Number string `json:"number"`
+	SysID  string `json:"sysId"`
+}
+
+// GetChangeSetSummary reads one change set's base information (GET .../change-sets/{id}?view=summary): the cheap way to learn which
+// snapshot a change set is based on and which ServiceNow requests it is linked to, since Forward has no plain per-change-set read.
+// Needs MANAGE_CHANGE_SETS and the PREDICT_MODELING organization property; an unknown change set is a 404. The route is not in Forward's
+// published OpenAPI (preview), and Forward plans to add change-set types to this response (FWD-44083).
+func (s *PredictService) GetChangeSetSummary(ctx context.Context, networkID, changeSetID string) (*ChangeSetSummary, *Response, error) {
+	path, err := s.csPath(networkID, changeSetID)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := new(ChangeSetSummary)
+	resp, err := s.doJSON(ctx, http.MethodGet, path+"?view=summary", nil, out, "Predict.GetChangeSetSummary")
+	return out, resp, err
+}

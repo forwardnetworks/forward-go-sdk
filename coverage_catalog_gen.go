@@ -1144,6 +1144,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.EditSecurityRule": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
 	},
+	"Predict.GetChangeSetSummary": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	},
 	"Predict.GetCommit": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
 	},
