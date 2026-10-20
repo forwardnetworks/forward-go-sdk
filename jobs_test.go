@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -162,5 +163,92 @@ func TestJobsCancelNotFound(t *testing.T) {
 	}
 	if _, err := client.Jobs.Cancel(context.Background(), "gone"); !IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("Cancel() error = %v, want 404", err)
+	}
+}
+
+// A client-side wait does not stop Forward's compute (a Predict's modeling thread kept running for hours after the client gave up) and
+// Forward has no snapshot-level cancel route, so the stop is the admin job cancel: read the active job rows, cancel those of ONE
+// snapshot with the cancelLink exactly as Forward gave it (already percent-encoded, never escaped again), tolerate a job that finished
+// meanwhile (404), report the rest, and never touch another snapshot's jobs.
+func TestJobsCancelForSnapshot(t *testing.T) {
+	t.Parallel()
+
+	var deleted []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/jobs/active":
+			_, _ = w.Write([]byte(`[
+				{"jobType":"Protocol Modeling","orgName":"o","networkId":5,"snapshotId":9001,"cancelLink":"AbC%2FdE%3D","totalCount":1},
+				{"jobType":"NQE Query","orgName":"o","networkId":5,"snapshotId":9001,"cancelLink":"Gone%3D","totalCount":1},
+				{"jobType":"Protocol Modeling","orgName":"o","networkId":5,"snapshotId":9002,"cancelLink":"Other%3D","totalCount":1},
+				{"jobType":"Flowlet generation","orgName":"o","networkId":5,"cancelLink":"NoSnap%3D","totalCount":1}]`))
+		case r.Method == http.MethodDelete:
+			deleted = append(deleted, r.URL.EscapedPath())
+			if strings.HasSuffix(r.URL.EscapedPath(), "Gone%3D") {
+				w.WriteHeader(http.StatusNotFound)
+				_, _ = w.Write([]byte(`{"apiUrl":"/api/jobs/Gone%3D","httpMethod":"DELETE","message":"gone"}`))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL)
+		}
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+
+	result, err := client.Jobs.CancelForSnapshot(context.Background(), "9001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Matched != 2 || result.Canceled != 1 || result.AlreadyDone != 1 {
+		t.Fatalf("result %+v", result)
+	}
+	if strings.Join(deleted, "|") != "/api/jobs/AbC%2FdE%3D|/api/jobs/Gone%3D" {
+		t.Fatalf("cancelled %v: only snapshot 9001's rows, links unescaped a second time", deleted)
+	}
+	none, err := client.Jobs.CancelForSnapshot(context.Background(), "424242")
+	if err != nil || none.Matched != 0 || len(deleted) != 2 {
+		t.Fatalf("a snapshot with no active job matches nothing and is not an error: %v %+v", err, none)
+	}
+	if _, err := client.Jobs.CancelForSnapshot(context.Background(), "latest"); err == nil {
+		t.Fatal("a non-numeric snapshot id must be refused")
+	}
+}
+
+// One row failing must not stop the others, a 404 that means the route is not served is not "already done", and a cancelled context
+// stops the loop instead of repeating the same error per row.
+func TestJobsCancelForSnapshotFailureModes(t *testing.T) {
+	t.Parallel()
+
+	var deleted []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`[{"jobType":"A","snapshotId":7,"cancelLink":"Boom%3D"},{"jobType":"B","snapshotId":7,"cancelLink":"NotServed%3D"},{"jobType":"C","snapshotId":7,"cancelLink":"Fine%3D"}]`))
+			return
+		}
+		deleted = append(deleted, r.URL.EscapedPath())
+		switch {
+		case strings.HasSuffix(r.URL.EscapedPath(), "Boom%3D"):
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"message":"boom"}`))
+		case strings.HasSuffix(r.URL.EscapedPath(), "NotServed%3D"):
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"apiUrl":"/api/jobs/NotServed%3D","httpMethod":"DELETE","message":"No endpoint DELETE /api/jobs/NotServed%3D."}`))
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+
+	result, err := client.Jobs.CancelForSnapshot(context.Background(), "7")
+	if err == nil || result.Matched != 3 || result.Canceled != 1 || result.AlreadyDone != 0 || len(deleted) != 3 {
+		t.Fatalf("a failing row and an unserved route are errors and the rest still run: %v %+v %v", err, result, deleted)
+	}
+	cancelled, stop := context.WithCancel(context.Background())
+	stop()
+	if _, err := client.Jobs.CancelForSnapshot(cancelled, "7"); err == nil {
+		t.Fatal("a cancelled context must be an error")
 	}
 }

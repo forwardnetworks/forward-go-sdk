@@ -3,7 +3,9 @@ package forward
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -86,8 +88,9 @@ func (s *JobsService) ListCompleted(ctx context.Context) ([]CompletedJobInfo, *R
 // it: a real cancelLink contains literal "%2F"/"%3D" text, and re-escaping that "%" turns it into "%25..." and
 // Forward answers 400 Bad Request, not 404. So this is deliberately NOT url.PathEscape(cancelLink).
 //
-// DELETE /api/jobs/{cancelLink} (JobsController.cancelJob). Returns an error wrapping ErrEndpointNotServed-style
-// "not found" semantics if the job already finished or was already canceled (CANCELATION_STATUS_NOT_FOUND -> 404).
+// DELETE /api/jobs/{cancelLink} (JobsController.cancelJob; ADMINISTER_SYSTEM). A single job that already finished or was already
+// canceled answers 404 (CANCELATION_STATUS_NOT_FOUND), returned as an error; a grouped or network-level link always answers 200.
+// To stop one snapshot's jobs use CancelForSnapshot.
 func (s *JobsService) Cancel(ctx context.Context, cancelLink string) (*Response, error) {
 	if cancelLink = strings.TrimSpace(cancelLink); cancelLink == "" {
 		return nil, errors.New("forward: cancelLink is required")
@@ -98,4 +101,71 @@ func (s *JobsService) Cancel(ctx context.Context, cancelLink string) (*Response,
 	}
 	req = markOperation(req, "Jobs.Cancel")
 	return s.client.Do(req, nil)
+}
+
+// SnapshotCancelResult is what CancelForSnapshot did: how many active job rows it found for the snapshot, how many cancels Forward
+// accepted (Canceled; for a grouped or network-level link Forward always answers 200, so this means "accepted", not "a job was
+// stopped"), and how many single-job rows had already finished by the time the cancel arrived (AlreadyDone; Forward answers 404).
+type SnapshotCancelResult struct {
+	Matched     int
+	Canceled    int
+	AlreadyDone int
+}
+
+// CancelForSnapshot cancels the running or queued SNAPSHOT-LEVEL jobs of one snapshot: it reads the active job list (ListActive) and
+// cancels every row whose SnapshotID matches (Cancel). Forward has NO snapshot-level cancel route; this is the only server-side stop,
+// and it needs ADMINISTER_SYSTEM because both /api/jobs/active and DELETE /api/jobs/{cancelLink} do. It is the stop for a predicted
+// snapshot's Protocol Modeling and for the other jobs that carry the snapshot's id (DAG merge, NQE, diffs, path searches).
+//
+// What it does NOT cover:
+//   - Per-device processing of a snapshot import, reprocessing or collection ("Flowlet generation", "Model generation") is network-level:
+//     its rows carry no snapshot id, so they are never matched, and cancelling their link would cancel those jobs for the whole network.
+//     A snapshot import can therefore keep parsing after a CancelForSnapshot with Matched == 0.
+//   - A snapshot still waiting in the processing throttle queue has no job row yet; invalidating it removes it from that queue and
+//     cancels its future (Snapshots invalidate), which CancelForSnapshot cannot do. Otherwise invalidating or deleting a snapshot does
+//     NOT stop its running jobs (SnapshotInvalidator carries a TODO for it, FWD-8083).
+//   - A collection is stopped with CollectorTasks.Stop.
+//
+// Side effects to expect: EVERY top-level job row of that snapshot is cancelled, including other users' NQE queries, diffs and path
+// searches (a grouped row's link cancels all of its type on the snapshot), and shared work is shared: when a predicted snapshot's
+// Protocol Modeling started the base snapshot's, cancelling it can fail that base job for every other prediction waiting on it. Rows of
+// other snapshots are never cancelled. A snapshot with no active row matches nothing and is not an error, so check Matched.
+//
+// A cancel completes the job's future with a cancellation and cancels its context (FutureCache.ActiveFuture.cancel). Protocol Modeling
+// stops cooperatively, not by thread interrupt: it checks for cancellation between path-selection prefixes, route-propagation seeds and
+// DAG node creation, and the steps in between (seed route set generation, aggregation, topology generation, and a single seed's
+// propagation) run to the end, so expect a delay, and this SDK has not seen it stop one live. After a cancel, re-read ListActive to
+// confirm the rows are gone. Per-row failures other than "already finished" are returned together as the error while the remaining
+// rows are still cancelled; a cancelled ctx stops the loop.
+func (s *JobsService) CancelForSnapshot(ctx context.Context, snapshotID string) (*SnapshotCancelResult, error) {
+	id, err := strconv.ParseInt(strings.TrimSpace(snapshotID), 10, 64)
+	if err != nil || id <= 0 {
+		return nil, fmt.Errorf("forward: snapshot ID %q is not a numeric snapshot id", snapshotID)
+	}
+	rows, _, err := s.ListActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := new(SnapshotCancelResult)
+	var failures []error
+	for _, row := range rows {
+		if row.SnapshotID == nil || *row.SnapshotID != id {
+			continue
+		}
+		if err := ctx.Err(); err != nil {
+			failures = append(failures, err)
+			break
+		}
+		result.Matched++
+		_, err := s.Cancel(ctx, row.CancelLink)
+		switch {
+		case err == nil:
+			result.Canceled++
+		case isGone(err):
+			result.AlreadyDone++
+		default:
+			failures = append(failures, fmt.Errorf("job %s: %w", row.JobType, err))
+		}
+	}
+	return result, errors.Join(failures...)
 }

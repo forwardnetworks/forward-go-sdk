@@ -99,6 +99,7 @@ var wireArgOverrides = map[string]map[int]any{
 	"ClassicDevices.PatchMany":             {2: []string{"sw1"}, 3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"ClassicDevices.GetMany":               {2: []string{"sw1"}},
 	"ConnectivityTests.BulkStart":          {2: []string{"sw1"}},
+	"Jobs.CancelForSnapshot":               {1: "9001"},
 	"Networks.InterestingPaths":            {3: InterestingPathsFirewall},
 	"Predict.WithdrawBGPAdvertisement":     {4: BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}},
 	"Predict.WithdrawBGPAdvertisements":    {4: []BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}}},
