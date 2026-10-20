@@ -1525,6 +1525,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"TrustedCertificates.List": {
 		{Method: "GET", Route: "/api/trusted-certificates"},
 	},
+	"Users.Access": {
+		{Method: "GET", Route: "/api/users/current"},
+	},
 	"Users.AddNetworkRole": {
 		{Method: "POST", Route: "/api/users/{userId}/roles/network/{networkId}/{role}"},
 	},

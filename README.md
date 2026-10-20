@@ -359,3 +359,12 @@ See `COVERAGE.md` for the machine-generated coverage matrix and
 `docs/api-coverage.md` for broader SDK direction. The manifest's consumer-tree
 fingerprint deliberately makes any consumer Go change require a
 reviewed refresh rather than allowing coverage drift to stay silent.
+
+## May this account do X?
+
+Forward has no route that lists what an account may do, but it enforces role-based access from a table in its own source. `AccessTable`
+reads that table AT RUN TIME from a local Forward checkout (`FORWARD_SOURCE`) or a private JSON copy (`FORWARD_RBAC_TABLE`, made with
+`go run ./cmd/rbacdump`), and `Users.Access` / `Access.Can` answer yes, no or unknown for the calling credential's session roles. The
+table is Forward's per-operation permission matrix, so this module commits only the parser and the evaluator, never the table; keep the
+JSON copy out of public repositories. With no table every answer is unknown. A yes does not promise success (a licence facet, an org
+property or the object's state can still refuse), which is why the answer reports the facet. `NetworkRoleAtLeast` needs no table.
