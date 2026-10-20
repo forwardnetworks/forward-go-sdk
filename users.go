@@ -48,6 +48,83 @@ type SessionRoles struct {
 	SupportedOrgIDs []string          `json:"supportedOrgIds,omitempty"`
 }
 
+// UnmarshalJSON reads the roles tolerantly, as UserRoles does: system and org may be a list, a bare string (one role, as some builds
+// and the NetBox plugin saw it) or null, and a network's role may be a string or a one-element list. A missing or empty roles object
+// decodes to no roles, which means "Forward did not say", not "this account may do nothing": callers must not read an empty result as a
+// refusal.
+func (r *SessionRoles) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		System          json.RawMessage            `json:"system"`
+		Org             json.RawMessage            `json:"org"`
+		Network         map[string]json.RawMessage `json:"network"`
+		SupportedOrgIDs []string                   `json:"supportedOrgIds"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	var err error
+	if r.System, err = roleList("system", raw.System); err != nil {
+		return err
+	}
+	if r.Org, err = roleList("org", raw.Org); err != nil {
+		return err
+	}
+	r.SupportedOrgIDs = raw.SupportedOrgIDs
+	r.Network, err = singleNetworkRoles(raw.Network)
+	return err
+}
+
+// singleNetworkRoles decodes a network-to-role map where each role is a string or a one-element list; a list of several roles is an
+// error naming the network, not a silent pick.
+func singleNetworkRoles(raw map[string]json.RawMessage) (map[string]string, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	out := make(map[string]string, len(raw))
+	for networkID, value := range raw {
+		roles, err := roleList("network "+networkID, value)
+		if err != nil {
+			return nil, err
+		}
+		switch len(roles) {
+		case 0:
+			out[networkID] = ""
+		case 1:
+			out[networkID] = roles[0]
+		default:
+			return nil, fmt.Errorf("forward: network %s has %d roles %v where one was expected", networkID, len(roles), roles)
+		}
+	}
+	return out, nil
+}
+
+// roleList decodes a roles field that Forward writes as a list but that other builds and plugins have sent as one bare string or as
+// null: a list is returned as is, a string as a one-element list (not split into characters), and null or an empty string as nil.
+func roleList(field string, raw json.RawMessage) ([]string, error) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, nil
+	}
+	if raw[0] == '"' {
+		var role string
+		if err := json.Unmarshal(raw, &role); err != nil {
+			return nil, fmt.Errorf("forward: %s role: %w", field, err)
+		}
+		if role = strings.TrimSpace(role); role == "" {
+			return nil, nil
+		}
+		return []string{role}, nil
+	}
+	var roles []string
+	if err := json.Unmarshal(raw, &roles); err != nil {
+		return nil, fmt.Errorf("forward: %s roles are neither a list nor a string: %w", field, err)
+	}
+	for i := range roles {
+		roles[i] = strings.TrimSpace(roles[i])
+	}
+	return roles, nil
+}
+
 // HasOrgAdmin reports whether the session holds org ADMIN.
 func (r SessionRoles) HasOrgAdmin() bool {
 	for _, role := range r.Org {
@@ -198,17 +275,22 @@ type UserRoles struct {
 // the whole response as soon as a user held any network role.
 func (r *UserRoles) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		System          []string                   `json:"system"`
-		Org             []string                   `json:"org"`
+		System          json.RawMessage            `json:"system"`
+		Org             json.RawMessage            `json:"org"`
 		Network         map[string]json.RawMessage `json:"network"`
 		SupportedOrgIDs []string                   `json:"supportedOrgIds"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	r.System = raw.System
+	var err error
+	if r.System, err = roleList("system", raw.System); err != nil {
+		return err
+	}
+	if r.Org, err = roleList("org", raw.Org); err != nil {
+		return err
+	}
 	r.SupportedOrgIDs = raw.SupportedOrgIDs
-	r.Org = raw.Org
 	r.Network = nil
 	if raw.Network == nil {
 		return nil

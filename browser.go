@@ -34,6 +34,28 @@ type BrowserSessionRoles struct {
 	Network map[string]string `json:"network"`
 }
 
+// UnmarshalJSON reads the roles as SessionRoles does: org may be a list, a bare string or null, and a network's role a string or a
+// one-element list.
+func (r *BrowserSessionRoles) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Org     json.RawMessage            `json:"org"`
+		Network map[string]json.RawMessage `json:"network"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	org, err := roleList("org", raw.Org)
+	if err != nil {
+		return err
+	}
+	network, err := singleNetworkRoles(raw.Network)
+	if err != nil {
+		return err
+	}
+	r.Org, r.Network = org, network
+	return nil
+}
+
 // BrowserSession is GET /api/users/current in full: who the session is and
 // what Forward lets it do. For an impersonated session it is the target.
 type BrowserSession struct {
