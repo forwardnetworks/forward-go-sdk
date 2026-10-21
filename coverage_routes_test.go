@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 502
+	const minExercised = 515
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -100,6 +100,8 @@ var wireArgOverrides = map[string]map[int]any{
 	"ClassicDevices.GetMany":               {2: []string{"sw1"}},
 	"ConnectivityTests.BulkStart":          {2: []string{"sw1"}},
 	"Jobs.CancelForSnapshot":               {1: "9001"},
+	"Predict.AddChangeSetCheck":            {3: NewChangeSetCheck{Definition: ChangeSetCheckDefinition{CheckType: ChangeSetCheckNQE, QueryID: "Q_1"}}},
+	"Predict.UpdateChangeSetCheck":         {4: ChangeSetCheckPatch{ClearName: true}},
 	"Networks.InterestingPaths":            {3: InterestingPathsFirewall},
 	"Predict.WithdrawBGPAdvertisement":     {4: BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}},
 	"Predict.WithdrawBGPAdvertisements":    {4: []BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}}},

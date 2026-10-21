@@ -1118,6 +1118,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Performance.UploadWithIdentity": {
 		{Method: "POST", Route: "/api/networks/{networkId}/performance"},
 	},
+	"Predict.AddChangeSetCheck": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/checks"},
+	},
 	"Predict.AddSecurityRule": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules"},
 	},
@@ -1129,6 +1132,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.DeleteChangeSet": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{id}"},
+	},
+	"Predict.DeleteChangeSetCheck": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/checks/{checkId}"},
 	},
 	"Predict.DeleteCommit": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
@@ -1226,6 +1232,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.UpdateChangeSet": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	},
+	"Predict.UpdateChangeSetCheck": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/checks/{checkId}"},
 	},
 	"Predict.ValidateCommands": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/commands"},

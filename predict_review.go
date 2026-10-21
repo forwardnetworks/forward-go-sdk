@@ -91,6 +91,10 @@ type ChangeSetCheckResult struct {
 	NumViolations *int64     `json:"numViolations,omitempty"`
 	CreatedByID   Identifier `json:"createdById,omitempty"`
 	CreatedAt     string     `json:"createdAt,omitempty"`
+	CreatedBy     string     `json:"createdBy,omitempty"`
+	UpdatedByID   Identifier `json:"updatedById,omitempty"`
+	UpdatedAt     string     `json:"updatedAt,omitempty"`
+	UpdatedBy     string     `json:"updatedBy,omitempty"`
 	NQEResultKey  string     `json:"nqeResultKey,omitempty"`
 }
 
