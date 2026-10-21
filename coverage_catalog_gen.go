@@ -689,6 +689,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Diffs.ACLDevices": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/acl"},
 	},
+	"Diffs.ARPDevices": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/arp"},
+	},
 	"Diffs.Checks": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/checks"},
 	},
@@ -714,6 +717,18 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Diffs.DeviceACL": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/acl/devices/{deviceName}"},
 	},
+	"Diffs.DeviceARP": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/arp/devices/{deviceName}"},
+	},
+	"Diffs.DeviceL3": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/l3/devices/{deviceName}"},
+	},
+	"Diffs.DeviceMAC": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/mac/devices/{deviceName}"},
+	},
+	"Diffs.DeviceNAT": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/nat/devices/{deviceName}"},
+	},
 	"Diffs.Devices": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/devices"},
 	},
@@ -722,6 +737,21 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Diffs.FilesCount": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/files"},
+	},
+	"Diffs.L3Devices": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/l3"},
+	},
+	"Diffs.L3PrefixDetails": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/l3/prefixes/{prefix}"},
+	},
+	"Diffs.L3Prefixes": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/l3"},
+	},
+	"Diffs.L3Summary": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/l3/summary"},
+	},
+	"Diffs.MACDevices": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/mac"},
 	},
 	"Diffs.MaterialSummary": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/acl"},
@@ -735,8 +765,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/routing-loop/count"},
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/topology"},
 	},
+	"Diffs.NATDevices": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/nat"},
+	},
+	"Diffs.RoutingLoopsBidirectional": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/routing-loop/count"},
+	},
 	"Diffs.SubnetConnectivity": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
+	},
+	"Diffs.VulnerabilitiesBidirectional": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/vulnerabilities/counts"},
+	},
+	"Diffs.VulnerabilitiesCounts": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/vulnerabilities/counts"},
 	},
 	"Diffs.WaitForSubnetConnectivity": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
