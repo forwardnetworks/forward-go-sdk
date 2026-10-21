@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 535
+	const minExercised = 551
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -103,6 +103,10 @@ var wireArgOverrides = map[string]map[int]any{
 	"Routing.PrefixTrace":                  {3: RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: DeviceVRF{Device: "r1"}, OriginatedFrom: DeviceVRF{Device: "r2"}, Outcome: RouteOutcomeInstalled}},
 	"Routing.PrefixDetails":                {3: RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: "r1"}}},
 	"Routing.InstalledPrefixes":            {3: RoutingInstalledOptions{Device: "r1"}},
+	"ThreatExposure.CreateDefinition":      {2: NewThreatExposureDefinition{Name: "d", ExposurePoints: []ExposurePointAndLevel{{ExposurePoint: "edge", Level: ExposureHigh}}, MaxDurationSeconds: 60}},
+	"ThreatExposure.ResolveDefinition":     {3: NewThreatExposureDefinition{Name: "d", ExposurePoints: []ExposurePointAndLevel{{ExposurePoint: "edge", Level: ExposureHigh}}, MaxDurationSeconds: 60}},
+	"ThreatExposure.UpdateDefinition":      {3: ThreatExposureDefinitionPatch{Name: Ptr("d")}},
+	"EdgeAssets.SetCriticality":            {3: CriticalityCrownJewel},
 	"Jobs.CancelForSnapshot":               {1: "9001"},
 	"Predict.AddChangeSetCheck":            {3: NewChangeSetCheck{Definition: ChangeSetCheckDefinition{CheckType: ChangeSetCheckNQE, QueryID: "Q_1"}}},
 	"Predict.UpdateChangeSetCheck":         {4: ChangeSetCheckPatch{ClearName: true}},

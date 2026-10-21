@@ -786,6 +786,21 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Diffs.WaitForSubnetConnectivity": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
 	},
+	"EdgeAssets.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/edge-assets/{assetName}"},
+	},
+	"EdgeAssets.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/edge-assets"},
+	},
+	"EdgeAssets.RemoveCriticality": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/assets"},
+	},
+	"EdgeAssets.SetCriticality": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/assets"},
+	},
+	"EdgeAssets.Update": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/edge-assets/{assetName}"},
+	},
 	"Endpoints.AddBatch": {
 		{Method: "POST", Route: "/api/networks/{networkId}/endpoints"},
 	},
@@ -1565,6 +1580,39 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "PATCH", Route: "/api/networks/{networkId}/intranet-nodes/{nodeName}"},
 		{Method: "PATCH", Route: "/api/networks/{networkId}/l2-vpns/{l2VpnName}"},
 		{Method: "PATCH", Route: "/api/networks/{networkId}/l3-vpns/{l3VpnName}"},
+	},
+	"ThreatExposure.CreateDefinition": {
+		{Method: "POST", Route: "/api/networks/{networkId}/threat-exposure-definitions"},
+	},
+	"ThreatExposure.CriticalAssetsSummary": {
+		{Method: "POST", Route: "/api/networks/{networkId}/threat-exposure-analyses/{definitionId}"},
+	},
+	"ThreatExposure.DeleteDefinition": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/threat-exposure-definitions/{definitionId}"},
+	},
+	"ThreatExposure.DirectExposureDetails": {
+		{Method: "GET", Route: "/api/networks/{networkId}/threat-exposure-analyses/{definitionId}"},
+	},
+	"ThreatExposure.Evaluate": {
+		{Method: "POST", Route: "/api/networks/{networkId}/threat-exposure-analyses/{definitionId}"},
+	},
+	"ThreatExposure.GetDefinition": {
+		{Method: "GET", Route: "/api/networks/{networkId}/threat-exposure-definitions/{definitionId}"},
+	},
+	"ThreatExposure.ListDefinitions": {
+		{Method: "GET", Route: "/api/networks/{networkId}/threat-exposure-definitions"},
+	},
+	"ThreatExposure.ResolveDefinition": {
+		{Method: "POST", Route: "/api/networks/{networkId}/threat-exposure-definitions"},
+	},
+	"ThreatExposure.Status": {
+		{Method: "GET", Route: "/api/networks/{networkId}/threat-exposure-analyses/{definitionId}"},
+	},
+	"ThreatExposure.TransitiveExposureDetails": {
+		{Method: "POST", Route: "/api/networks/{networkId}/threat-exposure-analyses/{definitionId}"},
+	},
+	"ThreatExposure.UpdateDefinition": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/threat-exposure-definitions/{definitionId}"},
 	},
 	"Topology.BackdateLinkOverrides": {
 		{Method: "POST", Route: "/api/networks/{networkId}/link-overrides"},
