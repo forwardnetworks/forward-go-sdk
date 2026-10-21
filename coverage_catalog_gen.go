@@ -1285,6 +1285,21 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Proxies.Update": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/proxies/{proxyId}"},
 	},
+	"Routing.DevicePrefixInfo": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}"},
+	},
+	"Routing.InstalledPrefixes": {
+		{Method: "GET", Route: "/api/networks/{networkId}/bgp-installed-prefixes"},
+	},
+	"Routing.PrefixDetails": {
+		{Method: "POST", Route: "/api/networks/{networkId}/bgp-prefix-details"},
+	},
+	"Routing.PrefixSearch": {
+		{Method: "POST", Route: "/api/networks/{networkId}/bgp-prefix-search"},
+	},
+	"Routing.PrefixTrace": {
+		{Method: "POST", Route: "/api/networks/{networkId}/bgp-prefix-trace"},
+	},
 	"SAML.GetSettings": {
 		{Method: "GET", Route: "/api/auth/saml-settings"},
 	},

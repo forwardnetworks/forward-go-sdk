@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 515
+	const minExercised = 520
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -99,6 +99,10 @@ var wireArgOverrides = map[string]map[int]any{
 	"ClassicDevices.PatchMany":             {2: []string{"sw1"}, 3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"ClassicDevices.GetMany":               {2: []string{"sw1"}},
 	"ConnectivityTests.BulkStart":          {2: []string{"sw1"}},
+	"Routing.PrefixSearch":                 {3: RoutingPrefixSearch{Prefix: "10.0.0.0/8"}},
+	"Routing.PrefixTrace":                  {3: RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: DeviceVRF{Device: "r1"}, OriginatedFrom: DeviceVRF{Device: "r2"}, Outcome: RouteOutcomeInstalled}},
+	"Routing.PrefixDetails":                {3: RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: "r1"}}},
+	"Routing.InstalledPrefixes":            {3: RoutingInstalledOptions{Device: "r1"}},
 	"Jobs.CancelForSnapshot":               {1: "9001"},
 	"Predict.AddChangeSetCheck":            {3: NewChangeSetCheck{Definition: ChangeSetCheckDefinition{CheckType: ChangeSetCheckNQE, QueryID: "Q_1"}}},
 	"Predict.UpdateChangeSetCheck":         {4: ChangeSetCheckPatch{ClearName: true}},
