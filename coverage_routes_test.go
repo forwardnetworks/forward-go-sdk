@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 551
+	const minExercised = 552
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -107,6 +107,7 @@ var wireArgOverrides = map[string]map[int]any{
 	"ThreatExposure.ResolveDefinition":     {3: NewThreatExposureDefinition{Name: "d", ExposurePoints: []ExposurePointAndLevel{{ExposurePoint: "edge", Level: ExposureHigh}}, MaxDurationSeconds: 60}},
 	"ThreatExposure.UpdateDefinition":      {3: ThreatExposureDefinitionPatch{Name: Ptr("d")}},
 	"EdgeAssets.SetCriticality":            {3: CriticalityCrownJewel},
+	"Networks.PathsBulk":                   {2: []PathQuery{{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}}, 3: PathBulkOptions{}},
 	"Jobs.CancelForSnapshot":               {1: "9001"},
 	"Predict.AddChangeSetCheck":            {3: NewChangeSetCheck{Definition: ChangeSetCheckDefinition{CheckType: ChangeSetCheckNQE, QueryID: "Q_1"}}},
 	"Predict.UpdateChangeSetCheck":         {4: ChangeSetCheckPatch{ClearName: true}},

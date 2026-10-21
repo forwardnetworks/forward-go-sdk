@@ -1109,6 +1109,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Networks.Paths": {
 		{Method: "GET", Route: "/api/networks/{networkId}/paths"},
 	},
+	"Networks.PathsBulk": {
+		{Method: "POST", Route: "/api/networks/{networkId}/paths-bulk"},
+	},
 	"Networks.PreviewSnapshotRetention": {
 		{Method: "POST", Route: "/api/networks/{networkId}/snapshotRetentionPolicy/trigger"},
 	},
