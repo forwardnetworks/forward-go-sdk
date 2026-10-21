@@ -49,6 +49,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"AIAssist.SummarizeConfigDiff": {
 		{Method: "POST", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/config-summary-assists"},
 	},
+	"AIAssist.SummarizeFailures": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/failure-summary-assist"},
+	},
 	"AIAssist.SummarizeNQEQuery": {
 		{Method: "POST", Route: "/api/nqe/summary-assists"},
 	},

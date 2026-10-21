@@ -12,7 +12,7 @@ import (
 // AIAssistService accesses Forward's NQE and Predict assistance APIs.
 //
 // Preview: these endpoints are unpublished and controlled by AI_ALLOWED and,
-// for Predict assistance, PREDICT_AI_ASSIST and PREDICT_MODELING.
+// for Predict assistance, PREDICT_AI_ASSIST and PREDICT_MODELING (and PREDICT_FAILURE_SUMMARY_ASSIST for the failure summary).
 type AIAssistService service
 
 // NQEQueryAssist is an AI-generated NQE query and its validation state.
@@ -229,7 +229,7 @@ func (s *AIAssistService) SummarizeConfigDiff(
 	beforeSnapshotID string,
 	afterSnapshotID string,
 ) (string, *Response, error) {
-	return s.summarizeDiff(ctx, beforeSnapshotID, afterSnapshotID, "config-summary-assists")
+	return s.summarizeDiff(ctx, http.MethodPost, beforeSnapshotID, afterSnapshotID, "config-summary-assists")
 }
 
 // SummarizeChangeImpact generates an AI summary of a snapshot's modeled impact.
@@ -238,11 +238,30 @@ func (s *AIAssistService) SummarizeChangeImpact(
 	beforeSnapshotID string,
 	afterSnapshotID string,
 ) (string, *Response, error) {
-	return s.summarizeDiff(ctx, beforeSnapshotID, afterSnapshotID, "impact-summary-assists")
+	return s.summarizeDiff(ctx, http.MethodPost, beforeSnapshotID, afterSnapshotID, "impact-summary-assists")
+}
+
+// SummarizeFailures generates an AI summary of what failed between two snapshots: regressions and new warnings the change introduced
+// from the base to the predicted snapshot (GET /api/diffs/{a}/{b}/failure-summary-assist, PredictAssistController; VIEW_CHECK_DIFFS and
+// the organization properties AI_ALLOWED and PREDICT_FAILURE_SUMMARY_ASSIST; preview). Predefined and intent checks and routing loops
+// are always covered; NQE checks need USE_NQE, and new CVEs and newly exposed vulnerable devices need VIEW_CVE_DIFFS and a licence that
+// allows it. A caller without those rights still gets an answer with those parts missing.
+// Checks still processing do not block it: Forward then summarizes what is done, tells the model the counts are partial and does not
+// cache the answer. No field reports that, only the text may say so, so call again later and compare rather than treating one answer as
+// final. A complete summary is cached for an hour per user in each appserver's memory. Every call that is not a cache hit is a model
+// call, and this is a GET, so a client with a retry policy resends it after a 502, a 504 or a transport failure: use WithoutRetry where
+// that cost matters. The text comes from a language model: report it as such.
+func (s *AIAssistService) SummarizeFailures(
+	ctx context.Context,
+	beforeSnapshotID string,
+	afterSnapshotID string,
+) (string, *Response, error) {
+	return s.summarizeDiff(ctx, http.MethodGet, beforeSnapshotID, afterSnapshotID, "failure-summary-assist")
 }
 
 func (s *AIAssistService) summarizeDiff(
 	ctx context.Context,
+	method string,
 	beforeSnapshotID string,
 	afterSnapshotID string,
 	operation string,
@@ -258,7 +277,7 @@ func (s *AIAssistService) summarizeDiff(
 		url.PathEscape(afterSnapshotID),
 		operation,
 	)
-	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil)
+	req, err := s.client.NewRequest(ctx, method, path, nil)
 	if err != nil {
 		return "", nil, err
 	}
