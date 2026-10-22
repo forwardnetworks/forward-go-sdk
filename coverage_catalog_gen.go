@@ -1616,14 +1616,26 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Topology.BackdateLinkOverrides": {
 		{Method: "POST", Route: "/api/networks/{networkId}/link-overrides"},
 	},
+	"Topology.EditNetworkOverrides": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/link-overrides"},
+	},
 	"Topology.EditOverrides": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}/topology/overrides"},
 	},
 	"Topology.List": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/topology"},
 	},
+	"Topology.NetworkOverrides": {
+		{Method: "GET", Route: "/api/networks/{networkId}/link-overrides"},
+	},
 	"Topology.Overrides": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/topology/overrides"},
+	},
+	"Topology.SetNetworkOverrides": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/link-overrides"},
+	},
+	"Topology.StagedOverrideChanges": {
+		{Method: "GET", Route: "/api/networks/{networkId}/link-overrides"},
 	},
 	"TrustedCertificates.Add": {
 		{Method: "POST", Route: "/api/trusted-certificates"},
