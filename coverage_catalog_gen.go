@@ -891,10 +891,6 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Jobs.Cancel": {
 		{Method: "DELETE", Route: "/api/jobs/{cancelLink}"},
 	},
-	"Jobs.CancelForSnapshot": {
-		{Method: "DELETE", Route: "/api/jobs/{cancelLink}"},
-		{Method: "GET", Route: "/api/jobs/active"},
-	},
 	"Jobs.DebugView": {
 		{Method: "GET", Route: "/api/debug/jobs"},
 	},
