@@ -419,23 +419,79 @@ type ClassicDevicePatch struct {
 	DisableIPv6Collection    *bool   `json:"disableIpv6Collection,omitempty"`
 	FullCollectionLog        *bool   `json:"fullCollectionLog,omitempty"`
 
+	// SSH/Telnet session options (verified against ClassicDevicePatch.java and DeviceSetup.java). PaginationMode (default DISABLE_PAGINATION): KEEP_UNCHANGED, DISABLE_PAGINATION, ENABLE_PAGINATION.
+	// TerminalWidth is 80 to 500 (default 500). Prompt is a case-insensitive glob matching an interactive prompt at
+	// the end of the output, answered with PromptResponse. Forward needs both or neither after the patch is applied to
+	// what is stored: clear them together (clearing one alone answers 400), and Prompt cannot be empty or "*".
+	// MinBytesReadPerSec and MaxConnectionsPerMin must be greater than 0; 0 does not reset them, Clear does.
+	PaginationMode                *string `json:"paginationMode,omitempty"`
+	TerminalWidth                 *int32  `json:"terminalWidth,omitempty"`
+	LargeRTT                      *bool   `json:"largeRtt,omitempty"`
+	MinBytesReadPerSec            *int64  `json:"minBytesReadPerSec,omitempty"`
+	MaxConnectionsPerMin          *int32  `json:"maxConnectionsPerMin,omitempty"`
+	UseFileTransferForLargeOutput *bool   `json:"useFileTransferForLargeOutput,omitempty"`
+	Prompt                        *string `json:"prompt,omitempty"`
+	PromptResponse                *string `json:"promptResponse,omitempty"`
+
+	// BMPStationHost is the BMP station to collect from for this device (no jump server is used for BMP when set).
+	// BGPSubnetsToCollect restricts BGP advertisement collection to those subnets where the device supports it; a
+	// non-nil empty slice sends [] (the same as Clear) and nil leaves it alone. Forward drops BGPSubnetsToCollect
+	// unless CollectBGPAdvertisements is true after the patch, whether set here or already stored.
+	BMPStationHost      *string   `json:"bmpStationHost,omitempty"`
+	BGPSubnetsToCollect *[]string `json:"bgpSubnetsToCollect,omitempty"`
+
+	// Performance thresholds, as fractions (0.8 is 80%), used with SNMP performance collection (SnmpCollectionConfig).
+	// High thresholds are 0.75 to 1.0 (defaults 0.8 CPU, 0.9 memory, 0.9 input and output utilization); medium ones
+	// are 0.5 to 1.0, have no default, and may not exceed the matching high threshold (its default when none is
+	// set): MediumCPUUsage 0.85 with no HighCPUUsage answers 400, and so does clearing a high threshold below a
+	// stored medium one.
+	HighCPUUsage            *float32 `json:"highCpuUsage,omitempty"`
+	HighMemoryUsage         *float32 `json:"highMemoryUsage,omitempty"`
+	HighInputUtilization    *float32 `json:"highInputUtilization,omitempty"`
+	HighOutputUtilization   *float32 `json:"highOutputUtilization,omitempty"`
+	MediumCPUUsage          *float32 `json:"mediumCpuUsage,omitempty"`
+	MediumMemoryUsage       *float32 `json:"mediumMemoryUsage,omitempty"`
+	MediumInputUtilization  *float32 `json:"mediumInputUtilization,omitempty"`
+	MediumOutputUtilization *float32 `json:"mediumOutputUtilization,omitempty"`
+
 	// Clear names wire properties to send as an explicit JSON null, which
 	// Forward reads as "clear it back to unset" (the collector falls back to the
 	// network's default, an auto-associated credential is chosen again, an
 	// option returns to its default). A pointer field can only omit, so this is
-	// the only way to clear. Allowed names: cliCredentialId, cliCredential2Id,
+	// the only way to clear. host and name cannot be cleared (Forward answers 400 for either). Allowed names: type
+	// (detected again at the next connectivity test), collect (back to the default, true), cliCredentialId, cliCredential2Id,
 	// cliCredential3Id, httpCredentialId, snmpCredentialId, jumpServerId,
 	// collectorId, note, port, enableSnmpCollection, collectBgpAdvertisements,
 	// bgpTableType, bgpPeerType, bgpAndBmpFailureHandling, disableIpv6Collection,
-	// fullCollectionLog. Naming a property that the patch also sets is an error.
+	// fullCollectionLog, paginationMode, terminalWidth, largeRtt, minBytesReadPerSec, maxConnectionsPerMin,
+	// useFileTransferForLargeOutput, prompt, promptResponse, bmpStationHost, bgpSubnetsToCollect, and the eight
+	// high/medium CPU, memory, input and output thresholds. Naming a property that the patch also sets is an error.
 	Clear []string `json:"-"`
 }
 
 var classicDevicePatchClearable = map[string]bool{
-	"cliCredentialId": true, "cliCredential2Id": true, "cliCredential3Id": true, "httpCredentialId": true,
+	"type": true, "collect": true, "cliCredentialId": true, "cliCredential2Id": true, "cliCredential3Id": true, "httpCredentialId": true,
 	"snmpCredentialId": true, "jumpServerId": true, "collectorId": true, "note": true, "port": true,
 	"enableSnmpCollection": true, "collectBgpAdvertisements": true, "bgpTableType": true, "bgpPeerType": true,
 	"bgpAndBmpFailureHandling": true, "disableIpv6Collection": true, "fullCollectionLog": true,
+	"paginationMode":                true,
+	"terminalWidth":                 true,
+	"largeRtt":                      true,
+	"minBytesReadPerSec":            true,
+	"maxConnectionsPerMin":          true,
+	"useFileTransferForLargeOutput": true,
+	"prompt":                        true,
+	"promptResponse":                true,
+	"bmpStationHost":                true,
+	"bgpSubnetsToCollect":           true,
+	"highCpuUsage":                  true,
+	"highMemoryUsage":               true,
+	"highInputUtilization":          true,
+	"highOutputUtilization":         true,
+	"mediumCpuUsage":                true,
+	"mediumMemoryUsage":             true,
+	"mediumInputUtilization":        true,
+	"mediumOutputUtilization":       true,
 }
 
 // MarshalJSON writes the set properties and a JSON null for each name in Clear.

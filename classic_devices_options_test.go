@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -177,5 +178,62 @@ func TestClassicDevicePatchRenameWire(t *testing.T) {
 	uri = ""
 	if _, err := client.ClassicDevices.PatchMany(context.Background(), "net-1", []string{"edge-1"}, ClassicDevicePatch{Name: Ptr("x")}); err == nil || uri != "" {
 		t.Fatalf("PatchMany with Name: err=%v, sent %q; want a refusal before any request", err, uri)
+	}
+}
+
+// TestClassicDevicePatchNewPropertiesAndClear pins the session, BMP, BGP-subnet and threshold properties added to ClassicDevicePatch: every property is sent under its spec name when set, absent when nil, and an explicit null through Clear.
+func TestClassicDevicePatchNewPropertiesAndClear(t *testing.T) {
+	t.Parallel()
+	s, i32, i64, f, b := Ptr("v"), Ptr(int32(7)), Ptr(int64(9)), Ptr(float32(0.8)), Ptr(true)
+	subnets := []string{"10.0.0.0/8"}
+	patch := ClassicDevicePatch{
+		PaginationMode: s, TerminalWidth: i32, LargeRTT: b, MinBytesReadPerSec: i64, MaxConnectionsPerMin: i32,
+		UseFileTransferForLargeOutput: b, Prompt: s, PromptResponse: s, BMPStationHost: s, BGPSubnetsToCollect: &subnets,
+		HighCPUUsage: f, HighMemoryUsage: f, HighInputUtilization: f, HighOutputUtilization: f,
+		MediumCPUUsage: f, MediumMemoryUsage: f, MediumInputUtilization: f, MediumOutputUtilization: f,
+	}
+	raw, err := json.Marshal(patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sent map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &sent); err != nil {
+		t.Fatal(err)
+	}
+	names := strings.Fields("paginationMode terminalWidth largeRtt minBytesReadPerSec maxConnectionsPerMin useFileTransferForLargeOutput prompt promptResponse bmpStationHost bgpSubnetsToCollect highCpuUsage highMemoryUsage highInputUtilization highOutputUtilization mediumCpuUsage mediumMemoryUsage mediumInputUtilization mediumOutputUtilization")
+	if len(sent) != len(names) {
+		t.Fatalf("sent %d properties %s, want %d", len(sent), raw, len(names))
+	}
+	if string(sent["highCpuUsage"]) != "0.8" || string(sent["bgpSubnetsToCollect"]) != `["10.0.0.0/8"]` {
+		t.Fatalf("float or list encoding wrong: %s", raw)
+	}
+	for _, name := range names {
+		if _, ok := sent[name]; !ok {
+			t.Errorf("%s not sent", name)
+		}
+		out, err := json.Marshal(ClassicDevicePatch{Clear: []string{name}})
+		if err != nil || string(out) != `{"`+name+`":null}` {
+			t.Errorf("Clear %s = %s, %v; want an explicit null", name, out, err)
+		}
+	}
+	empty := []string{}
+	if out, _ := json.Marshal(ClassicDevicePatch{BGPSubnetsToCollect: &empty}); string(out) != `{"bgpSubnetsToCollect":[]}` {
+		t.Fatalf("empty subnet list = %s, want [] kept distinct from absent", out)
+	}
+}
+
+// TestClassicDevicePatchClearsEveryClearableProperty fails when a ClassicDevicePatch property is added without deciding
+// whether it can be cleared: every property Forward accepts null for is listed here, and name and host are not.
+func TestClassicDevicePatchClearsEveryClearableProperty(t *testing.T) {
+	t.Parallel()
+	for _, name := range strings.Fields("type port collect note collectorId cliCredentialId cliCredential2Id cliCredential3Id httpCredentialId snmpCredentialId jumpServerId enableSnmpCollection collectBgpAdvertisements bgpTableType bgpPeerType bgpAndBmpFailureHandling disableIpv6Collection fullCollectionLog paginationMode terminalWidth largeRtt minBytesReadPerSec maxConnectionsPerMin useFileTransferForLargeOutput prompt promptResponse bmpStationHost bgpSubnetsToCollect highCpuUsage highMemoryUsage highInputUtilization highOutputUtilization mediumCpuUsage mediumMemoryUsage mediumInputUtilization mediumOutputUtilization") {
+		if out, err := json.Marshal(ClassicDevicePatch{Clear: []string{name}}); err != nil || string(out) != `{"`+name+`":null}` {
+			t.Errorf("Clear %s = %s, %v; want an explicit null", name, out, err)
+		}
+	}
+	for _, name := range []string{"name", "host"} {
+		if _, err := json.Marshal(ClassicDevicePatch{Clear: []string{name}}); err == nil {
+			t.Errorf("Clear %s was accepted; Forward answers 400 to a null %s", name, name)
+		}
 	}
 }
