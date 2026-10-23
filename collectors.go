@@ -28,6 +28,39 @@ type Collector struct {
 	CollectorUpdating bool       `json:"collectorUpdating,omitempty"`
 	ExternalIP        string     `json:"externalIp,omitempty"`
 	InternalIPs       []string   `json:"internalIps,omitempty"`
+	// Features is what the collector reported at its last connection; nil when it never connected.
+	Features *CollectorFeatures `json:"features,omitempty"`
+}
+
+// CollectorFeatures is the collector's self-reported capability set. Updatable is true when the collector runs as a
+// service Forward can restart (supportsAutoStart), which a remote upgrade needs.
+type CollectorFeatures struct {
+	Latest    int  `json:"latest"`
+	Updatable bool `json:"updatable,omitempty"`
+}
+
+// UpgradeBlocker says why Forward would refuse Upgrade for this collector, from the fields a list read carries, or ""
+// when nothing visible blocks it. It mirrors CollectorUpgradeService.validateCollectorIsRemotelyUpgradeable and is
+// advisory: it does not check for a bundled on-prem collector (username "client") or an on-prem deployment in
+// BUNDLED_ONLY mode, and Forward answers those itself (400, or 409 while one is in progress).
+func (c Collector) UpgradeBlocker() string {
+	switch {
+	case c.CollectorUpdating:
+		return "an upgrade is already queued or running"
+	case c.ConnectionStatus == "NEVER_CONNECTED":
+		return "the collector has never connected"
+	case c.ConnectionStatus == "DISCONNECTED":
+		return "the collector is offline"
+	case c.Features == nil || !c.Features.Updatable:
+		return "the collector is not remotely upgradeable (it is not installed as a service Forward can restart)"
+	case c.UpdateStatus == "":
+		return "the collector reports no version (development mode)"
+	case c.UpdateStatus == "UP_TO_DATE":
+		return "the collector is up to date"
+	case c.UpdateStatus == "END_OF_LIFE":
+		return "the collector is at end of life and must be reinstalled by hand"
+	}
+	return ""
 }
 
 type CollectorRegistrationRequest struct {
@@ -506,4 +539,46 @@ func (s *CollectorsService) GetOrganizationSettings(ctx context.Context) (*OrgCo
 		return nil, resp, err
 	}
 	return out, resp, nil
+}
+
+// Upgrade asks Forward to upgrade one collector to the current release and returns once the upgrade is queued, not
+// finished. Poll List until CollectorUpdating clears, then read UpdateStatus and Version: UP_TO_DATE means it worked,
+// while a failed or timed-out upgrade also clears CollectorUpdating and leaves UpdateStatus OUTDATED. The upgrade is a
+// blocking task, so it first waits for a collection running on that collector to finish (Forward gives the task 15
+// minutes), then restarts the collector: collections queued behind it fail with "Collector version changed". POST
+// /api/collectors/{collectorName}?action=upgrade (CollectorSetupController.upgradeCollector; MANAGE_COLLECTORS, org
+// admin; Preview: not in the published spec). Forward answers 400 when the collector is offline, never connected, not
+// remotely upgradeable, already up to date, at end of life, bundled with an on-prem deployment, or upgrades are off
+// (BUNDLED_ONLY); 404 for an unknown name; and 409 when an upgrade is already in progress. See Collector.UpgradeBlocker
+// for the checks that can be made first.
+func (s *CollectorsService) Upgrade(ctx context.Context, collectorName string) (*Response, error) {
+	collectorName = strings.TrimSpace(collectorName)
+	if collectorName == "" {
+		return nil, errors.New("forward: collector name is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodPost, "/api/collectors/"+url.PathEscape(collectorName)+"?action=upgrade", nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, "Collectors.Upgrade")
+	return s.client.Do(req, nil)
+}
+
+// UpgradeAll queues an upgrade for every collector in the org that can be upgraded remotely (online, outdated or
+// unsupported but not end of life, not bundled, installed as a service) and returns their names; collectors with an
+// upgrade already queued are left out. An empty list means nothing qualified. POST /api/collectors?action=upgrade
+// (CollectorSetupController.upgradeCollectors; MANAGE_COLLECTORS; Preview: not in the published spec). The order of
+// the names is unspecified. Like Upgrade, it returns when queued, with the same polling and restart behaviour.
+func (s *CollectorsService) UpgradeAll(ctx context.Context) ([]string, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, "/api/collectors?action=upgrade", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Collectors.UpgradeAll")
+	var names []string
+	response, err := s.client.doRequired(req, &names)
+	if names == nil {
+		names = []string{}
+	}
+	return names, response, err
 }

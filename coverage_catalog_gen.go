@@ -443,6 +443,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Collectors.SetPerformanceCollection": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/performance/settings"},
 	},
+	"Collectors.Upgrade": {
+		{Method: "POST", Route: "/api/collectors/{collectorName}"},
+	},
+	"Collectors.UpgradeAll": {
+		{Method: "POST", Route: "/api/collectors"},
+	},
 	"Compatibility.Checks": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
 	},
