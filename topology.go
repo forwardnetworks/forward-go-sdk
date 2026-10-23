@@ -43,6 +43,8 @@ func (s *TopologyService) List(ctx context.Context, snapshotID string) ([]Topolo
 	response, err := s.client.doRequired(req, &result)
 	return result.Items, response, err
 }
+
+// Deprecated: Forward deprecated the snapshot-scoped link override routes in 26.10 for removal in 26.11; use SnapshotOverrides to read one snapshot's overrides (NetworkOverrides reads the staged ones for the next snapshot).
 func (s *TopologyService) Overrides(ctx context.Context, snapshotID string) (*TopologyOverrides, *Response, error) {
 	base, err := topologySnapshotPath(snapshotID)
 	if err != nil {
@@ -63,6 +65,8 @@ func (s *TopologyService) Overrides(ctx context.Context, snapshotID string) (*To
 	}
 	return out, response, err
 }
+
+// Deprecated: Forward deprecated the snapshot-scoped link override routes in 26.10 for removal in 26.11; use EditNetworkOverrides or SetNetworkOverrides, which stage overrides for the next snapshot and leave existing snapshots alone until BackdateLinkOverrides (this route wrote to the snapshot and invalidated it).
 func (s *TopologyService) EditOverrides(ctx context.Context, snapshotID string, input TopologyOverridesEdit) (*Response, error) {
 	base, err := topologySnapshotPath(snapshotID)
 	if err != nil {
@@ -198,4 +202,33 @@ func (s *TopologyService) EditNetworkOverrides(ctx context.Context, networkID st
 	}
 	req = markOperation(req, "Topology.EditNetworkOverrides")
 	return s.client.Do(req, nil)
+}
+
+// SnapshotOverrides returns the link overrides in effect for one snapshot, through the network-level route that
+// replaces the deprecated snapshot-scoped Overrides. GET /api/networks/{id}/link-overrides?view=snapshot&snapshotId=
+// (TopologyController.getLinkOverridesAtSnapshot; VIEW_NETWORK_AND_SNAPSHOTS; Forward's 26.8 migration guide maps
+// the old GET to it).
+func (s *TopologyService) SnapshotOverrides(ctx context.Context, networkID, snapshotID string) (*TopologyOverrides, *Response, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
+		return nil, nil, errors.New("forward: snapshot ID is required")
+	}
+	q := url.Values{"view": []string{"snapshot"}, "snapshotId": []string{snapshotID}}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/networks/"+url.PathEscape(networkID)+"/link-overrides?"+q.Encode(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Topology.SnapshotOverrides")
+	out := new(TopologyOverrides)
+	response, err := s.client.doRequired(req, out)
+	if out.Absent == nil {
+		out.Absent = []TopologyOverrideLink{}
+	}
+	if out.Present == nil {
+		out.Present = []TopologyOverrideLink{}
+	}
+	return out, response, err
 }

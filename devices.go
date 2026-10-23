@@ -28,6 +28,10 @@ type Device struct {
 	ProcessingError string   `json:"processingError,omitempty"`
 	Tags            []string `json:"tags,omitempty"`
 	LocationID      string   `json:"locationId,omitempty"`
+	// DuplicateOf and CollectedAt are set when collection failed and an earlier collection's data was reused;
+	// Forward compares both in a device diff.
+	DuplicateOf string `json:"duplicateOf,omitempty"`
+	CollectedAt string `json:"collectedAt,omitempty"`
 }
 
 // DeviceListOptions filters modeled devices. ExtraQuery carries fields added

@@ -671,6 +671,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DeviceTags.UpdateTag": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/device-tags/{tagName}"},
 	},
+	"Devices.Diff": {
+		{Method: "GET", Route: "/api/networks/{networkId}/device-diffs/{before}/{after}"},
+	},
 	"Devices.DownloadFile": {
 		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/files/{fileName}"},
 	},
@@ -679,6 +682,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Devices.Get": {
 		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceIdOrName}"},
+	},
+	"Devices.Interface": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/interfaces/{interfaceName}"},
+	},
+	"Devices.Interfaces": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/interfaces"},
 	},
 	"Devices.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/devices"},
@@ -1633,6 +1642,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Topology.SetNetworkOverrides": {
 		{Method: "PUT", Route: "/api/networks/{networkId}/link-overrides"},
+	},
+	"Topology.SnapshotOverrides": {
+		{Method: "GET", Route: "/api/networks/{networkId}/link-overrides"},
 	},
 	"Topology.StagedOverrideChanges": {
 		{Method: "GET", Route: "/api/networks/{networkId}/link-overrides"},
