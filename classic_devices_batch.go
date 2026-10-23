@@ -34,8 +34,11 @@ func batchDeviceNames(names []string) ([]string, error) {
 // name that matches no device is skipped silently, so compare with List when
 // that matters. The same patch goes to every device: per-device values need
 // per-device Patch calls (or PutBatch). patch.Clear and the pointer fields work
-// exactly as in Patch. There is no response body.
+// exactly as in Patch, except Name, which PatchMany refuses. There is no response body.
 func (s *ClassicDevicesService) PatchMany(ctx context.Context, networkID string, names []string, patch ClassicDevicePatch) (*Response, error) {
+	if patch.Name != nil {
+		return nil, errors.New("forward: PatchMany cannot rename devices (Forward answers 500 to a batch that renames); use Patch per device")
+	}
 	names, err := batchDeviceNames(names)
 	if err != nil {
 		return nil, err

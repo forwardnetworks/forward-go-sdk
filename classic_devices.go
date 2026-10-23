@@ -376,6 +376,19 @@ func (s *ClassicDevicesService) Put(ctx context.Context, networkID, deviceName s
 // leaving it alone are different requests, and a plain string cannot say which
 // was meant.
 type ClassicDevicePatch struct {
+	// Name renames the device (ClassicDevicePatch.name, in the published spec). It must be unique, ignoring case,
+	// among the network's collection source names (other classic devices, other source types, synthetic devices)
+	// and use only letters, digits, dots, hyphens and underscores. Forward answers 400 for a duplicate ("Device
+	// named 'x' already exists", or "Device name(s) already used: [x]" for another source type) and for an invalid
+	// name, never 409. A rename deletes and re-adds the device, so the old name answers 404 afterwards and Patch
+	// returns the device under the new name; tags, layout, link overrides and synthetic-device references follow it.
+	// The new name reaches snapshots with the next collection and earlier snapshots keep the old one. A change of
+	// letter case alone is stored in place, not a rename. A rename is not idempotent: do not retry it with
+	// WithIdempotent, because a replay after a committed first attempt addresses the old name and gets 404.
+	// Name is deliberately not in Clear: the spec lets null clear it, but Forward answers 400 "'name' is
+	// required" and a device cannot be left unnamed. PatchMany refuses a Name (Forward answers 500 to a batch that
+	// renames); use Patch per device.
+	Name             *string `json:"name,omitempty"`
 	Host             *string `json:"host,omitempty"`
 	Type             *string `json:"type,omitempty"`
 	Port             *int32  `json:"port,omitempty"`

@@ -139,3 +139,43 @@ func TestClassicDeviceReadsCredential2And3AndCollectionOptions(t *testing.T) {
 		t.Fatalf("unstated options must stay nil: %+v, %v", bare, err)
 	}
 }
+
+// TestClassicDevicePatchSendsNameOnlyWhenSet pins the rename property: absent when nil (a nil Name must not send
+// "name":null, which Forward refuses with 400 "'name' is required"), and Clear refuses it.
+func TestClassicDevicePatchSendsNameOnlyWhenSet(t *testing.T) {
+	t.Parallel()
+	if b, _ := json.Marshal(ClassicDevicePatch{Name: Ptr("edge-2")}); string(b) != `{"name":"edge-2"}` {
+		t.Fatalf("patch with Name = %s", b)
+	}
+	if b, _ := json.Marshal(ClassicDevicePatch{}); string(b) != `{}` {
+		t.Fatalf("empty patch = %s", b)
+	}
+	if _, err := json.Marshal(ClassicDevicePatch{Clear: []string{"name"}}); err == nil {
+		t.Fatal("Clear: name was accepted; a device cannot be left unnamed")
+	}
+}
+
+// TestClassicDevicePatchRenameWire pins a rename: the OLD name addresses the device, the new one travels in the body,
+// the response carries the new name, and PatchMany refuses a Name before sending (Forward answers 500 to it).
+func TestClassicDevicePatchRenameWire(t *testing.T) {
+	t.Parallel()
+	var method, uri, body string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		method, uri, body = r.Method, r.RequestURI, string(b)
+		_, _ = w.Write([]byte(`{"name":"edge-2","host":"10.0.0.2"}`))
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	got, _, err := client.ClassicDevices.Patch(context.Background(), "net-1", "edge-1", ClassicDevicePatch{Name: Ptr("edge-2")})
+	if err != nil || got.Name != "edge-2" {
+		t.Fatalf("Patch = %#v, %v", got, err)
+	}
+	if method != http.MethodPatch || uri != "/api/networks/net-1/classic-devices/edge-1" || body != `{"name":"edge-2"}` {
+		t.Fatalf("request = %s %s %s", method, uri, body)
+	}
+	uri = ""
+	if _, err := client.ClassicDevices.PatchMany(context.Background(), "net-1", []string{"edge-1"}, ClassicDevicePatch{Name: Ptr("x")}); err == nil || uri != "" {
+		t.Fatalf("PatchMany with Name: err=%v, sent %q; want a refusal before any request", err, uri)
+	}
+}
