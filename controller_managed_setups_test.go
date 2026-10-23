@@ -2,6 +2,7 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -261,5 +262,29 @@ func TestControllerManagedPatchCollector(t *testing.T) {
 	sent := len(bodies)
 	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "5", "sdwan", ControllerManagedSetupPatch{CollectorID: "C4", ClearCollector: true}); err == nil || len(bodies) != sent {
 		t.Fatal("setting and clearing the collector together must be refused before the request")
+	}
+}
+
+// TestControllerDeviceSendsHTTPCredentialAndPort pins the connection fields an API-collected controller needs (a Versa
+// Director logs in with an HTTP credential, not a CLI one): they reach the wire under Forward's DeviceSetup names, and are
+// absent when unset so auto-association stays possible.
+func TestControllerDeviceSendsHTTPCredentialAndPort(t *testing.T) {
+	t.Parallel()
+	port := int32(9182)
+	raw, err := json.Marshal(ControllerDevice{Name: "versa-dir", Type: "versa_director_api", Host: "10.0.0.5", Port: &port, HTTPCredentialID: "H-5", JumpServerID: "J-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sent map[string]any
+	if err := json.Unmarshal(raw, &sent); err != nil || sent["port"] != float64(9182) || sent["httpCredentialId"] != "H-5" || sent["jumpServerId"] != "J-1" {
+		t.Fatalf("controller = %s, want port, httpCredentialId and jumpServerId", raw)
+	}
+
+	if bare, _ := json.Marshal(ControllerDevice{Name: "c"}); strings.Contains(string(bare), "httpCredentialId") || strings.Contains(string(bare), "port") {
+		t.Fatalf("unset connection fields were sent: %s", bare)
+	}
+	var back ManagedDevice
+	if err := json.Unmarshal([]byte(`{"name":"g","httpCredentialId":"H-2","cliCredential2Id":"PM-1","cliCredential3Id":"EM-1","port":22}`), &back); err != nil || back.HTTPCredentialID != "H-2" || back.CLICredential2ID != "PM-1" || back.CLICredential3ID != "EM-1" || back.Port == nil || *back.Port != 22 {
+		t.Fatalf("managed device = %#v, %v", back, err)
 	}
 }

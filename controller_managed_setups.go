@@ -42,11 +42,20 @@ type ControllerManagedSetup struct {
 // the controller entry, which is why they sit at this level rather than in a
 // nested object of their own.
 type ControllerDevice struct {
-	Name                              string                `json:"name"`
-	Type                              string                `json:"type,omitempty"`
-	Host                              string                `json:"host,omitempty"`
-	CLICredentialID                   string                `json:"cliCredentialId,omitempty"`
-	SNMPCredentialID                  string                `json:"snmpCredentialId,omitempty"`
+	Name             string `json:"name"`
+	Type             string `json:"type,omitempty"`
+	Host             string `json:"host,omitempty"`
+	CLICredentialID  string `json:"cliCredentialId,omitempty"`
+	SNMPCredentialID string `json:"snmpCredentialId,omitempty"`
+	// Port and the credential fields below are DeviceSetup properties (ControllerDevice / ControllerManagedDevice in the
+	// published spec). HTTPCredentialID (an "H-..." id of a LOGIN credential for versa_director_api and cisco_apic_api,
+	// which Forward collects over HTTPS) is what an API-collected controller logs in with; CLICredential2ID
+	// is the PRIVILEGED_MODE, ESCALATION_LOGIN (or Avi SHELL) credential and CLICredential3ID the EXPERT_MODE one. Left empty, Forward tries
+	// to auto-associate a credential that allows it. Nothing is carried over from a classic record that a migrate deletes.
+	Port                              *int32                `json:"port,omitempty"`
+	HTTPCredentialID                  string                `json:"httpCredentialId,omitempty"`
+	CLICredential2ID                  string                `json:"cliCredential2Id,omitempty"`
+	CLICredential3ID                  string                `json:"cliCredential3Id,omitempty"`
 	JumpServerID                      string                `json:"jumpServerId,omitempty"`
 	BGPAdvertisementCollectionOptions *BGPCollectionOptions `json:"bgpAdvertisementCollectionOptions,omitempty"`
 	SNMPCollectionConfig              *SNMPCollectionConfig `json:"snmpCollectionConfig,omitempty"`
@@ -80,11 +89,20 @@ type ControllerDevice struct {
 // DeviceConfig per managed device from that device's own DeviceSetup, so a guest
 // with no credential is a guest Forward cannot log into.
 type ManagedDevice struct {
-	Name                              string                `json:"name"`
-	Type                              string                `json:"type,omitempty"`
-	Host                              string                `json:"host,omitempty"`
-	CLICredentialID                   string                `json:"cliCredentialId,omitempty"`
-	SNMPCredentialID                  string                `json:"snmpCredentialId,omitempty"`
+	Name             string `json:"name"`
+	Type             string `json:"type,omitempty"`
+	Host             string `json:"host,omitempty"`
+	CLICredentialID  string `json:"cliCredentialId,omitempty"`
+	SNMPCredentialID string `json:"snmpCredentialId,omitempty"`
+	// Port and the credential fields below are DeviceSetup properties (ControllerDevice / ControllerManagedDevice in the
+	// published spec). HTTPCredentialID (an "H-..." id of a LOGIN credential for versa_director_api and cisco_apic_api,
+	// which Forward collects over HTTPS) is what an API-collected controller logs in with; CLICredential2ID
+	// is the PRIVILEGED_MODE, ESCALATION_LOGIN (or Avi SHELL) credential and CLICredential3ID the EXPERT_MODE one. Left empty, Forward tries
+	// to auto-associate a credential that allows it. Nothing is carried over from a classic record that a migrate deletes.
+	Port                              *int32                `json:"port,omitempty"`
+	HTTPCredentialID                  string                `json:"httpCredentialId,omitempty"`
+	CLICredential2ID                  string                `json:"cliCredential2Id,omitempty"`
+	CLICredential3ID                  string                `json:"cliCredential3Id,omitempty"`
 	JumpServerID                      string                `json:"jumpServerId,omitempty"`
 	BGPAdvertisementCollectionOptions *BGPCollectionOptions `json:"bgpAdvertisementCollectionOptions,omitempty"`
 	SNMPCollectionConfig              *SNMPCollectionConfig `json:"snmpCollectionConfig,omitempty"`
@@ -251,7 +269,10 @@ func (s *ControllerManagedSetupsService) Create(ctx context.Context, networkID s
 // whose name matches one of the setup's controllers or managed devices (POST ...controller-managed-setups?action=migrate,
 // addControllerManagedSetupWithMigration, published as Experimental). It is how the UI moves devices that were added
 // as classic devices into a setup: if the setup is refused, nothing is deleted; if it is accepted, the classic devices are
-// gone, with their per-device settings (credentials, collection options), their connectivity test results and their device tags.
+// gone, with their per-device settings (credentials, collection options) -- none of it is copied onto the new entry, so state
+// every credential (HTTPCredentialID for an API-collected controller such as a Versa Director), jump server and port you want
+// kept in the request, or Forward tries to auto-associate a credential. The SDK does not yet model every collection option (note,
+// pagination, prompts, thresholds, and the BGP and SNMP options, which Forward reads flat), so those cannot be carried over --, their connectivity test results and their device tags.
 // Only the setup's controllers and managed devices are matched, not the setup's own name (a classic device called that is
 // still a 400). A name held by a
 // non-classic source (another setup, an endpoint) is still a 400 and rolls the whole thing back. Names that match no
@@ -406,6 +427,10 @@ func (p ControllerManagedSetupPatch) MarshalJSON() ([]byte, error) {
 // record has to go first. Forward's own ?action=migrate create does exactly
 // that (addSetupMigratingClassicDevices deletes the overlapping classic devices
 // inside the same transaction), but there is no migrating form of PATCH.
+//
+// A guest list read back and re-sent drops every property this SDK does not model (note, pagination, prompts, thresholds, the
+// flat BGP and SNMP options), because the list replaces the stored one. The patch cannot change controllers: there is no
+// Controllers field here, and the per-device PATCH routes Forward has for a controller or guest are not wrapped.
 func (s *ControllerManagedSetupsService) Patch(
 	ctx context.Context,
 	networkID, setupName string,
