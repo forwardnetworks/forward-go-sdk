@@ -36,11 +36,9 @@ type ControllerManagedSetup struct {
 
 // ControllerDevice is one controller within a setup.
 //
-// BGPAdvertisementCollectionOptions and SNMPCollectionConfig carry the same
-// settings the classic batch writes as collectBgpAdvertisements/bgpTableType/
-// bgpPeerType and enableSnmpCollection. Forward unwraps the meta record into
-// the controller entry, which is why they sit at this level rather than in a
-// nested object of their own.
+// Forward unwraps the device setup and its meta record into the controller entry, so the collection options (BGP, SNMP,
+// pagination, prompts, thresholds, ...) are flat properties of the entry, as they are on a classic device. The nested
+// BGPAdvertisementCollectionOptions and SNMPCollectionConfig fields are a deprecated older shape that Forward never read.
 type ControllerDevice struct {
 	Name             string `json:"name"`
 	Type             string `json:"type,omitempty"`
@@ -52,13 +50,55 @@ type ControllerDevice struct {
 	// which Forward collects over HTTPS) is what an API-collected controller logs in with; CLICredential2ID
 	// is the PRIVILEGED_MODE, ESCALATION_LOGIN (or Avi SHELL) credential and CLICredential3ID the EXPERT_MODE one. Left empty, Forward tries
 	// to auto-associate a credential that allows it. Nothing is carried over from a classic record that a migrate deletes.
-	Port                              *int32                `json:"port,omitempty"`
-	HTTPCredentialID                  string                `json:"httpCredentialId,omitempty"`
-	CLICredential2ID                  string                `json:"cliCredential2Id,omitempty"`
-	CLICredential3ID                  string                `json:"cliCredential3Id,omitempty"`
-	JumpServerID                      string                `json:"jumpServerId,omitempty"`
-	BGPAdvertisementCollectionOptions *BGPCollectionOptions `json:"bgpAdvertisementCollectionOptions,omitempty"`
-	SNMPCollectionConfig              *SNMPCollectionConfig `json:"snmpCollectionConfig,omitempty"`
+	Port             *int32 `json:"port,omitempty"`
+	HTTPCredentialID string `json:"httpCredentialId,omitempty"`
+	CLICredential2ID string `json:"cliCredential2Id,omitempty"`
+	CLICredential3ID string `json:"cliCredential3Id,omitempty"`
+	JumpServerID     string `json:"jumpServerId,omitempty"`
+	// Deprecated: Forward does not read these nested objects. Use CollectBGPAdvertisements, BGPTableType, BGPPeerType and
+	// EnableSNMPCollection, which are sent flat. For compatibility, marshalling copies a set nested value into the flat field
+	// when that field is empty (a nested BGP value sends collectBgpAdvertisements explicitly, false included, which stops Forward
+	// turning it on by itself for a connected synthetic device). They are not read back; read the flat fields.
+	BGPAdvertisementCollectionOptions *BGPCollectionOptions `json:"-"`
+	SNMPCollectionConfig              *SNMPCollectionConfig `json:"-"`
+
+	// Collection options. Forward reads these FLAT on the entry (DeviceSetup and DeviceSetupMeta unwrapped), the way the
+	// classic device carries them; empty or nil leaves the option at Forward's default. BGPTableType: BOTH, ADJ_RIB_IN,
+	// ADJ_RIB_OUT. BGPPeerType: BOTH, EBGP, IBGP. BGPAndBMPFailureHandling: FAIL_DEVICE, SWITCH_TO_CLI, ALWAYS_USE_CLI,
+	// ALWAYS_USE_BMP, CONTINUE_WITHOUT_BGP_DATA. PaginationMode: KEEP_UNCHANGED, DISABLE_PAGINATION, ENABLE_PAGINATION.
+	// BGP options take effect only with CollectBGPAdvertisements true. Prompt and PromptResponse go together. Thresholds
+	// are fractions (0.8 is 80%) used with SNMP performance collection; see ClassicDevicePatch for the ranges Forward enforces.
+	Note                          string   `json:"note,omitempty"`
+	EnableSNMPCollection          *bool    `json:"enableSnmpCollection,omitempty"`
+	CollectBGPAdvertisements      *bool    `json:"collectBgpAdvertisements,omitempty"`
+	BGPTableType                  string   `json:"bgpTableType,omitempty"`
+	BGPPeerType                   string   `json:"bgpPeerType,omitempty"`
+	BGPAndBMPFailureHandling      string   `json:"bgpAndBmpFailureHandling,omitempty"`
+	BGPSubnetsToCollect           []string `json:"bgpSubnetsToCollect,omitempty"`
+	BMPStationHost                string   `json:"bmpStationHost,omitempty"`
+	DisableIPv6Collection         *bool    `json:"disableIpv6Collection,omitempty"`
+	FullCollectionLog             *bool    `json:"fullCollectionLog,omitempty"`
+	PaginationMode                string   `json:"paginationMode,omitempty"`
+	TerminalWidth                 *int32   `json:"terminalWidth,omitempty"`
+	LargeRTT                      *bool    `json:"largeRtt,omitempty"`
+	MinBytesReadPerSec            *int64   `json:"minBytesReadPerSec,omitempty"`
+	MaxConnectionsPerMin          *int32   `json:"maxConnectionsPerMin,omitempty"`
+	UseFileTransferForLargeOutput *bool    `json:"useFileTransferForLargeOutput,omitempty"`
+	Prompt                        string   `json:"prompt,omitempty"`
+	PromptResponse                string   `json:"promptResponse,omitempty"`
+	HighCPUUsage                  *float32 `json:"highCpuUsage,omitempty"`
+	HighMemoryUsage               *float32 `json:"highMemoryUsage,omitempty"`
+	HighInputUtilization          *float32 `json:"highInputUtilization,omitempty"`
+	HighOutputUtilization         *float32 `json:"highOutputUtilization,omitempty"`
+	MediumCPUUsage                *float32 `json:"mediumCpuUsage,omitempty"`
+	MediumMemoryUsage             *float32 `json:"mediumMemoryUsage,omitempty"`
+	MediumInputUtilization        *float32 `json:"mediumInputUtilization,omitempty"`
+	MediumOutputUtilization       *float32 `json:"mediumOutputUtilization,omitempty"`
+
+	// Collect is DeviceSetupMeta.collect; nil means collect. NDOName is the name of the Cisco Nexus Dashboard Orchestrator
+	// host linked to this APIC, if any.
+	Collect *bool  `json:"collect,omitempty"`
+	NDOName string `json:"ndoName,omitempty"`
 
 	// TestResult is the device's last connectivity test; only ListWithTestResults fills it, and it stays nil for a device
 	// that has never been tested.
@@ -99,13 +139,50 @@ type ManagedDevice struct {
 	// which Forward collects over HTTPS) is what an API-collected controller logs in with; CLICredential2ID
 	// is the PRIVILEGED_MODE, ESCALATION_LOGIN (or Avi SHELL) credential and CLICredential3ID the EXPERT_MODE one. Left empty, Forward tries
 	// to auto-associate a credential that allows it. Nothing is carried over from a classic record that a migrate deletes.
-	Port                              *int32                `json:"port,omitempty"`
-	HTTPCredentialID                  string                `json:"httpCredentialId,omitempty"`
-	CLICredential2ID                  string                `json:"cliCredential2Id,omitempty"`
-	CLICredential3ID                  string                `json:"cliCredential3Id,omitempty"`
-	JumpServerID                      string                `json:"jumpServerId,omitempty"`
-	BGPAdvertisementCollectionOptions *BGPCollectionOptions `json:"bgpAdvertisementCollectionOptions,omitempty"`
-	SNMPCollectionConfig              *SNMPCollectionConfig `json:"snmpCollectionConfig,omitempty"`
+	Port             *int32 `json:"port,omitempty"`
+	HTTPCredentialID string `json:"httpCredentialId,omitempty"`
+	CLICredential2ID string `json:"cliCredential2Id,omitempty"`
+	CLICredential3ID string `json:"cliCredential3Id,omitempty"`
+	JumpServerID     string `json:"jumpServerId,omitempty"`
+	// Deprecated: Forward does not read these nested objects. Use CollectBGPAdvertisements, BGPTableType, BGPPeerType and
+	// EnableSNMPCollection, which are sent flat. For compatibility, marshalling copies a set nested value into the flat field
+	// when that field is empty (a nested BGP value sends collectBgpAdvertisements explicitly, false included, which stops Forward
+	// turning it on by itself for a connected synthetic device). They are not read back; read the flat fields.
+	BGPAdvertisementCollectionOptions *BGPCollectionOptions `json:"-"`
+	SNMPCollectionConfig              *SNMPCollectionConfig `json:"-"`
+
+	// Collection options. Forward reads these FLAT on the entry (DeviceSetup and DeviceSetupMeta unwrapped), the way the
+	// classic device carries them; empty or nil leaves the option at Forward's default. BGPTableType: BOTH, ADJ_RIB_IN,
+	// ADJ_RIB_OUT. BGPPeerType: BOTH, EBGP, IBGP. BGPAndBMPFailureHandling: FAIL_DEVICE, SWITCH_TO_CLI, ALWAYS_USE_CLI,
+	// ALWAYS_USE_BMP, CONTINUE_WITHOUT_BGP_DATA. PaginationMode: KEEP_UNCHANGED, DISABLE_PAGINATION, ENABLE_PAGINATION.
+	// BGP options take effect only with CollectBGPAdvertisements true. Prompt and PromptResponse go together. Thresholds
+	// are fractions (0.8 is 80%) used with SNMP performance collection; see ClassicDevicePatch for the ranges Forward enforces.
+	Note                          string   `json:"note,omitempty"`
+	EnableSNMPCollection          *bool    `json:"enableSnmpCollection,omitempty"`
+	CollectBGPAdvertisements      *bool    `json:"collectBgpAdvertisements,omitempty"`
+	BGPTableType                  string   `json:"bgpTableType,omitempty"`
+	BGPPeerType                   string   `json:"bgpPeerType,omitempty"`
+	BGPAndBMPFailureHandling      string   `json:"bgpAndBmpFailureHandling,omitempty"`
+	BGPSubnetsToCollect           []string `json:"bgpSubnetsToCollect,omitempty"`
+	BMPStationHost                string   `json:"bmpStationHost,omitempty"`
+	DisableIPv6Collection         *bool    `json:"disableIpv6Collection,omitempty"`
+	FullCollectionLog             *bool    `json:"fullCollectionLog,omitempty"`
+	PaginationMode                string   `json:"paginationMode,omitempty"`
+	TerminalWidth                 *int32   `json:"terminalWidth,omitempty"`
+	LargeRTT                      *bool    `json:"largeRtt,omitempty"`
+	MinBytesReadPerSec            *int64   `json:"minBytesReadPerSec,omitempty"`
+	MaxConnectionsPerMin          *int32   `json:"maxConnectionsPerMin,omitempty"`
+	UseFileTransferForLargeOutput *bool    `json:"useFileTransferForLargeOutput,omitempty"`
+	Prompt                        string   `json:"prompt,omitempty"`
+	PromptResponse                string   `json:"promptResponse,omitempty"`
+	HighCPUUsage                  *float32 `json:"highCpuUsage,omitempty"`
+	HighMemoryUsage               *float32 `json:"highMemoryUsage,omitempty"`
+	HighInputUtilization          *float32 `json:"highInputUtilization,omitempty"`
+	HighOutputUtilization         *float32 `json:"highOutputUtilization,omitempty"`
+	MediumCPUUsage                *float32 `json:"mediumCpuUsage,omitempty"`
+	MediumMemoryUsage             *float32 `json:"mediumMemoryUsage,omitempty"`
+	MediumInputUtilization        *float32 `json:"mediumInputUtilization,omitempty"`
+	MediumOutputUtilization       *float32 `json:"mediumOutputUtilization,omitempty"`
 
 	// Collect is DeviceSetupMeta.collect. Absent means true (Forward's
 	// isCollectionEnabled treats null as enabled), so leave it nil to collect.
@@ -176,12 +253,14 @@ func (r *DeviceTestResult) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// BGPCollectionOptions is the legacy nested form of the flat BGP fields; see ControllerDevice.BGPAdvertisementCollectionOptions.
 type BGPCollectionOptions struct {
 	CollectBGPAdvertisements bool   `json:"collectBgpAdvertisements"`
 	TableType                string `json:"tableType,omitempty"`
 	PeerType                 string `json:"peerType,omitempty"`
 }
 
+// SNMPCollectionConfig is the legacy nested form of EnableSNMPCollection.
 type SNMPCollectionConfig struct {
 	EnableSNMPCollection bool `json:"enableSnmpCollection"`
 }
@@ -269,10 +348,10 @@ func (s *ControllerManagedSetupsService) Create(ctx context.Context, networkID s
 // whose name matches one of the setup's controllers or managed devices (POST ...controller-managed-setups?action=migrate,
 // addControllerManagedSetupWithMigration, published as Experimental). It is how the UI moves devices that were added
 // as classic devices into a setup: if the setup is refused, nothing is deleted; if it is accepted, the classic devices are
-// gone, with their per-device settings (credentials, collection options) -- none of it is copied onto the new entry, so state
-// every credential (HTTPCredentialID for an API-collected controller such as a Versa Director), jump server and port you want
-// kept in the request, or Forward tries to auto-associate a credential. The SDK does not yet model every collection option (note,
-// pagination, prompts, thresholds, and the BGP and SNMP options, which Forward reads flat), so those cannot be carried over --, their connectivity test results and their device tags.
+// gone, with their per-device settings, their connectivity test results and their device tags. Nothing is copied onto the new
+// entry, so state in the request every credential (HTTPCredentialID for an API-collected controller such as a Versa Director),
+// jump server, port and collection option (note, BGP, SNMP, pagination, prompts, thresholds: all fields of ControllerDevice and
+// ManagedDevice) you want kept, or Forward falls back to auto-association and its defaults. Test results and tags cannot be carried.
 // Only the setup's controllers and managed devices are matched, not the setup's own name (a classic device called that is
 // still a 400). A name held by a
 // non-classic source (another setup, an endpoint) is still a 400 and rolls the whole thing back. Names that match no
@@ -378,6 +457,11 @@ type ControllerManagedSetupPatch struct {
 	// the stored list untouched.
 	ManagedDevices *[]ManagedDevice `json:"managedDevices,omitempty"`
 
+	// Controllers replaces the setup's whole controller list when present (ControllerManagedSetupPatch.controllers); Forward
+	// refuses an empty list. This is the way to change every controller at once; PatchController changes one in place. Leave it nil
+	// to keep the stored controllers.
+	Controllers *[]ControllerDevice `json:"controllers,omitempty"`
+
 	// CollectorID moves the whole setup to that collector ("C<n>"; ControllerManagedSetupPatch.collectorId replaces the stored
 	// one). Leave it empty to keep the current collector. To drop the pin so the network's default collector applies, set
 	// ClearCollector instead; naming both is an error.
@@ -428,9 +512,9 @@ func (p ControllerManagedSetupPatch) MarshalJSON() ([]byte, error) {
 // that (addSetupMigratingClassicDevices deletes the overlapping classic devices
 // inside the same transaction), but there is no migrating form of PATCH.
 //
-// A guest list read back and re-sent drops every property this SDK does not model (note, pagination, prompts, thresholds, the
-// flat BGP and SNMP options), because the list replaces the stored one. The patch cannot change controllers: there is no
-// Controllers field here, and the per-device PATCH routes Forward has for a controller or guest are not wrapped.
+// ManagedDevices and Controllers replace the stored list, so send whole entries (a list read back and re-sent round-trips
+// every property the entries model, which is all of them except the guest's hidden concurrency and attribution). To change one
+// controller or guest without restating the rest, use PatchController or PatchManagedDevice. A setup rename is not modelled.
 func (s *ControllerManagedSetupsService) Patch(
 	ctx context.Context,
 	networkID, setupName string,
@@ -442,6 +526,9 @@ func (s *ControllerManagedSetupsService) Patch(
 	}
 	if patch.ClearCollector && patch.CollectorID != "" {
 		return nil, nil, errors.New("forward: controller-managed setup patch both sets and clears the collector")
+	}
+	if patch.Controllers != nil && len(*patch.Controllers) == 0 {
+		return nil, nil, errors.New("forward: a setup must keep at least one controller (Forward answers 400 to an empty list)")
 	}
 	base, err := s.base(networkID)
 	if err != nil {
@@ -482,4 +569,86 @@ func controllerInfoList(raw any) []ControllerInfo {
 		}
 	}
 	return out
+}
+
+// MarshalJSON sends the entry with the deprecated nested BGP and SNMP values folded into the flat fields Forward reads.
+func (d ControllerDevice) MarshalJSON() ([]byte, error) {
+	type plain ControllerDevice
+	p := plain(d)
+	foldLegacyDeviceOptions(d.BGPAdvertisementCollectionOptions, d.SNMPCollectionConfig, &p.CollectBGPAdvertisements, &p.BGPTableType, &p.BGPPeerType, &p.EnableSNMPCollection)
+	return json.Marshal(p)
+}
+
+// MarshalJSON sends the entry with the deprecated nested BGP and SNMP values folded into the flat fields Forward reads.
+func (d ManagedDevice) MarshalJSON() ([]byte, error) {
+	type plain ManagedDevice
+	p := plain(d)
+	foldLegacyDeviceOptions(d.BGPAdvertisementCollectionOptions, d.SNMPCollectionConfig, &p.CollectBGPAdvertisements, &p.BGPTableType, &p.BGPPeerType, &p.EnableSNMPCollection)
+	return json.Marshal(p)
+}
+
+func foldLegacyDeviceOptions(bgp *BGPCollectionOptions, snmp *SNMPCollectionConfig, collect **bool, table, peer *string, enableSNMP **bool) {
+	if bgp != nil {
+		if *collect == nil {
+			*collect = Ptr(bgp.CollectBGPAdvertisements)
+		}
+		if *table == "" {
+			*table = bgp.TableType
+		}
+		if *peer == "" {
+			*peer = bgp.PeerType
+		}
+	}
+	if snmp != nil && *enableSNMP == nil {
+		*enableSNMP = Ptr(snmp.EnableSNMPCollection)
+	}
+}
+
+// PatchController changes one controller of a setup in place and returns it as stored. The patch is the same
+// property set as ClassicDevicePatch (name, type, host, port, the CLI, HTTP, SNMP and jump-server ids, collection options,
+// thresholds, Clear for explicit nulls), except that CollectorID is refused: a setup's collector is set on the setup,
+// with Patch. A rename is allowed, done in place (the test result moves with it), follows Forward's naming rules, and is not
+// idempotent: the old name answers 404 afterwards, so do not retry it with WithIdempotent. PATCH
+// /api/networks/{id}/controller-managed-setups/{setup}/controllers/{name} (ControllerManagedSetupController.
+// patchControllerDevice, ControllerDevicePatch; MANAGE_COLLECTION_SOURCES). ndoName is not in the patch; set it through
+// Patch with Controllers.
+func (s *ControllerManagedSetupsService) PatchController(ctx context.Context, networkID, setupName, controllerName string, patch ClassicDevicePatch) (*ControllerDevice, *Response, error) {
+	out := new(ControllerDevice)
+	resp, err := s.patchMember(ctx, networkID, setupName, "controllers", controllerName, patch, "ControllerManagedSetups.PatchController", out)
+	return out, resp, err
+}
+
+// PatchManagedDevice changes one guest device of a setup in place and returns it as stored; the patch is the same as for
+// PatchController. Unlike Patch with ManagedDevices, it touches only the properties the patch states, so nothing the SDK
+// does not model is dropped. PATCH /api/networks/{id}/controller-managed-setups/{setup}/managed-devices/{name}
+// (ControllerManagedSetupController.patchManagedDevice, ManagedDevicePatch; MANAGE_COLLECTION_SOURCES).
+func (s *ControllerManagedSetupsService) PatchManagedDevice(ctx context.Context, networkID, setupName, deviceName string, patch ClassicDevicePatch) (*ManagedDevice, *Response, error) {
+	out := new(ManagedDevice)
+	resp, err := s.patchMember(ctx, networkID, setupName, "managed-devices", deviceName, patch, "ControllerManagedSetups.PatchManagedDevice", out)
+	return out, resp, err
+}
+
+func (s *ControllerManagedSetupsService) patchMember(ctx context.Context, networkID, setupName, kind, memberName string, patch ClassicDevicePatch, operation string, out any) (*Response, error) {
+	setupName, memberName = strings.TrimSpace(setupName), strings.TrimSpace(memberName)
+	if setupName == "" || memberName == "" {
+		return nil, errors.New("forward: controller-managed setup name and device name are required")
+	}
+	if patch.CollectorID != nil {
+		return nil, errors.New("forward: a controller or managed device has no collector of its own; set it on the setup with Patch")
+	}
+	for _, name := range patch.Clear {
+		if name == "collectorId" {
+			return nil, errors.New("forward: a controller or managed device has no collector of its own; set it on the setup with Patch")
+		}
+	}
+	base, err := s.base(networkID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, base+"/"+url.PathEscape(strings.ToLower(setupName))+"/"+kind+"/"+url.PathEscape(memberName), patch)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, operation)
+	return s.client.Do(req, out)
 }

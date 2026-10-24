@@ -288,3 +288,103 @@ func TestControllerDeviceSendsHTTPCredentialAndPort(t *testing.T) {
 		t.Fatalf("managed device = %#v, %v", back, err)
 	}
 }
+
+// TestControllerManagedEntriesSendOptionsFlat pins the wire form of the collection options: Forward unwraps DeviceSetup and
+// DeviceSetupMeta into the entry, so BGP and SNMP options are flat, and the deprecated nested values are folded into them
+// rather than sent as objects Forward ignores.
+func TestControllerManagedEntriesSendOptionsFlat(t *testing.T) {
+	t.Parallel()
+	raw, err := json.Marshal(ManagedDevice{
+		Name: "g", Note: "edge", PaginationMode: "DISABLE_PAGINATION", Prompt: "*#", PromptResponse: "y",
+		BGPAdvertisementCollectionOptions: &BGPCollectionOptions{CollectBGPAdvertisements: true, TableType: "ADJ_RIB_IN", PeerType: "EBGP"},
+		SNMPCollectionConfig:              &SNMPCollectionConfig{EnableSNMPCollection: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sent map[string]any
+	if err := json.Unmarshal(raw, &sent); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]any{"name": "g", "note": "edge", "paginationMode": "DISABLE_PAGINATION", "prompt": "*#", "promptResponse": "y",
+		"collectBgpAdvertisements": true, "bgpTableType": "ADJ_RIB_IN", "bgpPeerType": "EBGP", "enableSnmpCollection": true}
+	if len(sent) != len(want) {
+		t.Fatalf("sent %s, want exactly %v (no nested objects)", raw, want)
+	}
+	for k, v := range want {
+		if sent[k] != v {
+			t.Errorf("%s = %v, want %v", k, sent[k], v)
+		}
+	}
+	// A flat value the caller set wins over the deprecated nested one.
+	flat, _ := json.Marshal(ControllerDevice{Name: "c", BGPTableType: "BOTH", BGPAdvertisementCollectionOptions: &BGPCollectionOptions{TableType: "ADJ_RIB_IN"}})
+	if !strings.Contains(string(flat), `"bgpTableType":"BOTH"`) {
+		t.Fatalf("flat field overridden: %s", flat)
+	}
+	var back ControllerDevice
+	if err := json.Unmarshal([]byte(`{"name":"apic","collect":false,"ndoName":"ndo1","enableSnmpCollection":true,"highCpuUsage":0.8}`), &back); err != nil || back.Collect == nil || *back.Collect || back.NDOName != "ndo1" || back.EnableSNMPCollection == nil || back.HighCPUUsage == nil {
+		t.Fatalf("controller = %#v, %v", back, err)
+	}
+}
+
+// TestControllerManagedMemberPatchWire pins the per-device PATCH routes: lower-cased setup, the device name as given, the
+// body being only what the patch states (so unmodelled properties are untouched), and a collector refused up front.
+func TestControllerManagedMemberPatchWire(t *testing.T) {
+	t.Parallel()
+	var method, uri, body string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		method, uri, body = r.Method, r.RequestURI, string(b)
+		_, _ = w.Write([]byte(`{"name":"versa-dir","httpCredentialId":"H-7"}`))
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := context.Background()
+	got, _, err := client.ControllerManagedSetups.PatchController(ctx, "7", "Fabric1", "versa-dir", ClassicDevicePatch{HTTPCredentialID: Ptr("H-7")})
+	if err != nil || got.HTTPCredentialID != "H-7" {
+		t.Fatalf("PatchController = %#v, %v", got, err)
+	}
+	if method != http.MethodPatch || uri != "/api/networks/7/controller-managed-setups/fabric1/controllers/versa-dir" || body != `{"httpCredentialId":"H-7"}` {
+		t.Fatalf("request = %s %s %s", method, uri, body)
+	}
+	if _, _, err := client.ControllerManagedSetups.PatchManagedDevice(ctx, "7", "fabric1", "g1", ClassicDevicePatch{Note: Ptr("x"), Clear: []string{"port"}}); err != nil {
+		t.Fatal(err)
+	}
+	if uri != "/api/networks/7/controller-managed-setups/fabric1/managed-devices/g1" || body != `{"note":"x","port":null}` {
+		t.Fatalf("managed request = %s %s", uri, body)
+	}
+	uri = ""
+	if _, _, err := client.ControllerManagedSetups.PatchController(ctx, "7", "fabric1", "c", ClassicDevicePatch{CollectorID: Ptr("C1")}); err == nil || uri != "" {
+		t.Fatalf("collector patch err=%v, sent %q; want a refusal before any request", err, uri)
+	}
+}
+
+// TestControllerManagedSetupPatchControllers pins the controller list in a setup patch: whole entries with the deprecated
+// nested options folded flat (Skyforge's path), and an empty list refused before sending because Forward answers 400.
+func TestControllerManagedSetupPatchControllers(t *testing.T) {
+	t.Parallel()
+	var body string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		body = string(b)
+		_, _ = w.Write([]byte(`{"name":"fabric1","controllers":[{"name":"apic"}]}`))
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := context.Background()
+	controllers := []ControllerDevice{{Name: "apic", HTTPCredentialID: "H-1", SNMPCollectionConfig: &SNMPCollectionConfig{EnableSNMPCollection: true}}}
+	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "7", "fabric1", ControllerManagedSetupPatch{Controllers: &controllers}); err != nil {
+		t.Fatal(err)
+	}
+	if body != `{"controllers":[{"name":"apic","httpCredentialId":"H-1","enableSnmpCollection":true}]}` {
+		t.Fatalf("body = %s", body)
+	}
+	body = ""
+	none := []ControllerDevice{}
+	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "7", "fabric1", ControllerManagedSetupPatch{Controllers: &none}); err == nil || body != "" {
+		t.Fatalf("empty controllers err=%v, sent %q; want a refusal before any request", err, body)
+	}
+	if _, _, err := client.ControllerManagedSetups.PatchController(ctx, "7", "fabric1", "c", ClassicDevicePatch{Clear: []string{"collectorId"}}); err == nil || body != "" {
+		t.Fatalf("clearing collectorId err=%v, sent %q; want a refusal", err, body)
+	}
+}

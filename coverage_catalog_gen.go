@@ -500,6 +500,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"ControllerManagedSetups.Patch": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
 	},
+	"ControllerManagedSetups.PatchController": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}/controllers/{name}"},
+	},
+	"ControllerManagedSetups.PatchManagedDevice": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}/managed-devices/{name}"},
+	},
 	"ControllerManagedSetups.Test": {
 		{Method: "POST", Route: "/api/networks/{networkId}/controller-managed-setups"},
 	},
