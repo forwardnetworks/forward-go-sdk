@@ -262,7 +262,18 @@ func (s *PerformanceService) Upload(
 }
 
 // UploadWithIdentity uploads performance data using the collector identity
-// returned by Collectors.Register.
+// returned by Collectors.Register. payload is a serialized PerfDataPB
+// (PerfProtos.proto in Forward's client-structs); the SDK has no protobuf
+// dependency, so encoding it is the caller's. As far as the
+// controller and PerformanceService.save show, Forward checks that the
+// collector belongs to the network's organization and nothing else: nothing
+// there checks that the network is the collector's default, that the device
+// names exist, or that this collector is the one a device names. Cumulative
+// interface counters are expected; Forward derives rates and utilization from
+// the difference to the device's previous sample. A sample whose CPU or
+// memory is above 1 is dropped for the whole device; one interface whose
+// utilization is above 1 is dropped on its own. Within a batch
+// keep one device's entries in time order. Forward answers 204.
 func (s *PerformanceService) UploadWithIdentity(
 	ctx context.Context,
 	networkID string,

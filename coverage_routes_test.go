@@ -31,7 +31,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 563
+	const minExercised = 574
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -77,6 +77,9 @@ type wireRequest struct{ method, path string }
 // the one value its consumer sends. Keyed by symbol, then argument index
 // (index 0 is the context).
 var wireArgOverrides = map[string]map[int]any{
+	"Performance.PatchSettings":                  {2: PerformanceSettingsPatch{Enabled: Ptr(true)}},
+	"Performance.RawSNMPData":                    {2: RawSNMPRequest{Device: "d1", CredentialID: "c1", IncludeDevicePerfData: true}},
+	"Credentials.UpdateSNMPCredential":           {3: SNMPCredentialPatch{Port: Ptr(161)}},
 	"Diffs.Count":                                {3: DiffDevices},
 	"Properties.ClearOrganization":               {2: OrgProperty("software_central")},
 	"Users.SetNetworkRole":                       {3: NetworkRoleAdmin},

@@ -81,6 +81,10 @@ const (
 	SNMPPrivacyAES128 SNMPPrivacyProtocol = "AES_128"
 	SNMPPrivacyAES192 SNMPPrivacyProtocol = "AES_192"
 	SNMPPrivacyAES256 SNMPPrivacyProtocol = "AES_256"
+	// The TDES variants are for devices with broken AES 192/256 key extension (Forward's PrivAES192With3DESKeyExtension).
+	SNMPPrivacyTDES       SNMPPrivacyProtocol = "TDES"
+	SNMPPrivacyAES192TDES SNMPPrivacyProtocol = "AES_192_TDES"
+	SNMPPrivacyAES256TDES SNMPPrivacyProtocol = "AES_256_TDES"
 )
 
 // SNMPAuthSettings is the v3 half. The fields are conditionally dependent, in
@@ -106,15 +110,29 @@ type SNMPCredentialRequest struct {
 	AutoAssociate   *bool             `json:"autoAssociate,omitempty"`
 }
 
-// SNMPCredential is a stored SNMP credential. The secret material is not
-// returned; what comes back identifies the credential.
+// SNMPCredential is a stored SNMP credential. Forward returns its secrets
+// (the community string and the two V3 passwords) as secret IDs, never as
+// values, and this type does not carry them.
 type SNMPCredential struct {
-	ID            string      `json:"id,omitempty"`
-	Name          string      `json:"name,omitempty"`
-	Version       SNMPVersion `json:"version,omitempty"`
-	Port          *int        `json:"port,omitempty"`
-	TimeoutSec    *int        `json:"timeoutSec,omitempty"`
-	AutoAssociate *bool       `json:"autoAssociate,omitempty"`
+	ID      string      `json:"id,omitempty"`
+	Name    string      `json:"name,omitempty"`
+	Version SNMPVersion `json:"version,omitempty"`
+	// Port and TimeoutSec are marked deprecated on Forward's credential record (161 and 5 seconds by default).
+	Port          *int  `json:"port,omitempty"`
+	TimeoutSec    *int  `json:"timeoutSec,omitempty"`
+	AutoAssociate *bool `json:"autoAssociate,omitempty"`
+	// AuthSettings is the V3 half without its secrets (the community string and the two passwords come back only as secret IDs, which this type does not carry); nil for V2C.
+	AuthSettings *SNMPStoredAuthSettings `json:"authSettings,omitempty"`
+	CreatedBy    string                  `json:"createdBy,omitempty"`
+	CreatedAt    string                  `json:"createdAt,omitempty"`
+}
+
+// SNMPStoredAuthSettings is what a stored V3 credential shows of its authentication settings. AuthType is set when a password is,
+// and PrivacyProtocol when a privacy password is.
+type SNMPStoredAuthSettings struct {
+	Username        string              `json:"username,omitempty"`
+	AuthType        SNMPAuthType        `json:"authType,omitempty"`
+	PrivacyProtocol SNMPPrivacyProtocol `json:"privacyProtocol,omitempty"`
 }
 
 // validateSNMPCredential refuses only what Forward refuses, and refuses it
@@ -335,19 +353,6 @@ type HTTPCredentialPatch struct {
 	Password      *string `json:"password,omitempty"`
 	LoginType     *string `json:"loginType,omitempty"`
 	AutoAssociate *bool   `json:"autoAssociate,omitempty"`
-}
-
-// SNMPCredentialPatch changes part of a stored SNMP credential.
-type SNMPCredentialPatch struct {
-	Name               *string `json:"name,omitempty"`
-	Community          *string `json:"community,omitempty"`
-	User               *string `json:"user,omitempty"`
-	AuthenticationType *string `json:"authenticationType,omitempty"`
-	AuthenticationKey  *string `json:"authenticationKey,omitempty"`
-	PrivacyType        *string `json:"privacyType,omitempty"`
-	PrivacyKey         *string `json:"privacyKey,omitempty"`
-	ContextName        *string `json:"contextName,omitempty"`
-	AutoAssociate      *bool   `json:"autoAssociate,omitempty"`
 }
 
 // ListSNMP returns the unpublished, version-specific SNMP credential objects.

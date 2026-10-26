@@ -90,7 +90,12 @@ func (r CollectorRegistration) Identity() CollectorIdentity {
 	return CollectorIdentity{Username: strings.TrimSpace(r.Username), AuthorizationKey: password}
 }
 
-// CollectorAttachment reports whether a Collector is attached to a network.
+// CollectorAttachment reports a network's default collector.
+//
+// A collector is assigned to DEVICES: each classic device and controller names its collector (collectorId; a managed device takes its setup's), and
+// that is the collector that collects it. Performance polling reads classic devices only. The network-level collector read here is only the
+// default for the devices that name none (CollectorSetupController.setNetworkCollector, and the "isDefault" test in
+// WebPerformanceService.getDevicesForPerfMonitoring). A network can have no default at all. Read a device's own collector from ClassicDevice.CollectorID before assuming this one.
 //
 // The wire shape is Forward's CollectorWithStatus (id/name/username/...),
 // decoded straight off GET /api/networks/{id}/collector -- NOT the legacy
@@ -299,7 +304,7 @@ func (s *CollectorsService) Attachment(ctx context.Context, networkID string) (*
 	return out, response, err
 }
 
-// Attach attaches the collector with the given username to a network. PUT /api/networks/{networkId}/collector
+// Attach makes the collector with the given username the network's DEFAULT collector, used by the devices that name none. PUT /api/networks/{networkId}/collector
 // (JSON {"username": ...}). The username is the collector's (for example "collector-7ddceb66"), not its name or id.
 // Check the result with Attachment, which reads the same route.
 func (s *CollectorsService) Attach(ctx context.Context, networkID string, input CollectorAttachmentRequest) (*Response, error) {

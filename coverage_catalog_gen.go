@@ -560,6 +560,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Credentials.UpdateSNMP": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},
 	},
+	"Credentials.UpdateSNMPCredential": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},
+	},
 	"CustomCommandGroups.Create": {
 		{Method: "POST", Route: "/api/networks/{networkId}/custom-command-groups"},
 	},
@@ -1159,6 +1162,15 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Organizations.Update": {
 		{Method: "PATCH", Route: "/api/admin/orgs/{orgId}"},
 	},
+	"Performance.CollectorDevices": {
+		{Method: "GET", Route: "/api/networks/{networkId}/performance/devices"},
+	},
+	"Performance.DefaultThresholds": {
+		{Method: "GET", Route: "/api/default-performance-thresholds"},
+	},
+	"Performance.DeviceHealth": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/health"},
+	},
 	"Performance.DeviceMetricHistory": {
 		{Method: "POST", Route: "/api/networks/{networkId}/device-metrics-history"},
 	},
@@ -1171,8 +1183,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Performance.DeviceMetricsDocument": {
 		{Method: "GET", Route: "/api/networks/{networkId}/device-metrics"},
 	},
+	"Performance.DevicesHealth": {
+		{Method: "POST", Route: "/api/networks/{networkId}/device-health"},
+	},
+	"Performance.DevicesWithData": {
+		{Method: "GET", Route: "/api/networks/{networkId}/performance/devices-with-data"},
+	},
 	"Performance.GenerateSynthetic": {
 		{Method: "POST", Route: "/api/internal/networks/{networkId}/performance"},
+	},
+	"Performance.InterfaceHealth": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/interfaces/{interfaceName}/health"},
 	},
 	"Performance.InterfaceMetricHistory": {
 		{Method: "POST", Route: "/api/networks/{networkId}/interface-metrics-history"},
@@ -1185,6 +1206,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Performance.InterfaceMetricsDocument": {
 		{Method: "GET", Route: "/api/networks/{networkId}/interface-metrics"},
+	},
+	"Performance.PatchSettings": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/performance/settings"},
+	},
+	"Performance.RawSNMPData": {
+		{Method: "GET", Route: "/api/networks/{networkId}/performance/raw-data"},
+	},
+	"Performance.Readiness": {
+		{Method: "GET", Route: "/api/networks/{networkId}/classic-devices"},
+		{Method: "GET", Route: "/api/networks/{networkId}/performance/settings"},
+		{Method: "GET", Route: "/api/networks/{networkId}/snmpCredentials"},
+	},
+	"Performance.Settings": {
+		{Method: "GET", Route: "/api/networks/{networkId}/performance/settings"},
 	},
 	"Performance.UnhealthyDevices": {
 		{Method: "GET", Route: "/api/networks/{networkId}/unhealthy-devices"},
