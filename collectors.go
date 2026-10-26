@@ -360,16 +360,7 @@ func (s *CollectorsService) PatchSettings(ctx context.Context, collectorID strin
 }
 
 func (s *CollectorsService) networkPath(networkID, suffix string) (string, error) {
-	networkID, err := s.client.resolveNetworkID(networkID)
-	if err != nil {
-		return "", err
-	}
-	return "/api/networks/" + url.PathEscape(networkID) + suffix, nil
-}
-
-func isStatus(err error, status int) bool {
-	var responseError *ErrorResponse
-	return errors.As(err, &responseError) && responseError.Response != nil && responseError.Response.StatusCode == status
+	return s.client.networkSubPath(networkID, strings.TrimPrefix(suffix, "/"))
 }
 
 // Forward's defaults for collection settings a user has not set
@@ -577,6 +568,9 @@ func (s *CollectorsService) UpgradeAll(ctx context.Context) ([]string, *Response
 	req = markOperation(req, "Collectors.UpgradeAll")
 	var names []string
 	response, err := s.client.doRequired(req, &names)
+	if err != nil {
+		return nil, response, err
+	}
 	if names == nil {
 		names = []string{}
 	}

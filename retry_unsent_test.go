@@ -367,7 +367,7 @@ func TestWithoutRetrySendsOnceAndReturnsTheFirstAnswer(t *testing.T) {
 		_, err = client.Do(req, nil)
 		return err
 	}
-	if err := post(WithoutRetry(context.Background())); !isStatus(err, http.StatusServiceUnavailable) || served.Load() != 1 {
+	if err := post(WithoutRetry(context.Background())); !IsStatus(err, http.StatusServiceUnavailable) || served.Load() != 1 {
 		t.Fatalf("the opted-out POST must be sent once and return the 503: err=%v served=%d", err, served.Load())
 	}
 	served.Store(0)

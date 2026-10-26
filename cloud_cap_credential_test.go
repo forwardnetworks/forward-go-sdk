@@ -100,7 +100,7 @@ func TestMissingChildOfANetworkIsNotAMissingNetwork(t *testing.T) {
 		_, _, err := newTestClient(t, server.URL).CloudAccounts.GetAWSCapCredential(context.Background(), "12", "CAP-9")
 		return err
 	}
-	if err := missing(`{"apiUrl":"/api/networks/12/aws-cap-credentials/CAP-9","httpMethod":"GET","message":"AWS CAP credential CAP-9 not found"}`); errors.Is(err, ErrNetworkNotFound) || !isStatus(err, http.StatusNotFound) {
+	if err := missing(`{"apiUrl":"/api/networks/12/aws-cap-credentials/CAP-9","httpMethod":"GET","message":"AWS CAP credential CAP-9 not found"}`); errors.Is(err, ErrNetworkNotFound) || !IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("a missing credential must be a plain 404, not a missing network: %v", err)
 	}
 	if err := missing(`{"apiUrl":"/api/networks/12/aws-cap-credentials/CAP-9","httpMethod":"GET","message":"Network 12 not found"}`); !errors.Is(err, ErrNetworkNotFound) {

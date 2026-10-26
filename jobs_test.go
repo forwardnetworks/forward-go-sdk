@@ -19,7 +19,7 @@ func TestJobsListActiveParsesForwardsJSON(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(`[{
 			"jobType": "NQE_EXECUTION",
-			"orgName": "WellsFargo",
+			"orgName": "ExampleOrg",
 			"networkId": 4610,
 			"snapshotId": 13951,
 			"creationTime": "2026-10-08T09:32:00Z",
@@ -74,7 +74,7 @@ func TestJobsListCompletedParsesState(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(`[{
 			"jobType": "SNAPSHOT_PROCESSING",
-			"orgName": "WellsFargo",
+			"orgName": "ExampleOrg",
 			"networkId": 4610,
 			"snapshotId": 13950,
 			"creationTime": "2026-10-08T08:00:00Z",

@@ -380,7 +380,7 @@ func (s *EndpointsService) GetProfile(ctx context.Context, profileID string) (*E
 	req = markOperation(req, "Endpoints.GetProfile")
 	out := new(EndpointProfile)
 	response, err := s.client.doRequired(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, response, nil
 	}
 	if err != nil {

@@ -504,7 +504,7 @@ func isNetworkResourcePath(path string) bool {
 // isGone reports whether a failed delete means the thing is already absent, so the delete may count as done. A 404 that
 // means Forward does not serve the route at all (ErrEndpointNotServed) does not qualify: nothing was deleted.
 func isGone(err error) bool {
-	return isStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed)
+	return IsStatus(err, http.StatusNotFound) && !errors.Is(err, ErrEndpointNotServed)
 }
 
 // RateLimitLockout reports the lockout Forward's API rate limiter imposed, as

@@ -393,6 +393,27 @@ func networkPath(networkID string) (string, error) {
 	return fmt.Sprintf("/api/networks/%s", url.PathEscape(networkID)), nil
 }
 
+// networkSubPath is /api/networks/{id}/{rest...} for a network ID that may be
+// empty (a ForNetwork client supplies its bound network). Callers escape each
+// element of rest themselves, because some end in a query such as
+// "assets?action=modifyCriticality".
+func (c *Client) networkSubPath(networkID string, rest ...string) (string, error) {
+	networkID, err := c.resolveNetworkID(networkID)
+	if err != nil {
+		return "", err
+	}
+	return "/api/networks/" + url.PathEscape(networkID) + "/" + strings.Join(rest, "/"), nil
+}
+
+// bodyRequest builds a request that carries body as JSON, or no body when body
+// is nil.
+func (c *Client) bodyRequest(ctx context.Context, method, path string, body any) (*http.Request, error) {
+	if body == nil {
+		return c.NewRequest(ctx, method, path, nil)
+	}
+	return c.newJSONRequest(ctx, method, path, body)
+}
+
 // L7Application is an application name path search can filter on.
 type L7Application struct {
 	ID string `json:"id"`

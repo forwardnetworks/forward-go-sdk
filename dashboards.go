@@ -111,7 +111,7 @@ func (s *DashboardsService) Get(ctx context.Context, networkID, dashboardID stri
 	req = markOperation(req, "Dashboards.Get")
 	out := new(Dashboard)
 	resp, err := s.client.doRequired(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, resp, nil
 	}
 	if err != nil {

@@ -115,7 +115,7 @@ func (s *NetworksService) SetSnapshotRetentionPolicy(ctx context.Context, networ
 	}
 	req = markOperation(req, "Networks.SetSnapshotRetentionPolicy")
 	resp, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return resp, fmt.Errorf("forward: saving a snapshot retention policy failed with 404: the network does not exist, or this is a SaaS deployment, where the policy is fixed: %w", err)
 	}
 	return resp, err

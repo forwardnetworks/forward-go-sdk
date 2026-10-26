@@ -282,11 +282,7 @@ type NewControllerManagedSetup struct {
 }
 
 func (s *ControllerManagedSetupsService) base(networkID string) (string, error) {
-	networkID, err := s.client.resolveNetworkID(networkID)
-	if err != nil {
-		return "", err
-	}
-	return "/api/networks/" + url.PathEscape(networkID) + "/controller-managed-setups", nil
+	return s.client.networkSubPath(networkID, "controller-managed-setups")
 }
 
 // List returns the network's controller-managed setups.
@@ -371,6 +367,8 @@ func (s *ControllerManagedSetupsService) create(ctx context.Context, networkID s
 	if err != nil {
 		return nil, nil, err
 	}
+	input.Controllers = withoutTestResults(input.Controllers, func(d *ControllerDevice) { d.TestResult = nil })
+	input.ManagedDevices = withoutTestResults(input.ManagedDevices, func(d *ManagedDevice) { d.TestResult = nil })
 	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path+query, input)
 	if err != nil {
 		return nil, nil, err
@@ -431,7 +429,9 @@ func (s *ControllerManagedSetupsService) Delete(ctx context.Context, networkID, 
 	if err != nil {
 		return nil, err
 	}
-	req, err := s.client.NewRequest(ctx, http.MethodDelete, path+"/"+url.PathEscape(setupName), nil)
+	// Forward stores setup names lowercased and a miss answers 404, which this method reads as "already gone", so a name sent in
+	// another case would report success and delete nothing.
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path+"/"+url.PathEscape(strings.ToLower(setupName)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -534,6 +534,14 @@ func (s *ControllerManagedSetupsService) Patch(
 	if err != nil {
 		return nil, nil, err
 	}
+	if patch.Controllers != nil {
+		cleaned := withoutTestResults(*patch.Controllers, func(d *ControllerDevice) { d.TestResult = nil })
+		patch.Controllers = &cleaned
+	}
+	if patch.ManagedDevices != nil {
+		cleaned := withoutTestResults(*patch.ManagedDevices, func(d *ManagedDevice) { d.TestResult = nil })
+		patch.ManagedDevices = &cleaned
+	}
 	req, err := s.client.newJSONRequest(
 		ctx,
 		http.MethodPatch,
@@ -547,6 +555,21 @@ func (s *ControllerManagedSetupsService) Patch(
 	out := new(ControllerManagedSetup)
 	resp, err := s.client.Do(req, out)
 	return out, resp, err
+}
+
+// withoutTestResults copies entries with their testResult cleared. testResult is output-only (Forward's input record wants a full
+// connectivity result, with a device name, which DeviceTestResult does not carry), so an entry read with ListWithTestResults and sent
+// back must not carry it. The copy leaves the caller's slice, and its encoding elsewhere, alone.
+func withoutTestResults[T any](in []T, clear func(*T)) []T {
+	if in == nil {
+		return nil
+	}
+	out := make([]T, len(in))
+	copy(out, in)
+	for i := range out {
+		clear(&out[i])
+	}
+	return out
 }
 
 func stringList(raw any) []string {

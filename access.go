@@ -399,6 +399,9 @@ func NewAccess(table *AccessTable, roles SessionRoles) *Access {
 // NewAccessForSession checks a session's roles. An impersonated session (UserSession.Impersonator set) also holds impersonation grants
 // that its roles do not show, so every answer for it is Unknown.
 func NewAccessForSession(table *AccessTable, session *UserSession) *Access {
+	if session == nil {
+		session = &UserSession{}
+	}
 	return &Access{table: table, roles: session.Roles, impersonated: session.Impersonator != ""}
 }
 

@@ -107,7 +107,7 @@ func (s *DevicesService) Interfaces(ctx context.Context, networkID, deviceName s
 // Interface returns one of a device's interfaces by name or alias (case-sensitive; a "/" in it is percent-encoded).
 // GET /api/networks/{id}/devices/{device}/interfaces/{interface}; experimental, see Interfaces.
 func (s *DevicesService) Interface(ctx context.Context, networkID, deviceName, interfaceName string, options DeviceInterfaceOptions) (*DeviceInterface, *Response, error) {
-	if strings.TrimSpace(interfaceName) == "" {
+	if interfaceName = strings.TrimSpace(interfaceName); interfaceName == "" {
 		return nil, nil, errors.New("forward: interface name is required")
 	}
 	networkID, err := s.client.resolveNetworkID(networkID)

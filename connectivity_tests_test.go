@@ -122,7 +122,7 @@ func TestConnectivityTestsListAndGet(t *testing.T) {
 	if err != nil || one.Error != "PING_FAILED" || one.ErrorPhase != "CONNECTION" || one.DeviceName != "edge1" {
 		t.Fatalf("get: %v %+v", err, one)
 	}
-	if _, _, err := client.ConnectivityTests.Get(ctx, "5", "never"); err == nil || errors.Is(err, ErrNetworkNotFound) || !isStatus(err, http.StatusNotFound) {
+	if _, _, err := client.ConnectivityTests.Get(ctx, "5", "never"); err == nil || errors.Is(err, ErrNetworkNotFound) || !IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("an untested device is a plain 404, got %v", err)
 	}
 }

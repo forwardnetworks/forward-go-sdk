@@ -126,7 +126,7 @@ func (s *AdminService) GrantOrganizationAdmin(ctx context.Context, userID string
 	}
 	req = markOperation(req, "Admin.GrantOrganizationAdmin")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusConflict) {
+	if IsStatus(err, http.StatusConflict) {
 		return response, nil
 	}
 	return response, err
@@ -147,7 +147,7 @@ func (s *AdminService) LookupUser(ctx context.Context, idOrUsername string) (*Ad
 	req = markOperation(req, "Admin.LookupUser")
 	out := new(AdminUser)
 	response, err := s.client.doRequired(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, response, nil
 	}
 	if err == nil && out.ID == "" {

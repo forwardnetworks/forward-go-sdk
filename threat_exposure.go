@@ -203,11 +203,7 @@ func (p ThreatExposurePaging) body() (any, error) {
 }
 
 func (s *ThreatExposureService) definitionsPath(networkID string) (string, error) {
-	networkID, err := s.client.resolveNetworkID(networkID)
-	if err != nil {
-		return "", err
-	}
-	return "/api/networks/" + url.PathEscape(networkID) + "/threat-exposure-definitions", nil
+	return s.client.networkSubPath(networkID, "threat-exposure-definitions")
 }
 
 func (s *ThreatExposureService) definitionPath(networkID, definitionID string) (string, error) {
@@ -222,24 +218,14 @@ func (s *ThreatExposureService) definitionPath(networkID, definitionID string) (
 }
 
 func (s *ThreatExposureService) analysisPath(networkID, definitionID string) (string, error) {
-	networkID, err := s.client.resolveNetworkID(networkID)
-	if err != nil {
-		return "", err
-	}
 	if definitionID = strings.TrimSpace(definitionID); definitionID == "" {
 		return "", errors.New("forward: definition ID is required")
 	}
-	return "/api/networks/" + url.PathEscape(networkID) + "/threat-exposure-analyses/" + url.PathEscape(definitionID), nil
+	return s.client.networkSubPath(networkID, "threat-exposure-analyses", url.PathEscape(definitionID))
 }
 
 func (s *ThreatExposureService) do(ctx context.Context, method, path string, body, out any, operation string) (*Response, error) {
-	var req *http.Request
-	var err error
-	if body == nil {
-		req, err = s.client.NewRequest(ctx, method, path, nil)
-	} else {
-		req, err = s.client.newJSONRequest(ctx, method, path, body)
-	}
+	req, err := s.client.bodyRequest(ctx, method, path, body)
 	if err != nil {
 		return nil, err
 	}
@@ -383,6 +369,9 @@ func (s *ThreatExposureService) CriticalAssetsSummary(ctx context.Context, netwo
 // .../threat-exposure-analyses/{id}?view=criticalAssetDirectExposureDetails&assetId=&snapshotId=; VIEW_THREAT_EXPOSURE). assetId is the global host id
 // the summary gives the asset.
 func (s *ThreatExposureService) DirectExposureDetails(ctx context.Context, networkID, definitionID, snapshotID string, assetID int64) (json.RawMessage, *Response, error) {
+	if assetID < 0 {
+		return nil, nil, errors.New("forward: asset ID must not be negative")
+	}
 	return s.view(ctx, http.MethodGet, networkID, definitionID, snapshotID, "criticalAssetDirectExposureDetails", fmt.Sprint(assetID), nil, "ThreatExposure.DirectExposureDetails")
 }
 
@@ -392,6 +381,9 @@ func (s *ThreatExposureService) TransitiveExposureDetails(ctx context.Context, n
 	body, err := paging.body()
 	if err != nil {
 		return nil, nil, err
+	}
+	if assetID < 0 {
+		return nil, nil, errors.New("forward: asset ID must not be negative")
 	}
 	return s.view(ctx, http.MethodPost, networkID, definitionID, snapshotID, "criticalAssetTransitiveExposureDetails", fmt.Sprint(assetID), body, "ThreatExposure.TransitiveExposureDetails")
 }

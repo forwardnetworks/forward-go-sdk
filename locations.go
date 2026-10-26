@@ -263,7 +263,7 @@ func (s *LocationsService) Get(ctx context.Context, networkID, locationID string
 	req = markOperation(req, "Locations.Get")
 	out := new(Location)
 	resp, err := s.client.doRequired(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, resp, nil
 	}
 	if err != nil {

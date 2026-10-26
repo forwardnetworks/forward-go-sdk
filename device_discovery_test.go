@@ -151,7 +151,7 @@ func TestDeviceDiscoveryScheduled(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Forward words a missing schedule like a missing network; it must not read as ErrNetworkNotFound.
-	if _, _, err := client.DeviceDiscovery.GetScheduled(ctx, "5", "missing"); err == nil || errors.Is(err, ErrNetworkNotFound) || !isStatus(err, http.StatusNotFound) {
+	if _, _, err := client.DeviceDiscovery.GetScheduled(ctx, "5", "missing"); err == nil || errors.Is(err, ErrNetworkNotFound) || !IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("a missing scheduled discovery is a plain 404, got %v", err)
 	}
 

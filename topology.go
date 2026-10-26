@@ -57,6 +57,9 @@ func (s *TopologyService) Overrides(ctx context.Context, snapshotID string) (*To
 	req = markOperation(req, "Topology.Overrides")
 	out := new(TopologyOverrides)
 	response, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, response, err
+	}
 	if out.Absent == nil {
 		out.Absent = []TopologyOverrideLink{}
 	}
@@ -123,6 +126,11 @@ func (s *TopologyService) NetworkOverrides(ctx context.Context, networkID string
 	req = markOperation(req, "Topology.NetworkOverrides")
 	out := new(TopologyOverrides)
 	response, err := s.client.doRequired(req, out)
+	if err != nil {
+		// Not an empty set: SetNetworkOverrides replaces everything staged, so a caller that ignored this error and wrote back the
+		// "empty" read would wipe the overrides.
+		return nil, response, err
+	}
 	if out.Absent == nil {
 		out.Absent = []TopologyOverrideLink{}
 	}
@@ -224,6 +232,11 @@ func (s *TopologyService) SnapshotOverrides(ctx context.Context, networkID, snap
 	req = markOperation(req, "Topology.SnapshotOverrides")
 	out := new(TopologyOverrides)
 	response, err := s.client.doRequired(req, out)
+	if err != nil {
+		// Not an empty set: SetNetworkOverrides replaces everything staged, so a caller that ignored this error and wrote back the
+		// "empty" read would wipe the overrides.
+		return nil, response, err
+	}
 	if out.Absent == nil {
 		out.Absent = []TopologyOverrideLink{}
 	}

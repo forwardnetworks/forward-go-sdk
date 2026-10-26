@@ -43,7 +43,7 @@ func (s *ClassicDevicesService) PatchMany(ctx context.Context, networkID string,
 	if err != nil {
 		return nil, err
 	}
-	path, err := classicDevicesPath(networkID)
+	path, err := classicDevicesPath(s.client, networkID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (s *ClassicDevicesService) GetMany(ctx context.Context, networkID string, n
 	if err != nil {
 		return nil, nil, err
 	}
-	path, err := classicDevicesPath(networkID)
+	path, err := classicDevicesPath(s.client, networkID)
 	if err != nil {
 		return nil, nil, err
 	}

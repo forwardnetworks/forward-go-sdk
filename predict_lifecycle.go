@@ -88,13 +88,7 @@ func (s *PredictService) csDevicePath(networkID, changeSetID, deviceName string)
 }
 
 func (s *PredictService) doJSON(ctx context.Context, method, path string, body, out any, operation string) (*Response, error) {
-	var req *http.Request
-	var err error
-	if body == nil {
-		req, err = s.client.NewRequest(ctx, method, path, nil)
-	} else {
-		req, err = s.client.newJSONRequest(ctx, method, path, body)
-	}
+	req, err := s.client.bodyRequest(ctx, method, path, body)
 	if err != nil {
 		return nil, err
 	}

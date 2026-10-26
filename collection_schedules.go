@@ -73,7 +73,7 @@ func (s *CollectionSchedulesService) Get(ctx context.Context, networkID, schedul
 	req = markOperation(req, "CollectionSchedules.Get")
 	out := new(CollectionSchedule)
 	resp, err := s.client.doRequired(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, resp, nil
 	}
 	if err != nil {

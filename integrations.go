@@ -187,7 +187,7 @@ func (s *IntegrationsService) GetServiceNow(ctx context.Context) (*ServiceNowInt
 	req = markOperation(req, "Integrations.GetServiceNow")
 	out := new(ServiceNowIntegrationSettings)
 	response, err := s.client.Do(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, false, response, nil
 	}
 	return out, err == nil, response, err

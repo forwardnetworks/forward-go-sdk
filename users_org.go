@@ -215,7 +215,7 @@ func (s *UsersService) Get(ctx context.Context, userID string) (*User, *Response
 	req = markOperation(req, "Users.Get")
 	out := new(User)
 	response, err := s.client.doRequired(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, response, nil
 	}
 	if err != nil {
@@ -368,7 +368,7 @@ func (s *UsersService) GrantOrgAdmin(ctx context.Context, userID string) (*Respo
 	}
 	req = markOperation(req, "Users.GrantOrgAdmin")
 	response, err := s.client.Do(req, nil)
-	if isStatus(err, http.StatusConflict) {
+	if IsStatus(err, http.StatusConflict) {
 		return response, nil
 	}
 	return response, err

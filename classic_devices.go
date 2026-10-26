@@ -144,8 +144,8 @@ type ClassicDevice struct {
 	UpdatedBy   string     `json:"updatedBy,omitempty"`
 	UpdatedByID Identifier `json:"updatedById,omitempty"`
 	UpdatedAt   string     `json:"updatedAt,omitempty"`
-	// Raw carries fields this SDK version does not model, so an object read
-	// from a newer appserver and written back does not silently lose them.
+	// Raw carries the whole wire object, so a field this SDK version does not model can still be read. It is read-only: the write
+	// types (ClassicDeviceRequest, ClassicDevicePatch) do not take it, so copy a field across by hand to write it back.
 	Raw map[string]json.RawMessage `json:"-"`
 }
 
@@ -205,7 +205,7 @@ func (s *ClassicDevicesService) PutBatch(ctx context.Context, networkID string, 
 	if len(devices) == 0 {
 		return nil, nil
 	}
-	path, err := classicDevicesPath(networkID)
+	path, err := classicDevicesPath(s.client, networkID)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (s *ClassicDevicesService) PutBatch(ctx context.Context, networkID string, 
 }
 
 func (s *ClassicDevicesService) ListTestStatuses(ctx context.Context, networkID string) ([]SourceTestStatus, *Response, error) {
-	path, err := classicDevicesPath(networkID)
+	path, err := classicDevicesPath(s.client, networkID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -250,7 +250,7 @@ func (s *ClassicDevicesService) ResolveGlobs(ctx context.Context, networkID stri
 			return nil, nil, errors.New("forward: a glob is blank")
 		}
 	}
-	path, err := classicDevicesPath(networkID)
+	path, err := classicDevicesPath(s.client, networkID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -286,7 +286,7 @@ func (d *ClassicDevice) UnmarshalJSON(data []byte) error {
 // (ClassicDeviceController.getClassicDevices), so there is no paging to be
 // unstable. For a subset by name use GetMany.
 func (s *ClassicDevicesService) List(ctx context.Context, networkID string, with ...string) ([]ClassicDevice, *Response, error) {
-	path, err := classicDevicesPath(networkID)
+	path, err := classicDevicesPath(s.client, networkID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -321,7 +321,7 @@ func (s *ClassicDevicesService) List(ctx context.Context, networkID string, with
 }
 
 func (s *ClassicDevicesService) Create(ctx context.Context, networkID string, input ClassicDeviceRequest) (*ClassicDevice, *Response, error) {
-	path, err := classicDevicesPath(networkID)
+	path, err := classicDevicesPath(s.client, networkID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -338,7 +338,7 @@ func (s *ClassicDevicesService) Create(ctx context.Context, networkID string, in
 }
 
 func (s *ClassicDevicesService) Get(ctx context.Context, networkID, deviceName string, with ...string) (*ClassicDevice, *Response, error) {
-	path, err := classicDevicePath(networkID, deviceName)
+	path, err := classicDevicePath(s.client, networkID, deviceName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -355,7 +355,7 @@ func (s *ClassicDevicesService) Get(ctx context.Context, networkID, deviceName s
 }
 
 func (s *ClassicDevicesService) Put(ctx context.Context, networkID, deviceName string, input ClassicDeviceRequest) (*ClassicDevice, *Response, error) {
-	path, err := classicDevicePath(networkID, deviceName)
+	path, err := classicDevicePath(s.client, networkID, deviceName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -524,7 +524,7 @@ func (p ClassicDevicePatch) MarshalJSON() ([]byte, error) {
 
 // Patch updates only the fields the patch states.
 func (s *ClassicDevicesService) Patch(ctx context.Context, networkID, deviceName string, patch ClassicDevicePatch) (*ClassicDevice, *Response, error) {
-	path, err := classicDevicePath(networkID, deviceName)
+	path, err := classicDevicePath(s.client, networkID, deviceName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -538,7 +538,7 @@ func (s *ClassicDevicesService) Patch(ctx context.Context, networkID, deviceName
 }
 
 func (s *ClassicDevicesService) Delete(ctx context.Context, networkID, deviceName string) (*Response, error) {
-	path, err := classicDevicePath(networkID, deviceName)
+	path, err := classicDevicePath(s.client, networkID, deviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -549,16 +549,13 @@ func (s *ClassicDevicesService) Delete(ctx context.Context, networkID, deviceNam
 	return s.client.Do(req, nil)
 }
 
-func classicDevicesPath(networkID string) (string, error) {
-	path, err := networkPath(networkID)
-	if err != nil {
-		return "", err
-	}
-	return path + "/classic-devices", nil
+// classicDevicesPath resolves an empty network ID from the client's bound network, as the other network-scoped services do.
+func classicDevicesPath(c *Client, networkID string) (string, error) {
+	return c.networkSubPath(networkID, "classic-devices")
 }
 
-func classicDevicePath(networkID, deviceName string) (string, error) {
-	path, err := classicDevicesPath(networkID)
+func classicDevicePath(c *Client, networkID, deviceName string) (string, error) {
+	path, err := classicDevicesPath(c, networkID)
 	if err != nil {
 		return "", err
 	}

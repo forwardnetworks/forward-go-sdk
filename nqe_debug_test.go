@@ -46,7 +46,7 @@ func TestExplainSendsTheBareParametersAndReturnsThePlan(t *testing.T) {
 		gotPath != "/api/internal/users/current/nqe/queries/explain" || gotQuery != "path=%2FOps%2Fmy+query&snapshotId=s1" {
 		t.Fatalf("path explain = %s ?%s (%v)", gotPath, gotQuery, err)
 	}
-	if _, _, err = nqe.ExplainQuery(ctx, "FQ_x", "", "bad", nil); !isStatus(err, http.StatusBadRequest) {
+	if _, _, err = nqe.ExplainQuery(ctx, "FQ_x", "", "bad", nil); !IsStatus(err, http.StatusBadRequest) {
 		t.Fatalf("a query with diagnostics must be a 400, not a plan: %v", err)
 	}
 	if _, _, err = nqe.ExplainQuery(ctx, " ", "", "", nil); err == nil {

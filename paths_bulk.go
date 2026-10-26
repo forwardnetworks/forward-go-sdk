@@ -1,6 +1,7 @@
 package forward
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -39,7 +40,7 @@ type PathQuery struct {
 }
 
 // PathBulkOptions are the settings shared by every query of a bulk request; a nil or empty field is left to Forward's default. The
-// limits are Forward's: MaxCandidates 1 to 10000 (default 5000), MaxResults at least 1 (default 1), MaxReturnPathResults 0 to 10000
+// limits are Forward's: MaxCandidates 1 to 10000 (default 5000), MaxResults 1 to 10000 (default 1), MaxReturnPathResults 0 to 10000
 // (default 0: no return paths), MaxSeconds 1 to 300 per query (default 30), MaxOverallSeconds 1 to 7200 for the whole request.
 // Forward also requires MaxResults not to exceed the effective MaxCandidates and MaxSeconds not to exceed the effective MaxOverallSeconds,
 // and answers 400 otherwise.
@@ -73,6 +74,16 @@ type PathBulkResult struct {
 
 // UnmarshalJSON reads either a PathSearchResponse or Forward's {"error": true, "errorMessage": "..."} object.
 func (r *PathBulkResult) UnmarshalJSON(data []byte) error {
+	// A result is parsed once unless it can be the error object: a bulk request carries up to 20000 results. The key is a plain
+	// substring test, so a false positive (a name containing "error") only costs the probe parse.
+	if !bytes.Contains(data, []byte(`"error"`)) {
+		response := new(PathSearchResponse)
+		if err := json.Unmarshal(data, response); err != nil {
+			return err
+		}
+		*r = PathBulkResult{Response: response}
+		return nil
+	}
 	var probe struct {
 		Error        bool   `json:"error"`
 		ErrorMessage string `json:"errorMessage"`

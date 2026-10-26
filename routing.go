@@ -206,11 +206,7 @@ func decodeLookup(raw json.RawMessage, out any) error {
 }
 
 func (s *RoutingService) path(networkID string, rest ...string) (string, error) {
-	networkID, err := s.client.resolveNetworkID(networkID)
-	if err != nil {
-		return "", err
-	}
-	return "/api/networks/" + url.PathEscape(networkID) + "/" + strings.Join(rest, "/"), nil
+	return s.client.networkSubPath(networkID, rest...)
 }
 
 // routingSnapshot requires a snapshot. That is stricter than Forward, which falls back to the network's latest processed snapshot.
@@ -279,6 +275,8 @@ func keyFor(node *DeviceVRF, key *DeviceVRFProtocol) *DeviceVRFProtocol {
 // PrefixTrace returns the propagation of a prefix from its origin to a router (POST .../bgp-prefix-trace): a list of paths, each a list
 // of hops from origin to the router. Take a router, origin and outcome from PrefixSearch. A prefix with no routing data gives no paths.
 func (s *RoutingService) PrefixTrace(ctx context.Context, networkID, snapshotID string, request RoutingTraceRequest) ([][]RoutingNode, *Response, error) {
+	request.Router.Device = strings.TrimSpace(request.Router.Device)
+	request.OriginatedFrom.Device = strings.TrimSpace(request.OriginatedFrom.Device)
 	if strings.TrimSpace(request.Prefix) == "" || request.Router.Device == "" || request.OriginatedFrom.Device == "" || request.Outcome == "" {
 		return nil, nil, errors.New("forward: prefix, router, originatedFrom and outcome are required")
 	}
@@ -294,6 +292,7 @@ func (s *RoutingService) PrefixTrace(ctx context.Context, networkID, snapshotID 
 
 // PrefixDetails returns the route attributes and policies at one hop of a trace (POST .../bgp-prefix-details).
 func (s *RoutingService) PrefixDetails(ctx context.Context, networkID, snapshotID string, request RoutingPrefixDetailsRequest) (*RoutingPrefixDetails, *Response, error) {
+	request.Node.Device = strings.TrimSpace(request.Node.Device)
 	if strings.TrimSpace(request.Prefix) == "" || request.Node.Device == "" {
 		return nil, nil, errors.New("forward: prefix and node are required")
 	}

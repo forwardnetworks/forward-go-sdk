@@ -48,21 +48,11 @@ type EdgeAssetPatch struct {
 }
 
 func (s *EdgeAssetsService) path(networkID string, rest ...string) (string, error) {
-	networkID, err := s.client.resolveNetworkID(networkID)
-	if err != nil {
-		return "", err
-	}
-	return "/api/networks/" + url.PathEscape(networkID) + "/" + strings.Join(rest, "/"), nil
+	return s.client.networkSubPath(networkID, rest...)
 }
 
 func (s *EdgeAssetsService) do(ctx context.Context, method, path string, body, out any, operation string) (*Response, error) {
-	var req *http.Request
-	var err error
-	if body == nil {
-		req, err = s.client.NewRequest(ctx, method, path, nil)
-	} else {
-		req, err = s.client.newJSONRequest(ctx, method, path, body)
-	}
+	req, err := s.client.bodyRequest(ctx, method, path, body)
 	if err != nil {
 		return nil, err
 	}

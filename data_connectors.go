@@ -127,7 +127,7 @@ func (s *DataConnectorsService) Get(ctx context.Context, networkID, name string,
 	req = markOperation(req, "DataConnectors.Get")
 	out := new(DataConnector)
 	resp, err := s.client.doRequired(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, resp, nil
 	}
 	if err != nil {

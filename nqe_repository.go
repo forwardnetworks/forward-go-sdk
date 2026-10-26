@@ -157,7 +157,7 @@ func (s *NQERepositoryService) change(ctx context.Context, action, path string, 
 	req = markOperation(req, "NQERepository."+action)
 	response, err := s.client.Do(req, nil)
 	for _, status := range accepted {
-		if isStatus(err, status) {
+		if IsStatus(err, status) {
 			return response, nil
 		}
 	}
@@ -303,7 +303,7 @@ func (s *NQERepositoryService) DiscardChange(ctx context.Context, path string) (
 	response, err := s.client.Do(req, nil)
 	// NqeLibStore.discardChanges: "no change at the path" is NqeLibException INVALID_CHANGE_PATH, rendered as 409.
 	var apiErr *ErrorResponse
-	if isStatus(err, http.StatusConflict) && errors.As(err, &apiErr) && apiErr.Reason == "INVALID_CHANGE_PATH" {
+	if IsStatus(err, http.StatusConflict) && errors.As(err, &apiErr) && apiErr.Reason == "INVALID_CHANGE_PATH" {
 		return response, nil
 	}
 	return response, err
@@ -378,7 +378,7 @@ func (s *NQERepositoryService) GetDraft(ctx context.Context, path string) (*NQED
 	req = markOperation(req, "NQERepository.GetDraft")
 	out := new(NQEDraftQuery)
 	response, err := s.client.doRequired(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, response, nil
 	}
 	if err != nil {

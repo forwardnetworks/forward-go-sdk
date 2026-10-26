@@ -190,7 +190,7 @@ func (s *SyntheticNodesService) Get(ctx context.Context, networkID string, kind 
 	req = markOperation(req, kind.opName("Get"))
 	out := new(SyntheticNode)
 	resp, err := s.client.Do(req, out)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		return nil, resp, nil
 	}
 	if err != nil {
@@ -402,7 +402,7 @@ func (s *SyntheticNodesService) List(ctx context.Context, networkID string, kind
 	}
 	req = markOperation(req, kind.opName("List"))
 	resp, err := s.client.doRequired(req, &result)
-	if isStatus(err, http.StatusNotFound) {
+	if IsStatus(err, http.StatusNotFound) {
 		// A network with no such collection is not an error; it has none.
 		return nil, resp, nil
 	}
