@@ -332,6 +332,7 @@ func (s *ClassicDevicesService) Create(ctx context.Context, networkID string, in
 	if err != nil {
 		return nil, nil, err
 	}
+	req = markOperation(req, "ClassicDevices.Create")
 	device := new(ClassicDevice)
 	resp, err := s.client.Do(req, device)
 	return device, resp, err
@@ -349,6 +350,7 @@ func (s *ClassicDevicesService) Get(ctx context.Context, networkID, deviceName s
 	if err != nil {
 		return nil, nil, err
 	}
+	req = markOperation(req, "ClassicDevices.Get")
 	device := new(ClassicDevice)
 	resp, err := s.client.Do(req, device)
 	return device, resp, err
@@ -366,6 +368,7 @@ func (s *ClassicDevicesService) Put(ctx context.Context, networkID, deviceName s
 	if err != nil {
 		return nil, nil, err
 	}
+	req = markOperation(req, "ClassicDevices.Put")
 	device := new(ClassicDevice)
 	resp, err := s.client.Do(req, device)
 	return device, resp, err
@@ -532,6 +535,7 @@ func (s *ClassicDevicesService) Patch(ctx context.Context, networkID, deviceName
 	if err != nil {
 		return nil, nil, err
 	}
+	req = markOperation(req, "ClassicDevices.Patch")
 	device := new(ClassicDevice)
 	resp, err := s.client.Do(req, device)
 	return device, resp, err
@@ -546,6 +550,7 @@ func (s *ClassicDevicesService) Delete(ctx context.Context, networkID, deviceNam
 	if err != nil {
 		return nil, err
 	}
+	req = markOperation(req, "ClassicDevices.Delete")
 	return s.client.Do(req, nil)
 }
 

@@ -58,22 +58,30 @@ func (s *DiffsService) deviceDiff(ctx context.Context, snapshotA, snapshotB, fam
 }
 
 // ARPDevices lists the devices whose ARP tables differ, each with its change counts (GET .../arp, VIEW_ARP_DIFFS).
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) ARPDevices(ctx context.Context, snapshotA, snapshotB string) ([]DeviceDiffSummary, *Response, error) {
 	return s.deviceSummaries(ctx, snapshotA, snapshotB, "arp", "Diffs.ARPDevices")
 }
 
 // MACDevices lists the devices whose MAC tables differ, each with its change counts (GET .../mac, VIEW_MAC_DIFFS).
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) MACDevices(ctx context.Context, snapshotA, snapshotB string) ([]DeviceDiffSummary, *Response, error) {
 	return s.deviceSummaries(ctx, snapshotA, snapshotB, "mac", "Diffs.MACDevices")
 }
 
 // NATDevices lists the devices whose NAT entries differ, each with its change counts (GET .../nat, VIEW_NAT_DIFFS).
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) NATDevices(ctx context.Context, snapshotA, snapshotB string) ([]DeviceDiffSummary, *Response, error) {
 	return s.deviceSummaries(ctx, snapshotA, snapshotB, "nat", "Diffs.NATDevices")
 }
 
 // L3Devices lists the devices whose L3 routing differs, each with its change counts (GET .../l3?view=devices, VIEW_ROUTE_DIFFS). Forward
 // computes and caches the routing diff on the first call, which can take a while on a large network.
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) L3Devices(ctx context.Context, snapshotA, snapshotB string) ([]DeviceDiffSummary, *Response, error) {
 	return s.deviceSummaries(ctx, snapshotA, snapshotB, "l3?view=devices", "Diffs.L3Devices")
 }
@@ -111,6 +119,8 @@ type DeviceMACDiff struct {
 
 // DeviceARP lists one device's ARP entries that were added, deleted or modified (GET .../arp/devices/{device}; the caller must be
 // allowed to see the device).
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) DeviceARP(ctx context.Context, snapshotA, snapshotB, device string) (*DeviceARPDiff, *Response, error) {
 	out := new(DeviceARPDiff)
 	resp, err := s.deviceDiff(ctx, snapshotA, snapshotB, "arp", device, "Diffs.DeviceARP", out)
@@ -122,6 +132,8 @@ func (s *DiffsService) DeviceARP(ctx context.Context, snapshotA, snapshotB, devi
 
 // DeviceMAC lists one device's MAC-table entries that were added, deleted or modified (GET .../mac/devices/{device}; the caller must
 // be allowed to see the device).
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) DeviceMAC(ctx context.Context, snapshotA, snapshotB, device string) (*DeviceMACDiff, *Response, error) {
 	out := new(DeviceMACDiff)
 	resp, err := s.deviceDiff(ctx, snapshotA, snapshotB, "mac", device, "Diffs.DeviceMAC", out)
@@ -134,6 +146,8 @@ func (s *DiffsService) DeviceMAC(ctx context.Context, snapshotA, snapshotB, devi
 // DeviceNAT returns one device's NAT diff as Forward sent it (GET .../nat/devices/{device}; the caller must be allowed to see the
 // device). The entry JSON comes from a custom serializer that varies by NAT kind, so it is not modelled; the top level is
 // {"diffs": [{diffType, a, b}], "stats": {...}}.
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) DeviceNAT(ctx context.Context, snapshotA, snapshotB, device string) (json.RawMessage, *Response, error) {
 	var out json.RawMessage
 	resp, err := s.deviceDiff(ctx, snapshotA, snapshotB, "nat", device, "Diffs.DeviceNAT", &out)
@@ -143,6 +157,8 @@ func (s *DiffsService) DeviceNAT(ctx context.Context, snapshotA, snapshotB, devi
 // DeviceL3 returns one device's L3 routing diff as Forward sent it (GET .../l3/devices/{device}; the caller must be allowed to see
 // the device): the routes added, removed and
 // changed, with their resolved next hops. The entry JSON comes from a custom serializer, so it is left raw.
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) DeviceL3(ctx context.Context, snapshotA, snapshotB, device string) (json.RawMessage, *Response, error) {
 	var out json.RawMessage
 	resp, err := s.deviceDiff(ctx, snapshotA, snapshotB, "l3", device, "Diffs.DeviceL3", &out)
@@ -151,6 +167,8 @@ func (s *DiffsService) DeviceL3(ctx context.Context, snapshotA, snapshotB, devic
 
 // L3Summary returns the network-wide L3 routing diff summary as Forward sent it (GET .../l3/summary, VIEW_ROUTE_DIFFS). Forward
 // computes and caches the routing diff on the first call.
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) L3Summary(ctx context.Context, snapshotA, snapshotB string) (json.RawMessage, *Response, error) {
 	var out json.RawMessage
 	resp, err := s.get(ctx, snapshotA, snapshotB, "l3/summary", "Diffs.L3Summary", &out)
@@ -167,6 +185,8 @@ type L3PrefixOptions struct {
 
 // L3Prefixes returns the routing diff by prefix as Forward sent it, one page at a time (GET .../l3?view=prefixes&offset=&limit=&
 // prefixFilter=). Page with Offset and Limit; the body carries the total.
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) L3Prefixes(ctx context.Context, snapshotA, snapshotB string, options L3PrefixOptions) (json.RawMessage, *Response, error) {
 	if options.Offset < 0 || options.Limit < 0 {
 		return nil, nil, errors.New("forward: offset and limit cannot be negative")
@@ -188,6 +208,8 @@ func (s *DiffsService) L3Prefixes(ctx context.Context, snapshotA, snapshotB stri
 
 // L3PrefixDetails returns how one prefix's routing changed, on every device that has it, as Forward sent it (GET
 // .../l3/prefixes/{prefix}; the prefix is escaped into the path as the UI does).
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) L3PrefixDetails(ctx context.Context, snapshotA, snapshotB, prefix string) (json.RawMessage, *Response, error) {
 	if prefix = strings.TrimSpace(prefix); prefix == "" {
 		return nil, nil, errors.New("forward: prefix is required")
@@ -213,6 +235,8 @@ type VulnerabilitiesDiffSummary struct {
 }
 
 // VulnerabilitiesCounts (VIEW_CVE_DIFFS, held from READ_ONLY up and needing the security licence facet) returns the new CVEs and new internet-exposed vulnerable devices from the first snapshot to the second.
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) VulnerabilitiesCounts(ctx context.Context, snapshotA, snapshotB string) (*VulnerabilitiesDiffSummary, *Response, error) {
 	out := new(VulnerabilitiesDiffSummary)
 	resp, err := s.get(ctx, snapshotA, snapshotB, "vulnerabilities/counts", "Diffs.VulnerabilitiesCounts", out)
@@ -231,6 +255,8 @@ type BidirectionalVulnerabilities struct {
 
 // VulnerabilitiesBidirectional returns the vulnerability change in both directions (GET .../vulnerabilities/counts?view=bidirectional,
 // VIEW_CVE_DIFFS; needs the organization property PREDICT_DIFF_INSIGHT_ENHANCEMENTS, otherwise Forward refuses it).
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) VulnerabilitiesBidirectional(ctx context.Context, snapshotA, snapshotB string) (*BidirectionalVulnerabilities, *Response, error) {
 	out := new(BidirectionalVulnerabilities)
 	resp, err := s.get(ctx, snapshotA, snapshotB, "vulnerabilities/counts?view=bidirectional", "Diffs.VulnerabilitiesBidirectional", out)
@@ -250,6 +276,8 @@ type BidirectionalRoutingLoops struct {
 // .../routing-loop/count?view=bidirectional, VIEW_CHECK_DIFFS; needs PREDICT_DIFF_INSIGHT_ENHANCEMENTS). Each Count is 0 or 1, not
 // a number of loops, and Complete=false with 0 means Forward could not tell, not "none yet". Diffs.Count with DiffRoutingLoop is the
 // one-directional count.
+//
+// Preview: DiffController, not in the published spec.
 func (s *DiffsService) RoutingLoopsBidirectional(ctx context.Context, snapshotA, snapshotB string) (*BidirectionalRoutingLoops, *Response, error) {
 	out := new(BidirectionalRoutingLoops)
 	resp, err := s.get(ctx, snapshotA, snapshotB, "routing-loop/count?view=bidirectional", "Diffs.RoutingLoopsBidirectional", out)

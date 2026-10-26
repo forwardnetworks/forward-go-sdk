@@ -174,6 +174,8 @@ func (s *PredictService) checkPath(networkID, changeSetID string) (string, error
 // type the licence does not include (403). Forward does not deduplicate: if this call times out and is retried, there may be two
 // checks, so list them before adding again. MANAGE_CHANGE_SETS; the organization property PREDICT_MODELING must be on. Results on the snapshots predicted from
 // the change set are read with ListChangeSetChecks. An NQE check is removed by Forward when its query is deleted.
+//
+// Preview: ChangeSetCheckController, not in the published spec.
 func (s *PredictService) AddChangeSetCheck(ctx context.Context, networkID, changeSetID string, check NewChangeSetCheck) (*ChangeSetCheckResult, *Response, error) {
 	if err := check.Definition.Validate(); err != nil {
 		return nil, nil, err
@@ -192,6 +194,8 @@ func (s *PredictService) AddChangeSetCheck(ctx context.Context, networkID, chang
 
 // UpdateChangeSetCheck changes a check's name or definition (PATCH .../checks/{checkId}; 204). Changing the definition changes what
 // the check means, so results from before are outdated until it runs again.
+//
+// Preview: ChangeSetCheckController, not in the published spec.
 func (s *PredictService) UpdateChangeSetCheck(ctx context.Context, networkID, changeSetID, checkID string, patch ChangeSetCheckPatch) (*Response, error) {
 	if patch.Definition != nil {
 		if err := patch.Definition.Validate(); err != nil {
@@ -209,6 +213,8 @@ func (s *PredictService) UpdateChangeSetCheck(ctx context.Context, networkID, ch
 }
 
 // DeleteChangeSetCheck removes a check and its results from a change set (DELETE .../checks/{checkId}; 204). It cannot be undone.
+//
+// Preview: ChangeSetCheckController, not in the published spec.
 func (s *PredictService) DeleteChangeSetCheck(ctx context.Context, networkID, changeSetID, checkID string) (*Response, error) {
 	path, err := s.changeSetCheckPath(networkID, changeSetID, checkID)
 	if err != nil {

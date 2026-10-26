@@ -192,3 +192,43 @@ func TestExposureDetailsRefuseANegativeAssetID(t *testing.T) {
 		t.Fatal("a request was sent for a negative asset id")
 	}
 }
+
+// TestClassicDeviceCallsNameTheirOperation: hooks key on Event.Operation, and the per-device calls used to reach them with an
+// empty one, unlike List and the batch calls.
+func TestClassicDeviceCallsNameTheirOperation(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		_, _ = w.Write([]byte(`{"name":"sw1"}`))
+	}))
+	defer server.Close()
+	var operations []string
+	client, err := NewClient(Config{
+		BaseURL:    server.URL,
+		Username:   "user",
+		Password:   "pass",
+		HTTPClient: privateHTTPClient(),
+		Hooks: []Hook{func(_ context.Context, e Event) {
+			if e.Type == EventRequest {
+				operations = append(operations, e.Operation)
+			}
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	device := ClassicDeviceRequest{Name: "sw1", Host: "10.0.0.1"}
+	_, _, _ = client.ClassicDevices.Create(ctx, "7", device)
+	_, _, _ = client.ClassicDevices.Get(ctx, "7", "sw1")
+	_, _, _ = client.ClassicDevices.Put(ctx, "7", "sw1", device)
+	_, _, _ = client.ClassicDevices.Patch(ctx, "7", "sw1", ClassicDevicePatch{Note: Ptr("n")})
+	_, _ = client.ClassicDevices.Delete(ctx, "7", "sw1")
+	want := "ClassicDevices.Create ClassicDevices.Get ClassicDevices.Put ClassicDevices.Patch ClassicDevices.Delete"
+	if got := strings.Join(operations, " "); got != want {
+		t.Fatalf("operations = %q, want %q", got, want)
+	}
+}
