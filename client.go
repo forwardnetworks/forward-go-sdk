@@ -121,6 +121,7 @@ type Client struct {
 	NQERepository           *NQERepositoryService
 	Banners                 *BannersService
 	Jobs                    *JobsService
+	NetworkMaps             *NetworkMapsService
 	Routing                 *RoutingService
 	ThreatExposure          *ThreatExposureService
 	EdgeAssets              *EdgeAssetsService
@@ -305,6 +306,7 @@ func (c *Client) bindServices() {
 	c.NQERepository = (*NQERepositoryService)(&service{client: c})
 	c.Banners = (*BannersService)(&service{client: c})
 	c.Jobs = (*JobsService)(&service{client: c})
+	c.NetworkMaps = (*NetworkMapsService)(&service{client: c})
 	c.Routing = (*RoutingService)(&service{client: c})
 	c.ThreatExposure = (*ThreatExposureService)(&service{client: c})
 	c.EdgeAssets = (*EdgeAssetsService)(&service{client: c})

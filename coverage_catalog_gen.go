@@ -1093,6 +1093,24 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"NQERepository.ListHeadQueries": {
 		{Method: "GET", Route: "/api/nqe/repos/org/commits/head/queries"},
 	},
+	"NetworkMaps.Directories": {
+		{Method: "GET", Route: "/api/networks/{networkId}/map-directories"},
+	},
+	"NetworkMaps.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/maps/{mapId}"},
+	},
+	"NetworkMaps.GetWithDirectory": {
+		{Method: "GET", Route: "/api/networks/{networkId}/maps/{mapId}"},
+	},
+	"NetworkMaps.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/maps"},
+	},
+	"NetworkMaps.Snapshot": {
+		{Method: "GET", Route: "/api/networks/{networkId}/maps/{mapId}"},
+	},
+	"NetworkMaps.Structures": {
+		{Method: "GET", Route: "/api/networks/{networkId}/maps/{mapId}/structures"},
+	},
 	"Networks.CheckAccess": {
 		{Method: "GET", Route: "/api/networks"},
 	},
