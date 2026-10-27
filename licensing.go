@@ -1,7 +1,9 @@
 package forward
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -85,13 +87,46 @@ type AsciiCodedSignedLicenseKey struct {
 }
 
 // License is the decoded body of a key.
+//
+// The capacity fields and Replaces are the tier licence's (TierLicense: tier, replaces,
+// standardDeviceCap, liteDeviceCap, cloudCreditHours, edgeAssetCap, with the licence
+// metadata flattened beside them). A licence type that does not carry one leaves it zero,
+// and Replaces nil when the server did not state it.
 type License struct {
 	ID        string `json:"id,omitempty"`
 	Type      string `json:"type,omitempty"`
 	Tier      string `json:"tier,omitempty"`
 	StartsAt  string `json:"startsAt,omitempty"`
 	ExpiresAt string `json:"expiresAt,omitempty"`
-	Stackable bool   `json:"stackable,omitempty"`
+	// Replaces is true when using the licence ends every other active licence of the org
+	// at once, and false when its capacity is added to them (it "stacks"). A stacking tier
+	// licence is only accepted when its tier equals the org's tier (that of its active
+	// non-trial licences when it takes effect; none means no check), else "License tier
+	// mismatch". A replacing one skips that tier check, not the cloud-credit-debt checks.
+	Replaces *bool `json:"replaces,omitempty"`
+	// Stackable is !Replaces, filled in when decoding a licence that states replaces. The
+	// server has no field of this name; it is kept for callers that already read it. Only
+	// tier licences state replaces; for the other types Replaces stays nil and Stackable false (the server treats TIER_TRIAL,
+	// DEVICE, CLOUD and ENDPOINT as stacking and LEGACY as replacing).
+	Stackable         bool `json:"stackable,omitempty"`
+	StandardDeviceCap int  `json:"standardDeviceCap,omitempty"`
+	LiteDeviceCap     int  `json:"liteDeviceCap,omitempty"`
+	CloudCreditHours  int  `json:"cloudCreditHours,omitempty"`
+	EdgeAssetCap      int  `json:"edgeAssetCap,omitempty"`
+}
+
+// UnmarshalJSON derives Stackable from replaces, which is the only one the server sends.
+func (l *License) UnmarshalJSON(data []byte) error {
+	type plain License
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	if decoded.Replaces != nil {
+		decoded.Stackable = !*decoded.Replaces
+	}
+	*l = License(decoded)
+	return nil
 }
 
 // DecodedLicenseKey is what a preview returns (web/.../json/license/
@@ -116,11 +151,78 @@ func (d *DecodedLicenseKey) AlreadyUsed() bool {
 	return d != nil && (d.Used || d.Status == LicenseKeyAlreadyUsed)
 }
 
-// LicenseDetails is an applied license as the org holds it.
+// LicenseDetails is a licence as the org holds it: ForwardSupportLicenseController's
+// LicenseDetailsWithStatus (ListForOrg) or LicenseController's (List).
+//
+// The server sends no top-level id: the id is License.ID, and ID is filled from it when the
+// body carries none (a body that does state one keeps it). The signed key itself IS sent
+// (signedLicenseKey, with the instance fingerprint) once a licence is activated; it is
+// deliberately not carried here, so it cannot leak through a %+v log line. Signed records
+// that it was there.
 type LicenseDetails struct {
 	ID      string   `json:"id,omitempty"`
 	License *License `json:"license,omitempty"`
-	Status  string   `json:"status,omitempty"`
+	// Status is the licence's state by its dates (NOT_ACTIVE_YET, ACTIVE, EXPIRED) or
+	// REPLACED once a replacement licence ended it. For a licence nobody has activated it is
+	// date-based only, so an ACTIVE status does not mean the org is using the licence.
+	Status string `json:"status,omitempty"`
+	// Invalidated is true when support invalidated the licence, which prevents it from ever
+	// being activated. Absent from the body when false.
+	Invalidated bool `json:"invalidated,omitempty"`
+	// Signed is true when the body carried a signedLicenseKey: the licence has been
+	// activated. This is the test Forward itself refuses an activation on
+	// (LicenseDetails.isSigned). Releases before 23.6 cleared the key of an old licence when
+	// its renewal was activated, so false is not proof for an old expired licence.
+	Signed bool `json:"signed,omitempty"`
+	// UsedAt is when the licence was activated (ISO-8601, like StartsAt). Forward leaves it
+	// null for a licence not yet activated, one in a Software Central org and most licences
+	// activated before 23.6, and an on-prem upload sets it too. Empty when absent.
+	UsedAt string `json:"usedAt,omitempty"`
+}
+
+// UnmarshalJSON fills ID from the inner licence when the body states none, and records
+// whether a signed key was present without keeping the key.
+func (d *LicenseDetails) UnmarshalJSON(data []byte) error {
+	type plain LicenseDetails
+	aux := struct {
+		plain
+		SignedLicenseKey json.RawMessage `json:"signedLicenseKey"`
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	decoded := aux.plain
+	if decoded.ID == "" && decoded.License != nil {
+		decoded.ID = decoded.License.ID
+	}
+	if k := bytes.TrimSpace(aux.SignedLicenseKey); len(k) > 0 && string(k) != "null" {
+		decoded.Signed = true
+	}
+	*d = LicenseDetails(decoded)
+	return nil
+}
+
+// Available reports that the licence is stored for the org and a support operator could
+// activate it: not invalidated, not signed, not EXPIRED, and a type that can still be
+// activated (not LEGACY, DEVICE, CLOUD or ENDPOINT, which Forward no longer supports). It is
+// the test the support UI uses for its "Available" label (gui .../saas-org-licenses-drawer.ts
+// getStatus), so it is Forward's own inference and not a field the server sends. It reads
+// the ListForOrg listing; on List it is meaningless, because an ordinary org's own listing
+// holds only signed licences. Even an Available licence can be refused at activation, for
+// example: a stacking tier licence whose tier differs from the org's (see License.Replaces), an
+// unmet cloud-credit debt, a pending replacement, a tier-trial licence outside the tier's
+// period, or a licence that has expired since the listing.
+func (d LicenseDetails) Available() bool {
+	if d.Invalidated || d.Signed || d.Status == "EXPIRED" {
+		return false
+	}
+	if d.License != nil {
+		switch d.License.Type {
+		case "LEGACY", "DEVICE", "CLOUD", "ENDPOINT":
+			return false
+		}
+	}
+	return true
 }
 
 // ErrLicenseKeyRequired is returned before any request is built. A blank key
