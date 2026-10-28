@@ -873,6 +873,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.CreateRapid7": {
 		{Method: "POST", Route: "/api/networks/{networkId}/rapid7-sources"},
 	},
+	"Integrations.CreateTenableSC": {
+		{Method: "POST", Route: "/api/networks/{networkId}/tenable-sources"},
+	},
 	"Integrations.DeleteInfoblox": {
 		{Method: "DELETE", Route: "/api/integrations/infoblox/instances/{instanceId}"},
 	},
@@ -881,6 +884,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Integrations.DeleteServiceNow": {
 		{Method: "DELETE", Route: "/api/integrations/servicenow"},
+	},
+	"Integrations.DeleteTenableSC": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/tenable-sources/{sourceName}"},
 	},
 	"Integrations.EnableServiceNowCMDB": {
 		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
@@ -897,6 +903,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.ListRapid7": {
 		{Method: "GET", Route: "/api/networks/{networkId}/end-host-scanners"},
 	},
+	"Integrations.ListTenableSC": {
+		{Method: "GET", Route: "/api/networks/{networkId}/end-host-scanners"},
+	},
 	"Integrations.PatchServiceNow": {
 		{Method: "PATCH", Route: "/api/integrations/servicenow"},
 	},
@@ -906,11 +915,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.ServiceNowCMDBSchema": {
 		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
 	},
+	"Integrations.TestTenableSC": {
+		{Method: "POST", Route: "/api/networks/{networkId}/tenable-sources"},
+	},
 	"Integrations.UpdateInfoblox": {
 		{Method: "PATCH", Route: "/api/integrations/infoblox/instances/{instanceId}"},
 	},
 	"Integrations.UpdateRapid7": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/rapid7-sources/{sourceName}"},
+	},
+	"Integrations.UpdateTenableSC": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/tenable-sources/{sourceName}"},
 	},
 	"Jobs.Cancel": {
 		{Method: "DELETE", Route: "/api/jobs/{cancelLink}"},

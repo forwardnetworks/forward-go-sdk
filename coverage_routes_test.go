@@ -33,7 +33,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 615
+	const minExercised = 620
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -106,6 +106,8 @@ var wireArgOverrides = map[string]map[int]any{
 	"ConnectivityTests.BulkStart":                {2: []string{"sw1"}},
 	"Performance.UploadPayload":                  {4: perfpayload.Payload{Time: time.Unix(1, 0)}},
 	"Performance.UploadPayloadWithIdentity":      {3: perfpayload.Payload{Time: time.Unix(1, 0)}},
+	"Integrations.CreateTenableSC":               {2: TenableSourceRequest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5"}},
+	"Integrations.TestTenableSC":                 {2: TenableSourceTest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5"}},
 	"Licensing.CCHUsedSince":                     {1: 7},
 	"Licensing.CCHHistory":                       {1: time.Unix(1, 0), 2: time.Unix(100, 0)},
 	"Licensing.UsageHistory":                     {1: time.Unix(1, 0), 2: time.Unix(100, 0)},
