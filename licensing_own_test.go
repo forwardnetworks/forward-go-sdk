@@ -3,6 +3,7 @@ package forward
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -116,5 +117,42 @@ func TestLicenseDetailsDecodeTheWireShape(t *testing.T) {
 	}
 	if encoded, _ := json.Marshal(withKey); strings.Contains(string(encoded), "SECRET") || !withKey.Signed {
 		t.Fatalf("withKey = %+v, encoded %s", withKey, encoded)
+	}
+}
+
+// Activating a stored license has two forms and Forward chooses by the org, not the caller: no body for a SaaS license, a
+// {"fingerprint"} body for an on-prem one. Sending a body when none is wanted (or none when it is) is a 400, so the SDK must send
+// exactly what it was given. A blank org or license never reaches the wire.
+func TestActivateForOrgSendsTheRightForm(t *testing.T) {
+	t.Parallel()
+	var seen []predictSeen
+	client := newTestClient(t, predictRecorder(t, 200, `{"license":{"id":"lic/1","type":"PERPETUAL"}}`, &seen).URL)
+	ctx := context.Background()
+
+	got, _, err := client.Licensing.ActivateForOrg(ctx, "org 1", "lic/1", "")
+	if err != nil || got == nil || got.ID != "lic/1" {
+		t.Fatalf("activate = %+v, %v", got, err)
+	}
+	if _, _, err := client.Licensing.ActivateForOrg(ctx, "org 1", "lic/1", " fp-9 "); err != nil {
+		t.Fatal(err)
+	}
+	want := []predictSeen{
+		{"POST", "/api/orgs/org%201/licenses/lic%2F1?action=activate", "", ""},
+		{"POST", "/api/orgs/org%201/licenses/lic%2F1?action=activate", `{"fingerprint":"fp-9"}`, "application/json"},
+	}
+	if len(seen) != 2 {
+		t.Fatalf("seen %+v", seen)
+	}
+	// Content-Type decides which Forward handler runs, so the no-body form must send none at all.
+	for i, w := range want {
+		if seen[i].method != w.method || seen[i].uri != w.uri || seen[i].body != w.body || seen[i].contentType != w.contentType {
+			t.Errorf("request %d = %+v, want %+v", i, seen[i], w)
+		}
+	}
+	if _, _, err := client.Licensing.ActivateForOrg(ctx, " ", "x", ""); !errors.Is(err, ErrLicenseOrgIDRequired) {
+		t.Errorf("blank org: %v", err)
+	}
+	if _, _, err := client.Licensing.ActivateForOrg(ctx, "o", " ", ""); err == nil || len(seen) != 2 {
+		t.Errorf("blank license was sent: %v", err)
 	}
 }

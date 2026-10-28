@@ -365,6 +365,48 @@ func (s *LicensingService) InvalidateForOrg(ctx context.Context, orgID, licenseI
 	return s.client.Do(req, nil)
 }
 
+// ActivateForOrg activates a stored license on ONE named org (POST /api/orgs/{orgId}/licenses/{licenseId}?action=activate).
+// PLATFORM-scoped (@RequiresForwardSupport), and SaaS deployments only (on-prem answers ErrEndpointNotServed, see ListForOrg).
+// It changes what the org is entitled to and CANNOT BE UNDONE one license at a time: Forward refuses (400) to invalidate an
+// activated license, and a second activation is also a 400; only RemoveAllForOrg clears it, for the whole org. Name the org and
+// the license deliberately.
+//
+// Forward has two forms. Spring picks the handler from the Content-Type the caller sends, and the handler then refuses a form
+// that does not match the org's SOFTWARE_CENTRAL property (400). For an org with it off (a SaaS license) pass an empty
+// fingerprint: no body and no Content-Type are sent. For an org with it on (an on-prem license) pass the fingerprint of the
+// CUSTOMER'S on-prem deployment (Licensing.Fingerprint on a client pointed at that deployment, not this one); it goes as
+// {"fingerprint": ...}. A fingerprint from the wrong deployment is accepted and the license is bound to it for good.
+// Preview: the route is in the appserver controller, not the published spec. The answer is the stored license: Status is empty
+// (no status is computed here) and Signed is true.
+func (s *LicensingService) ActivateForOrg(ctx context.Context, orgID, licenseID, fingerprint string) (*LicenseDetails, *Response, error) {
+	orgID = strings.TrimSpace(orgID)
+	licenseID = strings.TrimSpace(licenseID)
+	if orgID == "" {
+		return nil, nil, ErrLicenseOrgIDRequired
+	}
+	if licenseID == "" {
+		return nil, nil, errors.New("forward: license id is required")
+	}
+	path := fmt.Sprintf("/api/orgs/%s/licenses/%s?action=activate", url.PathEscape(orgID), url.PathEscape(licenseID))
+	var body any
+	if fingerprint = strings.TrimSpace(fingerprint); fingerprint != "" {
+		body = struct {
+			Fingerprint string `json:"fingerprint"`
+		}{fingerprint}
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, body)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Licensing.ActivateForOrg")
+	out := new(LicenseDetails)
+	resp, err := s.client.doRequired(req, out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}
+
 // List returns the licenses of the signed-in user's own organization, each
 // with its status now (LicenseController.getLicenses; any signed-in user).
 // Unlike ListForOrg it is served on every deployment, on-prem included. GET

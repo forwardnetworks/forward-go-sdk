@@ -942,6 +942,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"JumpServers.Update": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/jumpServers/{jumpServerId}"},
 	},
+	"Licensing.ActivateForOrg": {
+		{Method: "POST", Route: "/api/orgs/{orgId}/licenses/{licenseId}"},
+	},
 	"Licensing.Apply": {
 		{Method: "POST", Route: "/api/licenses"},
 	},
