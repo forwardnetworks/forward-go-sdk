@@ -1248,6 +1248,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Performance.Upload": {
 		{Method: "POST", Route: "/api/networks/{networkId}/performance"},
 	},
+	"Performance.UploadPayload": {
+		{Method: "POST", Route: "/api/networks/{networkId}/performance"},
+	},
+	"Performance.UploadPayloadWithIdentity": {
+		{Method: "POST", Route: "/api/networks/{networkId}/performance"},
+	},
 	"Performance.UploadWithIdentity": {
 		{Method: "POST", Route: "/api/networks/{networkId}/performance"},
 	},

@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/forwardnetworks/forward-go-sdk/perfpayload"
 )
 
 // TestCoverageManifestRoutesMatchTheWire calls every manifest symbol against
@@ -31,7 +33,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 580
+	const minExercised = 582
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -102,6 +104,8 @@ var wireArgOverrides = map[string]map[int]any{
 	"ClassicDevices.PatchMany":                   {2: []string{"sw1"}, 3: ClassicDevicePatch{Note: Ptr("v1")}},
 	"ClassicDevices.GetMany":                     {2: []string{"sw1"}},
 	"ConnectivityTests.BulkStart":                {2: []string{"sw1"}},
+	"Performance.UploadPayload":                  {4: perfpayload.Payload{Time: time.Unix(1, 0)}},
+	"Performance.UploadPayloadWithIdentity":      {3: perfpayload.Payload{Time: time.Unix(1, 0)}},
 	"Routing.PrefixSearch":                       {3: RoutingPrefixSearch{Prefix: "10.0.0.0/8"}},
 	"Routing.PrefixTrace":                        {3: RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: DeviceVRF{Device: "r1"}, OriginatedFrom: DeviceVRF{Device: "r2"}, Outcome: RouteOutcomeInstalled}},
 	"Routing.PrefixDetails":                      {3: RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: "r1"}}},

@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/forwardnetworks/forward-go-sdk/perfpayload"
 )
 
 // PerformanceService uploads collector performance payloads. This endpoint
@@ -297,4 +299,25 @@ func (s *PerformanceService) UploadWithIdentity(
 	req = markOperation(req, "Performance.UploadWithIdentity")
 	req.Header.Set("Content-Type", "application/octet-stream")
 	return s.client.Do(req, nil)
+}
+
+// UploadPayload is UploadPayloadWithIdentity for a collector username and password.
+func (s *PerformanceService) UploadPayload(ctx context.Context, networkID, collectorUsername, collectorPassword string, payload perfpayload.Payload) (*Response, error) {
+	return s.UploadPayloadWithIdentity(ctx, networkID, CollectorIdentity{Username: collectorUsername, AuthorizationKey: collectorPassword}, payload)
+}
+
+// UploadPayloadWithIdentity validates and encodes a typed payload (package perfpayload) and uploads it with
+// UploadWithIdentity. Nothing is sent when the payload is one Forward would drop part of (CPU or memory above 1, a
+// device's entries out of time order); the error wraps one of perfpayload's errors. A zero payload.Time is set to now;
+// otherwise set it to the moment you send. With a RetryPolicy a retried request re-sends the same bytes, so a retry wait
+// (up to its MaxDelay) shifts every stored time by that wait. To skip devices that already have data, filter the payload first with perfpayload.Watermarks.
+func (s *PerformanceService) UploadPayloadWithIdentity(ctx context.Context, networkID string, identity CollectorIdentity, payload perfpayload.Payload) (*Response, error) {
+	if payload.Time.IsZero() {
+		payload.Time = time.Now()
+	}
+	body, err := payload.Encode()
+	if err != nil {
+		return nil, err
+	}
+	return s.UploadWithIdentity(ctx, networkID, identity, body)
 }
