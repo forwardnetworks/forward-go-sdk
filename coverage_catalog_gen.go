@@ -945,11 +945,32 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Licensing.ActivateForOrg": {
 		{Method: "POST", Route: "/api/orgs/{orgId}/licenses/{licenseId}"},
 	},
+	"Licensing.AllOrgUsage": {
+		{Method: "GET", Route: "/api/admin/platform-usage"},
+	},
 	"Licensing.Apply": {
 		{Method: "POST", Route: "/api/licenses"},
 	},
+	"Licensing.CCHDebug": {
+		{Method: "GET", Route: "/api/platform-usage"},
+	},
+	"Licensing.CCHHistory": {
+		{Method: "GET", Route: "/api/platform-usage"},
+	},
+	"Licensing.CCHUsage": {
+		{Method: "GET", Route: "/api/platform-usage"},
+	},
+	"Licensing.CCHUsedSince": {
+		{Method: "GET", Route: "/api/platform-usage"},
+	},
 	"Licensing.Decode": {
 		{Method: "POST", Route: "/api/licenses"},
+	},
+	"Licensing.DeviceCounts": {
+		{Method: "GET", Route: "/api/licensed-devices"},
+	},
+	"Licensing.EdgeAssetCounts": {
+		{Method: "GET", Route: "/api/licensed-edge-assets"},
 	},
 	"Licensing.Fingerprint": {
 		{Method: "GET", Route: "/api/vm/instanceId"},
@@ -957,17 +978,35 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Licensing.InvalidateForOrg": {
 		{Method: "POST", Route: "/api/orgs/{orgId}/licenses/{licenseId}"},
 	},
+	"Licensing.LicensedDevices": {
+		{Method: "GET", Route: "/api/licensed-devices"},
+	},
 	"Licensing.List": {
 		{Method: "GET", Route: "/api/licenses"},
 	},
 	"Licensing.ListForOrg": {
 		{Method: "GET", Route: "/api/orgs/{orgId}/licenses"},
 	},
+	"Licensing.OrgCloudUsage": {
+		{Method: "GET", Route: "/api/orgs/{orgId}/platform-usage"},
+	},
+	"Licensing.OrgUsage": {
+		{Method: "GET", Route: "/api/orgs/{orgId}/platform-usage"},
+	},
 	"Licensing.RemoveAllForOrg": {
 		{Method: "DELETE", Route: "/api/orgs/{orgId}/licenses"},
 	},
+	"Licensing.SaaSOrgInfos": {
+		{Method: "GET", Route: "/api/admin/licenses"},
+	},
 	"Licensing.TierAndStatus": {
 		{Method: "GET", Route: "/api/licenses"},
+	},
+	"Licensing.Usage": {
+		{Method: "GET", Route: "/api/platform-usage"},
+	},
+	"Licensing.UsageHistory": {
+		{Method: "GET", Route: "/api/metrics/license-usage"},
 	},
 	"Locations.Assign": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/atlas"},

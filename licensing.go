@@ -93,11 +93,17 @@ type AsciiCodedSignedLicenseKey struct {
 // metadata flattened beside them). A licence type that does not carry one leaves it zero,
 // and Replaces nil when the server did not state it.
 type License struct {
-	ID        string `json:"id,omitempty"`
-	Type      string `json:"type,omitempty"`
+	ID   string `json:"id,omitempty"`
+	Type string `json:"type,omitempty"`
+	// Tier is Forward's LicenseTier name (LicenseTierB ... LicenseTierNSP); Facets() says what it includes. Tier and tier-trial licences carry one.
 	Tier      string `json:"tier,omitempty"`
+	CreatedAt string `json:"createdAt,omitempty"`
 	StartsAt  string `json:"startsAt,omitempty"`
 	ExpiresAt string `json:"expiresAt,omitempty"`
+	// LicensedTo, PurchaseOrder and SupportEndsOn (a perpetual licence's end of support, "2027-06-30") are LicenseMeta's, flattened.
+	LicensedTo    string `json:"licensedTo,omitempty"`
+	PurchaseOrder string `json:"purchaseOrder,omitempty"`
+	SupportEndsOn string `json:"supportEndsOn,omitempty"`
 	// Replaces is true when using the licence ends every other active licence of the org
 	// at once, and false when its capacity is added to them (it "stacks"). A stacking tier
 	// licence is only accepted when its tier equals the org's tier (that of its active
@@ -114,6 +120,49 @@ type License struct {
 	CloudCreditHours  int  `json:"cloudCreditHours,omitempty"`
 	EdgeAssetCap      int  `json:"edgeAssetCap,omitempty"`
 }
+
+// LicenseTier names (Forward's LicenseTier). Each is a set of facets; see Facets.
+const (
+	LicenseTierB   = "B"   // base
+	LicenseTierN   = "N"   // base + network
+	LicenseTierNP  = "NP"  // base + network + predict
+	LicenseTierS   = "S"   // base + security
+	LicenseTierNS  = "NS"  // base + network + security
+	LicenseTierNSP = "NSP" // base + network + security + predict
+)
+
+// LicenseFacet is one product area a tier covers (Forward's LicenseFacet). CLOUD is a license TYPE, not a facet: cloud credit
+// hours are a capacity that any tier licence can carry.
+type LicenseFacet string
+
+const (
+	LicenseFacetBase     LicenseFacet = "BASE"
+	LicenseFacetNetwork  LicenseFacet = "NETWORK"
+	LicenseFacetSecurity LicenseFacet = "SECURITY"
+	LicenseFacetPredict  LicenseFacet = "PREDICT"
+)
+
+// TierFacets returns the facets a tier name includes, in Forward's order; nil for a name this SDK does not know.
+func TierFacets(tier string) []LicenseFacet {
+	switch tier {
+	case LicenseTierB:
+		return []LicenseFacet{LicenseFacetBase}
+	case LicenseTierN:
+		return []LicenseFacet{LicenseFacetBase, LicenseFacetNetwork}
+	case LicenseTierNP:
+		return []LicenseFacet{LicenseFacetBase, LicenseFacetNetwork, LicenseFacetPredict}
+	case LicenseTierS:
+		return []LicenseFacet{LicenseFacetBase, LicenseFacetSecurity}
+	case LicenseTierNS:
+		return []LicenseFacet{LicenseFacetBase, LicenseFacetNetwork, LicenseFacetSecurity}
+	case LicenseTierNSP:
+		return []LicenseFacet{LicenseFacetBase, LicenseFacetNetwork, LicenseFacetSecurity, LicenseFacetPredict}
+	}
+	return nil
+}
+
+// Facets returns the facets the license's tier includes (see TierFacets); nil when it has no tier.
+func (l License) Facets() []LicenseFacet { return TierFacets(l.Tier) }
 
 // UnmarshalJSON derives Stackable from replaces, which is the only one the server sends.
 func (l *License) UnmarshalJSON(data []byte) error {
