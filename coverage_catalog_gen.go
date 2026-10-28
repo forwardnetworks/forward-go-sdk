@@ -1260,11 +1260,29 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.AddChangeSetCheck": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/checks"},
 	},
+	"Predict.AddChangeSetDirectory": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-set-directories/{dirPath}"},
+	},
 	"Predict.AddSecurityRule": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules"},
 	},
+	"Predict.AffectedDevices": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
+	},
+	"Predict.AllowedCommands": {
+		{Method: "GET", Route: "/api/predict-oses/{vendorOs}/allowed-commands"},
+	},
+	"Predict.BGPAdvertisementDiffs": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
+	},
+	"Predict.ChangeSetNQEChecks": {
+		{Method: "GET", Route: "/api/nqe/verificationQueries"},
+	},
 	"Predict.Commit": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits"},
+	},
+	"Predict.CommittedBGPAdvertisementDiffs": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}/devices/{device}/bgp-advertisements"},
 	},
 	"Predict.CreateChangeSet": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets"},
@@ -1274,6 +1292,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.DeleteChangeSetCheck": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/checks/{checkId}"},
+	},
+	"Predict.DeleteChangeSetDirectory": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/change-set-directories/{dirPath}"},
+	},
+	"Predict.DeleteChangeSets": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets"},
 	},
 	"Predict.DeleteCommit": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
@@ -1296,6 +1320,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.EditSecurityRule": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
 	},
+	"Predict.ExportChangeSetZip": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	},
+	"Predict.FirewallObjects": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/address-groups"},
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/address-objects"},
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/application-groups"},
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/application-objects"},
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/service-groups"},
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/service-objects"},
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/url-objects"},
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/user-objects"},
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/zones"},
+	},
 	"Predict.GetChangeSetSummary": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
 	},
@@ -1317,6 +1355,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.ListChangeSetChecks": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/checks"},
 	},
+	"Predict.ListChangeSetDirectories": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-set-directories"},
+	},
 	"Predict.ListChangeSets": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets"},
 	},
@@ -1326,14 +1367,38 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.ListPredictedSnapshots": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/predicted-snapshots"},
 	},
+	"Predict.MoveChangeSetDirectory": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-set-directories/{dirPath}"},
+	},
+	"Predict.MoveChangeSetToDirectory": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-set-directories/{dirPath}"},
+	},
+	"Predict.MoveChangeSetsToDirectory": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-set-directories/{dirPath}"},
+	},
 	"Predict.MoveSecurityRule": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
+	},
+	"Predict.PatchChangeSetsTags": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets"},
+	},
+	"Predict.PredictOSes": {
+		{Method: "GET", Route: "/api/predict-oses"},
+	},
+	"Predict.PrettifyCommands": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/commands"},
 	},
 	"Predict.PreviewCommandsConfig": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/config"},
 	},
+	"Predict.ProtocolModelingDone": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
+	},
 	"Predict.RemoveSecurityRule": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
+	},
+	"Predict.RenameChangeSetDirectory": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-set-directories/{dirPath}"},
 	},
 	"Predict.RestoreBGPAdvertisement": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},

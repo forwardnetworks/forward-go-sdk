@@ -33,7 +33,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 582
+	const minExercised = 601
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -106,6 +106,18 @@ var wireArgOverrides = map[string]map[int]any{
 	"ConnectivityTests.BulkStart":                {2: []string{"sw1"}},
 	"Performance.UploadPayload":                  {4: perfpayload.Payload{Time: time.Unix(1, 0)}},
 	"Performance.UploadPayloadWithIdentity":      {3: perfpayload.Payload{Time: time.Unix(1, 0)}},
+	"Predict.CreateChangeSet":                    {2: ChangeSetCreateRequest{Name: "n", SnapshotID: "s", Directory: "/a"}},
+	"Predict.AddChangeSetDirectory":              {2: "/", 3: "d"},
+	"Predict.RenameChangeSetDirectory":           {2: "/a", 3: "b"},
+	"Predict.MoveChangeSetDirectory":             {2: "/a", 3: "/"},
+	"Predict.MoveChangeSetToDirectory":           {2: "/a"},
+	"Predict.MoveChangeSetsToDirectory":          {2: "/a", 3: []string{"1"}},
+	"Predict.DeleteChangeSetDirectory":           {2: "/a"},
+	"Predict.DeleteChangeSets":                   {2: []string{"1"}},
+	"Predict.PatchChangeSetsTags":                {2: []string{"1"}, 3: ChangeSetTagsAdd, 4: []string{"t"}},
+	"Predict.AllowedCommands":                    {2: PredictProtocolBGP},
+	"Predict.FirewallObjects":                    {4: FirewallZones},
+	"Predict.ExportChangeSetZip":                 {3: io.Discard},
 	"Routing.PrefixSearch":                       {3: RoutingPrefixSearch{Prefix: "10.0.0.0/8"}},
 	"Routing.PrefixTrace":                        {3: RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: DeviceVRF{Device: "r1"}, OriginatedFrom: DeviceVRF{Device: "r2"}, Outcome: RouteOutcomeInstalled}},
 	"Routing.PrefixDetails":                      {3: RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: "r1"}}},

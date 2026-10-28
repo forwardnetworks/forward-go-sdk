@@ -28,6 +28,10 @@ type ChangeSetCreateRequest struct {
 	Description string   `json:"description,omitempty"`
 	SnapshotID  string   `json:"snapshotId"`
 	Tags        []string `json:"tags,omitempty"`
+	// Directory puts the new change set in a change-set directory ("/" or "/a/b"; POST ...?dirPath=). Empty leaves it in the root.
+	// It is sent as a query parameter, not in the body. Forward creates the change set BEFORE it files it, with no transaction: for a
+	// directory that does not exist the call fails 404 but the change set exists (unfiled). Look it up by name before retrying.
+	Directory string `json:"-"`
 }
 
 // ChangeSet is the common metadata returned for a Predict change set.
@@ -98,6 +102,12 @@ func (s *PredictService) CreateChangeSet(
 	}
 	if strings.TrimSpace(request.Name) == "" || strings.TrimSpace(request.SnapshotID) == "" {
 		return nil, nil, errors.New("forward: change-set name and base snapshot ID are required")
+	}
+	if dir := strings.TrimSpace(request.Directory); dir != "" {
+		if !validDirPath(dir) {
+			return nil, nil, errors.New(`forward: a change-set directory path is "/" or starts with "/" and does not end with "/"`)
+		}
+		path += "?" + url.Values{"dirPath": []string{dir}}.Encode()
 	}
 	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path, request)
 	if err != nil {
