@@ -147,7 +147,7 @@ func (s *PredictService) ListChangeSets(ctx context.Context, networkID string) (
 	return result.Items, resp, nil
 }
 
-// DeleteChangeSet deletes a Predict change set.
+// DeleteChangeSet deletes a Predict change set (DELETE .../change-sets/{id}). It cannot be undone.
 func (s *PredictService) DeleteChangeSet(
 	ctx context.Context,
 	networkID string,
@@ -168,7 +168,7 @@ func (s *PredictService) DeleteChangeSet(
 	if err != nil {
 		return nil, err
 	}
-	return s.client.Do(req, nil)
+	return s.client.Do(markOperation(req, "Predict.DeleteChangeSet"), nil)
 }
 
 // StageCommands replaces a device's draft CLI commands. Interactive wrapper

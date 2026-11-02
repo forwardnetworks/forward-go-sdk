@@ -18,6 +18,8 @@ import (
 type SecurityObjectID struct {
 	ScopeID string `json:"scopeId"`
 	Name    string `json:"name"`
+	// ObjectID is Forward's newer stable id for the object. Forward is replacing name with it (FWD-59203); for PAN-OS the two are equal today.
+	ObjectID string `json:"objectId,omitempty"`
 }
 
 // Predefined names a built-in object such as the application "postgres" or the user "any".
@@ -25,19 +27,53 @@ func Predefined(name string) SecurityObjectID {
 	return SecurityObjectID{ScopeID: "PREDEFINED", Name: name}
 }
 
-// AddressSpecification is one side of a rule: subnets stated directly and/or objects by reference.
-type AddressSpecification struct {
-	Subnets []string           `json:"subnets,omitempty"`
-	Objects []SecurityObjectID `json:"objects,omitempty"`
-	Groups  []SecurityObjectID `json:"groups,omitempty"`
-	Negated bool               `json:"negated,omitempty"`
+// IPRange is an inclusive address range in a rule (Forward's IpRange); the ends are IP address strings.
+type IPRange struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
 }
 
-// ObjectSpecification lists objects by reference (users, applications).
+// AddressSpecification is one side of a rule: subnets and ranges stated directly and/or objects by reference. Forward's
+// SecurityRuleSpecification model (FirewallPredictService, /security-rules).
+//
+// "Any" when staging is the EMPTY specification: Forward writes an empty side of a PAN-OS rule as "any" (PanosConfigNodePredictor), and
+// also accepts the PREDEFINED "any" object and the zone "any". But Forward reads a rule's "any" BACK as the zone "any" and as
+// PREDEFINED "any" objects, so compare a rule read back with a rule you staged by meaning, not field by field. Use AnyAddress.
+type AddressSpecification struct {
+	Subnets  []string           `json:"subnets,omitempty"`
+	IPRanges []IPRange          `json:"ipRanges,omitempty"`
+	Objects  []SecurityObjectID `json:"objects,omitempty"`
+	Groups   []SecurityObjectID `json:"groups,omitempty"`
+	// DynamicAddressObjects and Regions are objects by reference like Objects.
+	DynamicAddressObjects []SecurityObjectID `json:"dynamicAddressObjects,omitempty"`
+	Regions               []SecurityObjectID `json:"regions,omitempty"`
+	Negated               bool               `json:"negated,omitempty"`
+}
+
+// ObjectSpecification lists objects by reference. It serves both users and applications, but Forward's two models differ and it very
+// likely refuses (400) a field the other lacks: a USER specification takes Objects and IdentityReferences only; an APPLICATION
+// specification takes Objects, Groups and DynamicGroups only. An empty specification stages as any (AnyUser, AnyApplication).
 type ObjectSpecification struct {
 	Objects []SecurityObjectID `json:"objects,omitempty"`
 	Groups  []SecurityObjectID `json:"groups,omitempty"`
+	// Groups and DynamicGroups are the application specification's only.
+	DynamicGroups []SecurityObjectID `json:"dynamicGroups,omitempty"`
+	// IdentityReferences is the user specification's identity references.
+	IdentityReferences []string `json:"identityReferences,omitempty"`
 }
+
+// AnyAddress, AnyUser, AnyApplication and AnyService match everything when staged: every field empty (leave SourceZones and
+// DestinationZones nil too), which Forward writes to the device as "any". See AddressSpecification for how "any" reads back.
+func AnyAddress() AddressSpecification { return AddressSpecification{} }
+
+// AnyUser matches every user; see AnyAddress.
+func AnyUser() ObjectSpecification { return ObjectSpecification{} }
+
+// AnyApplication matches every application; see AnyAddress.
+func AnyApplication() ObjectSpecification { return ObjectSpecification{} }
+
+// AnyService matches every service; see AnyAddress.
+func AnyService() ServiceSpecification { return ServiceSpecification{} }
 
 // ServiceSpecification is the rule's services: the applications' defaults, or objects by reference.
 type ServiceSpecification struct {
@@ -46,7 +82,22 @@ type ServiceSpecification struct {
 	Groups                 []SecurityObjectID `json:"groups,omitempty"`
 }
 
-// SecurityRuleDefinition is a rule as Forward models it. Action is PERMIT or DENY.
+// Rule actions Forward models (DeviceSecurityRuleAction). DENY blocks and sends the protocol's default rejection, DROP blocks silently,
+// the RESET_ actions block and send a TCP reset to the client, the server or both.
+const (
+	SecurityActionPermit               = "PERMIT"
+	SecurityActionDeny                 = "DENY"
+	SecurityActionDrop                 = "DROP"
+	SecurityActionResetClient          = "RESET_CLIENT"
+	SecurityActionResetClientAndServer = "RESET_CLIENT_AND_SERVER"
+	SecurityActionResetServer          = "RESET_SERVER"
+)
+
+// SecurityRuleDefinition is a rule as Forward models it. Action is one of the SecurityAction* names. Forward does not model logging, tags or any
+// other rule line outside this struct: an EDITED rule keeps those lines from the baseline (matched by the rule's UUID, which Forward keeps
+// across an edit) and a NEW rule gets none; a rule without a UUID is ignored when the config is predicted. Forward only lets a PAN-OS
+// change set edit the LOCAL scope's PRIMARY rulebase (FirewallScopeLocal, FirewallRulebasePrimary; SecurityRulebase.Editable): add,
+// remove, edit and discard on any other rulebase answer 400.
 type SecurityRuleDefinition struct {
 	Name                 string               `json:"name"`
 	ID                   string               `json:"id,omitempty"`
@@ -60,6 +111,11 @@ type SecurityRuleDefinition struct {
 	SourceUsers          ObjectSpecification  `json:"sourceUsers"`
 	Applications         ObjectSpecification  `json:"applications"`
 	Services             ServiceSpecification `json:"services"`
+	// Schedule names a schedule object the rule is active on; nil is always active. Enabled false means never active, and then Forward
+	// ignores the schedule and reads it back as nil, so re-enabling a disabled scheduled rule loses its schedule unless you set it again.
+	Schedule *SecurityObjectID `json:"schedule,omitempty"`
+	// URLObjects are URL-category objects by reference.
+	URLObjects []SecurityObjectID `json:"urlObjects,omitempty"`
 }
 
 // NewSecurityRule stages a rule. Predecessor is the id of the rule it goes after; empty puts it at the top.
@@ -121,7 +177,10 @@ func (s *PredictService) AddSecurityRule(
 	return s.firewallDo(req, nil)
 }
 
-// RemoveSecurityRule stages the removal of the rule with the given id.
+// RemoveSecurityRule stages the removal of the rule with the given id in the change set's draft (DELETE .../security-rules/{ruleId}). The
+// baseline snapshot is untouched. For a rule from the baseline, DiscardSecurityRuleChange brings it back (as the baseline had it, so an
+// earlier edit is lost). For a rule added in this change set, removing it just drops the addition and there is nothing to restore.
+// Removing the same rule twice does nothing the second time.
 func (s *PredictService) RemoveSecurityRule(
 	ctx context.Context, networkID, changeSetID, deviceName, scopeID, rulebaseID, ruleID string,
 ) (*Response, error) {
@@ -137,7 +196,7 @@ func (s *PredictService) RemoveSecurityRule(
 	if err != nil {
 		return nil, err
 	}
-	return s.firewallDo(req, nil)
+	return s.firewallDo(markOperation(req, "Predict.RemoveSecurityRule"), nil)
 }
 
 // SecurityRulesDiff reads the device's rulebases with every rule marked by how the change set alters it.

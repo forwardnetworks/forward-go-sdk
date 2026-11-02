@@ -14,7 +14,11 @@ import (
 
 // Predict reads that were missing (ChangeSetController, FirewallPredictController). All are Preview: not in the published OpenAPI.
 
-// PredictProtocol names a protocol Predict can model, for AllowedCommands (Forward's ProtocolConfigType).
+// PredictProtocol names a protocol for AllowedCommands (Forward's ProtocolConfigType). Predict MODELS only BGP, OSPF, IS_IS, OMP and CONFIG
+// (static routes, interface shutdown), each only when its organization property is on (PREDICT_MODEL_BGP, _OSPF, _ISIS, _OMP, _CONFIG;
+// ProtocolConfigUtils). EIGRP, RIP and STP are named by Forward's type but Predict never models them: commands for them change the
+// predicted config text and nothing else. With PREDICT_MODEL_CONFIG off the config text still changes but the RIB and forwarding state
+// do not.
 type PredictProtocol string
 
 const (
@@ -27,6 +31,27 @@ const (
 	PredictProtocolOMP    PredictProtocol = "OMP"
 	PredictProtocolSTP    PredictProtocol = "STP"
 )
+
+// predictCommandOSes are the vendor OSes Predict models CLI commands for (Forward's ConfigGenVendorOs).
+var predictCommandOSes = []string{
+	"cisco_ios", "cisco_ios_xe", "cisco_nxos", "cisco_ios_xr", "cisco_asa", "arista_eos", "juniper_junos", "juniper_srx",
+}
+
+// PredictCommandOSes returns the vendor OS names Predict models CLI commands for (Forward's ConfigGenVendorOs, named as PredictOSes
+// names them). A change set for any other CLI OS fails when it runs ("Device ... OS ... not supported"), so check before staging.
+// PAN-OS is not here: its changes are security rules (AddSecurityRule, EditSecurityRule and friends) or a whole config upload.
+func PredictCommandOSes() []string { return append([]string(nil), predictCommandOSes...) }
+
+// SupportsPredictCommands reports whether Predict models CLI commands for the vendor OS name (case-insensitive).
+func SupportsPredictCommands(vendorOS string) bool {
+	vendorOS = strings.ToLower(strings.TrimSpace(vendorOS))
+	for _, name := range predictCommandOSes {
+		if name == vendorOS {
+			return true
+		}
+	}
+	return false
+}
 
 // PredictOSes lists the vendor operating systems Predict can model (GET /api/predict-oses). It needs only the organization property
 // PREDICT_MODELING, no network permission, and it is not scoped to a network.
@@ -47,6 +72,10 @@ func (s *PredictService) PredictOSes(ctx context.Context) ([]string, *Response, 
 // AllowedCommands returns, as text, the commands Predict accepts for one protocol on one vendor OS (GET /api/predict-oses/{vendorOs}/
 // allowed-commands?protocol=): Forward's rendering of its mode trie. An OS Predict does not model answers an empty string, not an
 // error. vendorOS is a name from PredictOSes, lowercase as Forward sends it; a name Forward does not know is a 400.
+//
+// The empty answer is normal for PAN-OS and Junos: neither has a command tree (PAN-OS changes are security rules; Junos is checked in
+// code, not by a grammar). Forward answered 500 for EOS, IOS and NX-OS on the 1.0.0-261031 build, cause unknown; any 500 is returned as
+// ErrAllowedCommandsUnavailable, which also wraps the underlying error.
 func (s *PredictService) AllowedCommands(ctx context.Context, vendorOS string, protocol PredictProtocol) (string, *Response, error) {
 	if vendorOS = strings.TrimSpace(vendorOS); vendorOS == "" {
 		return "", nil, errors.New("forward: vendor OS is required")
@@ -57,7 +86,11 @@ func (s *PredictService) AllowedCommands(ctx context.Context, vendorOS string, p
 		return "", nil, fmt.Errorf("forward: unknown Predict protocol %q", protocol)
 	}
 	path := "/api/predict-oses/" + url.PathEscape(vendorOS) + "/allowed-commands?" + url.Values{"protocol": []string{string(protocol)}}.Encode()
-	return s.textGet(ctx, path, "Predict.AllowedCommands")
+	text, resp, err := s.textGet(ctx, path, "Predict.AllowedCommands")
+	if err != nil && IsStatus(err, http.StatusInternalServerError) {
+		err = fmt.Errorf("%w: %w", ErrAllowedCommandsUnavailable, err)
+	}
+	return text, resp, err
 }
 
 // PrettifyCommands returns the commands reformatted the way Forward would store them for the device (POST .../change-sets/{id}/devices/
@@ -194,6 +227,9 @@ func (s *PredictService) bgpDiffs(ctx context.Context, path, operation string) (
 // ErrNoAffectedDevices is returned by AffectedDevices for a snapshot that is not a predicted one: Forward answers a payload
 // {"error": "No affected devices since this is a base snapshot"} instead of a list.
 var ErrNoAffectedDevices = errors.New("forward: the snapshot has no affected devices (it is not a predicted snapshot)")
+
+// ErrAllowedCommandsUnavailable is AllowedCommands's answer when Forward fails (500) to answer for the OS; the cause is unknown.
+var ErrAllowedCommandsUnavailable = errors.New("forward: Forward failed (500) to answer allowed-commands for this OS")
 
 // ProtocolModelingDone reports whether protocol modeling has finished for a snapshot (GET /api/internal/snapshots/{snapshotId}/
 // protocol-modeling?view=status; MANAGE_PROTOCOL_MODELING and PREDICT_MODELING, so a read-only user is refused). Forward sends

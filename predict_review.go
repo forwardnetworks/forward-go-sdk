@@ -163,6 +163,10 @@ type CommandValidation struct {
 	TextMarks     []json.RawMessage `json:"textMarks,omitempty"`
 }
 
+// ValidateCommands is ADVISORY: it reports problems and nothing rejects a bad command at staging (StageCommands accepts text Forward
+// would flag here), so an empty CommandErrors proves nothing, and a vendor without a command grammar has little to check. Only a
+// Predict run shows whether the change was modelled.
+//
 // ValidateCommands checks CLI text for a device in a change set without
 // staging it (POST .../change-sets/{cs}/devices/{d}/commands?action=validate).
 // Forward rejects empty commands and a cursor outside the text.

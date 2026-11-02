@@ -91,7 +91,7 @@ func TestPredictLifecycleWire(t *testing.T) {
 	if err != nil || preview != "hostname r1\n" {
 		t.Fatalf("preview: %v %q", err, preview)
 	}
-	rule := SecurityRuleDefinition{Name: "allow-web", Action: "allow"}
+	rule := SecurityRuleDefinition{Name: "allow-web", Action: SecurityActionPermit}
 	if _, err := p.EditSecurityRule(ctx, "5", "cs1", "fw1", FirewallScopeLocal, FirewallRulebasePrimary, "u1", rule); err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestPredictLifecycleWire(t *testing.T) {
 		{"GET /api/networks/5/change-sets/cs1/draft/devices/r1/config", "", ""},
 		{"GET /api/networks/5/change-sets/cs1/commits/c1/devices/r1/config", "", ""},
 		{"POST /api/networks/5/change-sets/cs1/devices/r1/config?action=preview", "interface Gi1\n description x", "text/plain;charset=UTF-8"},
-		{"PATCH " + rb, `{"definition":{"name":"allow-web","description":"","enabled":false,"action":"allow","sourceAddresses":{},"destinationAddresses":{},"sourceUsers":{},"applications":{},"services":{}}}`, "application/json"},
+		{"PATCH " + rb, `{"definition":{"name":"allow-web","id":"u1","description":"","enabled":false,"action":"PERMIT","sourceAddresses":{},"destinationAddresses":{},"sourceUsers":{},"applications":{},"services":{}}}`, "application/json"},
 		{"PATCH " + rb, `{"predecessor":"u0"}`, "application/json"},
 		{"PATCH " + rb, `{"predecessor":null}`, "application/json"},
 		{"POST " + rb + "?action=discardChanges", "", ""},

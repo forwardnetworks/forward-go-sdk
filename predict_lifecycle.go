@@ -266,7 +266,8 @@ func (s *PredictService) DeleteCommit(ctx context.Context, networkID, changeSetI
 	return s.doJSON(ctx, http.MethodDelete, path, nil, nil, "Predict.DeleteCommit")
 }
 
-// SaveDeviceConfig replaces a device's whole running configuration in the change set's draft (PUT
+// SaveDeviceConfig is the one route that takes ANY vendor, PAN-OS included, because Forward stores the text unchecked: it is not validated
+// input, and nothing says Predict can model what it holds. Replaces a device's whole running configuration in the change set's draft (PUT
 // .../draft/devices/{device}/config, text/plain): the "config file" option. Forward stores the text as given, checks nothing about
 // it, and refuses more than 2 MB (this SDK refuses it first); it replaces any staged commands for that device (a device has either
 // commands or a config file). Send the complete configuration. Commit the draft, then Run. Whether Predict can model the result
@@ -363,6 +364,10 @@ func (s *PredictService) PreviewCommandsConfig(ctx context.Context, networkID, c
 func (s *PredictService) EditSecurityRule(ctx context.Context, networkID, changeSetID, deviceName, scopeID, rulebaseID, ruleID string, definition SecurityRuleDefinition) (*Response, error) {
 	if strings.TrimSpace(definition.Name) == "" {
 		return nil, errors.New("forward: security rule name is required")
+	}
+	// Forward answers 400 unless the definition's id is the rule's id, so fill it when the caller left it out.
+	if strings.TrimSpace(definition.ID) == "" {
+		definition.ID = strings.TrimSpace(ruleID)
 	}
 	return s.patchSecurityRule(ctx, networkID, changeSetID, deviceName, scopeID, rulebaseID, ruleID, map[string]any{"definition": definition}, "Predict.EditSecurityRule")
 }
