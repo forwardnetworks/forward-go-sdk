@@ -84,6 +84,14 @@ type ServiceSpecification struct {
 
 // Rule actions Forward models (DeviceSecurityRuleAction). DENY blocks and sends the protocol's default rejection, DROP blocks silently,
 // the RESET_ actions block and send a TCP reset to the client, the server or both.
+//
+// What a PAN-OS prediction does with them, as Skyforge measured on a live primary (1.0.0-261031), not from source: PERMIT and DENY work.
+// DROP stages and is predicted as DENY. ANY RESET_ action stages, but BREAKS THE PREDICTION: even one RESET_CLIENT rule empties the
+// predicted rulebase, so every flow is permitted (flows the base denied too), and the predicted config text writes resetClient,
+// resetServer or resetBoth, which is not PAN-OS syntax. Forward's source explains the last two: PAN-OS rules are modelled as plain DENY
+// for every non-allow action (PanOsAclTablePv3), and the predictor writes the action's camelCase name (PanosConfigNodePredictor), which
+// the PAN-OS parser then cannot read back. The emptied rulebase is only observed. The SDK still sends these actions; do not rely on a
+// prediction that contains one.
 const (
 	SecurityActionPermit               = "PERMIT"
 	SecurityActionDeny                 = "DENY"

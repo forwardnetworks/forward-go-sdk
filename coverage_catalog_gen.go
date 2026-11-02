@@ -1694,6 +1694,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Snapshots.Favorite": {
 		{Method: "PATCH", Route: "/api/snapshots/{snapshotId}"},
 	},
+	"Snapshots.FileExcerpts": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/files/{fileName}"},
+	},
 	"Snapshots.ForCollectionTask": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
 	},

@@ -213,7 +213,8 @@ func (s *PredictService) ListChangeSets(ctx context.Context, networkID string) (
 	return result.Items, resp, nil
 }
 
-// DeleteChangeSet deletes a Predict change set (DELETE .../change-sets/{id}). It cannot be undone.
+// DeleteChangeSet deletes a Predict change set (DELETE .../change-sets/{id}). It cannot be undone, and it also deletes the change set's
+// predicted snapshots (ChangeSetDeletionListener; they answer 404 afterwards), so read what you need from them first.
 func (s *PredictService) DeleteChangeSet(
 	ctx context.Context,
 	networkID string,
@@ -398,7 +399,9 @@ func (s *PredictService) commit(
 // Run starts predictive analysis and returns the predicted snapshot's metadata (not its state: use ListPredictedSnapshots). Processing
 // continues asynchronously. Forward commits an uncommitted draft first with the note "Draft changes auto-saved", answers 404 when the
 // change set has neither a draft nor a commit, and returns the EXISTING predicted snapshot when one already matches the commit and
-// analysis mode instead of starting another. A config-only change set whose changes are only BGP advertisements is a 400.
+// analysis mode instead of starting another. A config-only change set whose changes are only BGP advertisements is a 400. A prediction
+// over a STALE base snapshot (one processed before a Forward upgrade's reprocess) can fail with no reason through any route (seen live as a
+// 400 or 500 from run or commit, and a predicted snapshot that never processes): reprocess the base first.
 func (s *PredictService) Run(
 	ctx context.Context,
 	networkID string,

@@ -102,7 +102,7 @@ func (s *PredictService) MoveChangeSetsToDirectory(ctx context.Context, networkI
 
 // DeleteChangeSetDirectory deletes the directory at dirPath (DELETE .../change-set-directories/{dirPath}). By default the change sets
 // in it are kept; Forward moves them up (the shallow delete). With alsoDeleteChangeSets it deletes them too, in the directory and in
-// every directory below it (?retainChangeSets=false), which cannot be undone.
+// every directory below it (?retainChangeSets=false), which cannot be undone and also deletes those change sets' predicted snapshots.
 func (s *PredictService) DeleteChangeSetDirectory(ctx context.Context, networkID, dirPath string, alsoDeleteChangeSets bool) (*Response, error) {
 	dirPath = strings.TrimSpace(dirPath)
 	if dirPath == "/" || !validDirPath(dirPath) {
@@ -153,7 +153,7 @@ const (
 )
 
 // DeleteChangeSets deletes several change sets of the network (POST .../change-sets?action=delete, body {changeSetIds}). Use
-// DeleteChangeSet for one. It cannot be undone.
+// DeleteChangeSet for one. It cannot be undone, and like DeleteChangeSet it also deletes their predicted snapshots.
 func (s *PredictService) DeleteChangeSets(ctx context.Context, networkID string, changeSetIDs []string) (*Response, error) {
 	ids, err := cleanIDs(changeSetIDs)
 	if err != nil {

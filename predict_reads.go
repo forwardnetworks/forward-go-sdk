@@ -288,7 +288,10 @@ func (s *PredictService) ProtocolModelingDone(ctx context.Context, snapshotID st
 
 // AffectedDevices lists the devices a change set affected in a PREDICTED snapshot, from its protocol modeling (GET .../protocol-modeling?
 // view=affected-devices; VIEW_NETWORK_AND_SNAPSHOTS and PREDICT_MODELING; protocol modeling must have run). A base snapshot gives
-// ErrNoAffectedDevices. Forward compresses the list; it arrives already decompressed. Preview: an internal route.
+// ErrNoAffectedDevices. Forward compresses the list; it arrives already decompressed. On a PAN-OS prediction it answered EVERY device of
+// the network (49 of 49 seen live), not the ones the change set changed: the list is the devices that got a protocol-modeling output saved,
+// and Forward's config generator emits interface and static routes for every device, so any device with an L3 address appears (not
+// specific to PAN-OS). Preview: an internal route.
 func (s *PredictService) AffectedDevices(ctx context.Context, snapshotID string) ([]string, *Response, error) {
 	path, err := protocolModelingPath(snapshotID)
 	if err != nil {
