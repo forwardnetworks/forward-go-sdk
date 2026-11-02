@@ -14,7 +14,7 @@ import (
 // other snapshot. The newest PROCESSED row on a network that uses Predict is
 // therefore often a prediction -- a state the network was never in -- so
 // LatestProcessed must skip them, and must read the whole PROCESSED listing
-// rather than a limit a run of predictions could exhaust.
+// rather than a limit a run of predictions could exhaust. A processed draft is skipped too (Forward skips drafts and forks).
 func TestSnapshotsLatestProcessedSkipsPredictions(t *testing.T) {
 	t.Parallel()
 
@@ -26,6 +26,7 @@ func TestSnapshotsLatestProcessedSkipsPredictions(t *testing.T) {
 			t.Errorf("a limit can hide the collected snapshot behind predictions: %s", r.URL.RawQuery)
 		}
 		_, _ = io.WriteString(w, `{"snapshots":[
+		  {"id":"snap-10","state":"PROCESSED","isDraft":true},
 		  {"id":"snap-9","state":"PROCESSED","processingTrigger":"PREDICT","parentSnapshotId":"snap-6"},
 		  {"id":"snap-8","state":"PROCESSED","parentSnapshotId":"snap-6"},
 		  {"id":"snap-6","state":"PROCESSED","processingTrigger":"COLLECTION"}]}`)

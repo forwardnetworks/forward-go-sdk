@@ -204,7 +204,8 @@ func (s *SnapshotsService) findInListing(ctx context.Context, networkID, snapsho
 }
 
 // LatestProcessed returns the newest processed snapshot that records a state
-// the network was actually in: Predict results are skipped.
+// the network was actually in: Predict results, forks (a parent snapshot) and drafts are skipped, as Forward's own
+// SnapshotService.getLatestProcessedSnapshot does. "Newest" is the listing's order (newest first); the rows are not re-sorted.
 //
 // Forward's snapshot listing includes predicted snapshots (Predict forks a
 // snapshot and processes it like any other), so the newest PROCESSED row on a
@@ -225,7 +226,7 @@ func (s *SnapshotsService) LatestProcessed(ctx context.Context, networkID string
 	// The state is re-checked here as well: a build that ignores the filter
 	// must not turn an in-progress snapshot into "latest processed".
 	for i := range snapshots {
-		if strings.EqualFold(snapshots[i].State, "PROCESSED") && !snapshots[i].Predicted() {
+		if strings.EqualFold(snapshots[i].State, "PROCESSED") && !snapshots[i].Predicted() && !snapshots[i].IsDraft {
 			return &snapshots[i], resp, nil
 		}
 	}

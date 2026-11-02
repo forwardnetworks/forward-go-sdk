@@ -74,8 +74,18 @@ func (s *PredictService) PredictOSes(ctx context.Context) ([]string, *Response, 
 // error. vendorOS is a name from PredictOSes, lowercase as Forward sends it; a name Forward does not know is a 400.
 //
 // The empty answer is normal for PAN-OS and Junos: neither has a command tree (PAN-OS changes are security rules; Junos is checked in
-// code, not by a grammar). Forward answered 500 for EOS, IOS and NX-OS on the 1.0.0-261031 build, cause unknown; any 500 is returned as
-// ErrAllowedCommandsUnavailable, which also wraps the underlying error.
+// code, not by a grammar).
+//
+// Forward's own code fails (500) for every protocol on the Cisco-like OSes (cisco_ios, cisco_ios_xe, cisco_ios_xr, cisco_nxos, cisco_asa
+// and arista_eos): only juniper_srx answers. Reproduced against Forward's source at fe0daf63c899: ModeTriePrettyPrinter.render walks each
+// OS's command tree without a cycle guard, and those trees loop where a command takes an unbounded list (EOS "ip community-list standard
+// <name> deny <asn>:<value> ...", IOS "access-list <n> <n> deny ... any any ...", NX-OS "ip as-path access-list <name> deny (<string>)*
+// ..."), so the walk never ends and the request dies with a StackOverflowError. Nothing the caller sends changes it, whatever the protocol.
+// Bounds: reproduced by running that code on the real trees (EOS, IOS, IOS-XE, IOS-XR, NX-OS, ASA, SRX; BGP, OSPF and CONFIG on each,
+// every protocol on EOS). ModeTriePrettyPrinter and all the tree files are byte-identical at primary 5f7e4ec1841, stable b1feb6fe1c34
+// and fe0daf63c899, so every build this SDK targets has it. Not run: the Forward service itself, and the other protocols on the other
+// OSes. Only Forward can fix it (a visited set or depth cap in render).
+// Any 500 is returned as ErrAllowedCommandsUnavailable, which also wraps the underlying error. juniper_srx's BGP answer is about 19 MB.
 func (s *PredictService) AllowedCommands(ctx context.Context, vendorOS string, protocol PredictProtocol) (string, *Response, error) {
 	if vendorOS = strings.TrimSpace(vendorOS); vendorOS == "" {
 		return "", nil, errors.New("forward: vendor OS is required")
@@ -228,7 +238,8 @@ func (s *PredictService) bgpDiffs(ctx context.Context, path, operation string) (
 // {"error": "No affected devices since this is a base snapshot"} instead of a list.
 var ErrNoAffectedDevices = errors.New("forward: the snapshot has no affected devices (it is not a predicted snapshot)")
 
-// ErrAllowedCommandsUnavailable is AllowedCommands's answer when Forward fails (500) to answer for the OS; the cause is unknown.
+// ErrAllowedCommandsUnavailable is AllowedCommands's answer when Forward fails (500) to answer for the OS. For the Cisco-like OSes and
+// Arista EOS that is Forward's own bug in rendering their command trees (see AllowedCommands), not a request fault.
 var ErrAllowedCommandsUnavailable = errors.New("forward: Forward failed (500) to answer allowed-commands for this OS")
 
 // ProtocolModelingDone reports whether protocol modeling has finished for a snapshot (GET /api/internal/snapshots/{snapshotId}/
