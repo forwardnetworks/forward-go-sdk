@@ -39,8 +39,10 @@ type Snapshot struct {
 	Note             string     `json:"note,omitempty"`
 	IsDraft          bool       `json:"isDraft,omitempty"`
 	IsPredicted      bool       `json:"isPredicted,omitempty"`
-	TotalDevices     int        `json:"totalDevices,omitempty"`
-	Message          string     `json:"message,omitempty"`
+	// PredictInfo is on a predicted snapshot only (base snapshot, change set, commit, analysis mode); see SnapshotPredictInfo.
+	PredictInfo  *SnapshotPredictInfo `json:"predictInfo,omitempty"`
+	TotalDevices int                  `json:"totalDevices,omitempty"`
+	Message      string               `json:"message,omitempty"`
 }
 
 // SnapshotStateTransition is returned by snapshot invalidation/reprocessing.

@@ -19,6 +19,12 @@ import (
 // ProtocolConfigUtils). EIGRP, RIP and STP are named by Forward's type but Predict never models them: commands for them change the
 // predicted config text and nothing else. With PREDICT_MODEL_CONFIG off the config text still changes but the RIB and forwarding state
 // do not.
+//
+// PREDICT_MODEL_ISIS and PREDICT_MODEL_OMP default to OFF. Their data is parsed into each snapshot when it is processed, so after turning
+// one on, a snapshot taken before needs reprocessing (unverified) before Predict can model that protocol. IS-IS comes from the Cisco-like
+// vendor family; OMP is Cisco IOS-XE SD-WAN only (not Viptela vEdge), and needs a system IP and a site id on the device. Redistribution
+// between protocols (including into and out of OMP and IS-IS) also needs PREDICT_MODEL_CROSS_PROTOCOL, which defaults on. Trace OMP and
+// IS-IS routes with RoutingService.RPPrefixSearch and friends; Forward has no OMP or IS-IS node-read route.
 type PredictProtocol string
 
 const (
@@ -53,7 +59,8 @@ func SupportsPredictCommands(vendorOS string) bool {
 	return false
 }
 
-// PredictOSes lists the vendor operating systems Predict can model (GET /api/predict-oses). It needs only the organization property
+// PredictOSes lists the vendor operating systems Predict has a command grammar or editor for (GET /api/predict-oses): the eight in
+// PredictCommandOSes plus "pan_os" (edited as security rules) on current Forward, which is why it has more names than that list. It needs only the organization property
 // PREDICT_MODELING, no network permission, and it is not scoped to a network.
 func (s *PredictService) PredictOSes(ctx context.Context) ([]string, *Response, error) {
 	out := listResponse[string]{Keys: []string{"oses"}}
@@ -129,8 +136,9 @@ func (s *PredictService) PrettifyCommands(ctx context.Context, networkID, change
 	return out.Prettified, resp, err
 }
 
-// ExportChangeSetZip writes the change set's head commit as a zip to w (GET .../change-sets/{id}?format=zip). Forward also needs the
-// organization property PREDICT_DIFF_INSIGHT_ENHANCEMENTS, audits the export, and answers 404 when the change set has no commit.
+// ExportChangeSetZip writes the change set's head commit as a zip to w (GET .../change-sets/{id}?format=zip). The pinned builds also
+// need the organization property PREDICT_DIFF_INSIGHT_ENHANCEMENTS (Forward master retired it; there PREDICT_MODELING and
+// MANAGE_CHANGE_SETS suffice). Forward audits the export and answers 404 when the change set has no commit.
 // Forward sends the 200 headers before it writes the zip, so a failure mid-stream leaves partial bytes in w along with the error; the
 // client's timeout covers the whole export.
 func (s *PredictService) ExportChangeSetZip(ctx context.Context, networkID, changeSetID string, w io.Writer) (*Response, error) {
@@ -241,6 +249,26 @@ var ErrNoAffectedDevices = errors.New("forward: the snapshot has no affected dev
 // ErrAllowedCommandsUnavailable is AllowedCommands's answer when Forward fails (500) to answer for the OS. For the Cisco-like OSes and
 // Arista EOS that is Forward's own bug in rendering their command trees (see AllowedCommands), not a request fault.
 var ErrAllowedCommandsUnavailable = errors.New("forward: Forward failed (500) to answer allowed-commands for this OS")
+
+// TriggerProtocolModeling starts protocol modeling for a snapshot and returns at once (POST /api/internal/snapshots/{snapshotId}/
+// protocol-modeling?action=trigger; 202; MANAGE_PROTOCOL_MODELING and PREDICT_MODELING). Poll ProtocolModelingDone. Preview: an internal
+// route. RetriggerProtocolModeling runs it again for a snapshot that already has a result.
+func (s *PredictService) TriggerProtocolModeling(ctx context.Context, snapshotID string) (*Response, error) {
+	return s.protocolModelingAction(ctx, snapshotID, "trigger", "Predict.TriggerProtocolModeling")
+}
+
+// RetriggerProtocolModeling is TriggerProtocolModeling for a snapshot that already has a modeling result (?action=retrigger; 202).
+func (s *PredictService) RetriggerProtocolModeling(ctx context.Context, snapshotID string) (*Response, error) {
+	return s.protocolModelingAction(ctx, snapshotID, "retrigger", "Predict.RetriggerProtocolModeling")
+}
+
+func (s *PredictService) protocolModelingAction(ctx context.Context, snapshotID, action, operation string) (*Response, error) {
+	path, err := protocolModelingPath(snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	return s.doJSON(ctx, http.MethodPost, path+"?action="+action, nil, nil, operation)
+}
 
 // ProtocolModelingDone reports whether protocol modeling has finished for a snapshot (GET /api/internal/snapshots/{snapshotId}/
 // protocol-modeling?view=status; MANAGE_PROTOCOL_MODELING and PREDICT_MODELING, so a read-only user is refused). Forward sends

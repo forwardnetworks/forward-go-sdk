@@ -1,6 +1,7 @@
 package forward
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -34,7 +35,18 @@ type ChangeSetCreateRequest struct {
 	Directory string `json:"-"`
 }
 
-// ChangeSet is the common metadata returned for a Predict change set.
+// Analysis modes of a change set (Forward's PredictAnalysisMode). CONFIG_ONLY compares configuration only and is only chosen when the
+// organization property PREDICT_CONFIG_ONLY is on; the mode is fixed by the first commit and a later commit that names another is a 409.
+const (
+	AnalysisModeBehavioral = "BEHAVIORAL"
+	AnalysisModeConfigOnly = "CONFIG_ONLY"
+)
+
+// ChangeSet is the common metadata returned for a Predict change set. The attribution fields and AnalysisMode are Forward's current
+// shape; builds before PREDICT_CONFIG_ONLY leave AnalysisMode empty (it is also empty until a first commit fixes it).
+//
+// ListChangeSets rows (Forward's ChangeSetInfo) add ModifiedDeviceCount and PredictedSnapshots, newest first, and never carry
+// DeviceToChanges; Create, Update and Duplicate answers are built from metadata alone and do not either.
 type ChangeSet struct {
 	ID              Identifier                 `json:"id"`
 	Name            string                     `json:"name"`
@@ -43,18 +55,72 @@ type ChangeSet struct {
 	SnapshotID      Identifier                 `json:"snapshotId"`
 	Tags            []string                   `json:"tags,omitempty"`
 	DeviceToChanges map[string]json.RawMessage `json:"deviceToChanges,omitempty"`
+	AnalysisMode    string                     `json:"analysisMode,omitempty"`
+	CreatedByID     Identifier                 `json:"createdById,omitempty"`
+	CreatedAt       string                     `json:"createdAt,omitempty"`
+	CreatedBy       string                     `json:"createdBy,omitempty"`
+	UpdatedByID     Identifier                 `json:"updatedById,omitempty"`
+	UpdatedAt       string                     `json:"updatedAt,omitempty"`
+	UpdatedBy       string                     `json:"updatedBy,omitempty"`
+	// ModifiedDeviceCount and PredictedSnapshots are only on ListChangeSets rows.
+	ModifiedDeviceCount *int                   `json:"modifiedDeviceCount,omitempty"`
+	PredictedSnapshots  []PredictedSnapshotRef `json:"predictedSnapshots,omitempty"`
+}
+
+// PredictedSnapshotRef names a snapshot (Forward's SnapshotIdentificationLight): a ListChangeSets row's predicted snapshots, newest first,
+// and a predicted snapshot's base snapshot. A bare id string decodes too.
+type PredictedSnapshotRef struct {
+	ID              Identifier `json:"id"`
+	CreationInstant string     `json:"creationInstant,omitempty"`
+	NetworkID       Identifier `json:"networkId,omitempty"`
+}
+
+// UnmarshalJSON accepts the object Forward sends or a bare snapshot id.
+func (r *PredictedSnapshotRef) UnmarshalJSON(data []byte) error {
+	if trimmed := bytes.TrimSpace(data); len(trimmed) > 0 && trimmed[0] != '{' {
+		var id Identifier
+		if err := id.UnmarshalJSON(trimmed); err != nil {
+			return err
+		}
+		*r = PredictedSnapshotRef{ID: id}
+		return nil
+	}
+	type plain PredictedSnapshotRef
+	var p plain
+	if err := json.Unmarshal(data, &p); err != nil {
+		return err
+	}
+	*r = PredictedSnapshotRef(p)
+	return nil
+}
+
+// SnapshotPredictInfo is what Forward records on a predicted snapshot (SnapshotPredictInfo, JSON "predictInfo"): the base snapshot, the
+// change set and commit it predicts, how many devices the change set modified and the analysis mode it ran in.
+type SnapshotPredictInfo struct {
+	BaseSnapshot        *PredictedSnapshotRef `json:"baseSnapshot,omitempty"`
+	ChangeSetID         Identifier            `json:"changeSetId,omitempty"`
+	CommitID            Identifier            `json:"commitId,omitempty"`
+	Name                string                `json:"name,omitempty"`
+	ModifiedDeviceCount int                   `json:"modifiedDeviceCount,omitempty"`
+	CommittedAt         string                `json:"committedAt,omitempty"`
+	AnalysisMode        string                `json:"analysisMode,omitempty"`
 }
 
 // PredictedSnapshot is the subset of predicted snapshot metadata required to
-// track processing. Additional server fields can be added without changing the
-// prediction workflow.
+// track processing. State and AdvancedReachabilityState are only on ListPredictedSnapshots rows (Forward's SnapshotInfo): Run answers
+// the snapshot's metadata alone, so State is empty there. Run also answers the EXISTING predicted snapshot when one already matches the
+// commit and mode, rather than a new one.
 type PredictedSnapshot struct {
-	ID                Identifier `json:"id"`
-	State             string     `json:"state"`
-	CreatedAt         string     `json:"createdAt,omitempty"`
-	ProcessedAt       string     `json:"processedAt,omitempty"`
-	ProcessingTrigger string     `json:"processingTrigger,omitempty"`
-	Note              string     `json:"note,omitempty"`
+	ID                        Identifier           `json:"id"`
+	State                     string               `json:"state"`
+	AdvancedReachabilityState string               `json:"advancedReachabilityState,omitempty"`
+	CreatedAt                 string               `json:"createdAt,omitempty"`
+	ProcessedAt               string               `json:"processedAt,omitempty"`
+	ProcessingTrigger         string               `json:"processingTrigger,omitempty"`
+	ParentSnapshotID          Identifier           `json:"parentSnapshotId,omitempty"`
+	IsDraft                   bool                 `json:"isDraft,omitempty"`
+	Note                      string               `json:"note,omitempty"`
+	PredictInfo               *SnapshotPredictInfo `json:"predictInfo,omitempty"`
 }
 
 // BGPAdvertisement is an external advertisement staged in a Predict change
@@ -247,42 +313,92 @@ func (s *PredictService) StageBGPAdvertisement(
 	return response, err
 }
 
-// Commit records the staged draft as a commit on the change set, which is
-// what Run then predicts from. A change set with no draft commits nothing.
+// DefaultCommitNote is the note Commit and CommitWithOptions send when the caller gives none: Forward requires a note
+// (POST .../commits?note=, a missing one is a 400).
+const DefaultCommitNote = "Committed by forward-go-sdk"
+
+// Commit records the staged draft as a commit on the change set, which is what Run then predicts from. With a draft the draft is
+// committed; with no draft but an earlier commit nothing new is created (the head commit stands); with neither, the unchanged base
+// change set is committed. A blank note is sent as DefaultCommitNote (Forward refuses a blank one). CommitWithOptions also returns the
+// commit's metadata.
 func (s *PredictService) Commit(
 	ctx context.Context,
 	networkID string,
 	changeSetID string,
 	note string,
 ) (*Response, error) {
-	if err := s.client.requireCapability(CapabilityPredict); err != nil {
-		return nil, err
-	}
-	networkID, err := s.client.resolveNetworkID(networkID)
-	if err != nil {
-		return nil, err
-	}
-	path, err := changeSetPath(networkID, changeSetID)
-	if err != nil {
-		return nil, err
-	}
-	path += "/commits"
-	if note = strings.TrimSpace(note); note != "" {
-		path += "?" + url.Values{"note": []string{note}}.Encode()
-	}
-	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := s.client.Do(req, nil)
-	if err == nil {
-		s.client.observeCapability(CapabilityPredict)
-	}
+	_, resp, err := s.commit(ctx, networkID, changeSetID, CommitOptions{Note: note}, "Predict.Commit")
 	return resp, err
 }
 
-// Run starts predictive analysis and returns the newly created predicted
-// snapshot metadata. Processing continues asynchronously.
+// CommitOptions tunes CommitWithOptions. AnalysisMode is AnalysisModeBehavioral or AnalysisModeConfigOnly; empty sends nothing and
+// Forward uses behavioral. Forward only honours it when the organization property PREDICT_CONFIG_ONLY is on; the first commit that names
+// one fixes it for the change set and a different one later is a 409. A config-only change set whose only changes are BGP advertisements
+// is refused (400) when it is RUN, not when it is committed. Forward writes "Chose ... Predict" ahead of the note when the named mode differs from the change set's current one and PREDICT_CONFIG_ONLY is on.
+// Builds before PREDICT_CONFIG_ONLY ignore the parameter.
+type CommitOptions struct {
+	Note         string
+	AnalysisMode string
+}
+
+// CommitWithOptions is Commit with an optional analysis mode, returning the commit's metadata (id, note, who and when).
+func (s *PredictService) CommitWithOptions(
+	ctx context.Context,
+	networkID string,
+	changeSetID string,
+	options CommitOptions,
+) (*ChangeSetCommitMetadata, *Response, error) {
+	return s.commit(ctx, networkID, changeSetID, options, "Predict.CommitWithOptions")
+}
+
+func (s *PredictService) commit(
+	ctx context.Context,
+	networkID string,
+	changeSetID string,
+	options CommitOptions,
+	operation string,
+) (*ChangeSetCommitMetadata, *Response, error) {
+	if err := s.client.requireCapability(CapabilityPredict); err != nil {
+		return nil, nil, err
+	}
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	path, err := changeSetPath(networkID, changeSetID)
+	if err != nil {
+		return nil, nil, err
+	}
+	switch options.AnalysisMode {
+	case "", AnalysisModeBehavioral, AnalysisModeConfigOnly:
+	default:
+		return nil, nil, fmt.Errorf("forward: unknown analysis mode %q", options.AnalysisMode)
+	}
+	note := strings.TrimSpace(options.Note)
+	if note == "" {
+		note = DefaultCommitNote
+	}
+	query := url.Values{"note": []string{note}}
+	if options.AnalysisMode != "" {
+		query.Set("analysisMode", options.AnalysisMode)
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path+"/commits?"+query.Encode(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := new(ChangeSetCommitMetadata)
+	resp, err := s.client.Do(markOperation(req, operation), out)
+	if err != nil {
+		return nil, resp, err
+	}
+	s.client.observeCapability(CapabilityPredict)
+	return out, resp, nil
+}
+
+// Run starts predictive analysis and returns the predicted snapshot's metadata (not its state: use ListPredictedSnapshots). Processing
+// continues asynchronously. Forward commits an uncommitted draft first with the note "Draft changes auto-saved", answers 404 when the
+// change set has neither a draft nor a commit, and returns the EXISTING predicted snapshot when one already matches the commit and
+// analysis mode instead of starting another. A config-only change set whose changes are only BGP advertisements is a 400.
 func (s *PredictService) Run(
 	ctx context.Context,
 	networkID string,

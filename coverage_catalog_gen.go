@@ -876,6 +876,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Endpoints.UpdateProfile": {
 		{Method: "PATCH", Route: "/api/endpoint-profiles/{profileId}"},
 	},
+	"Integrations.AttachToChangeSetChangeRequest": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/servicenow/change-requests/{sysId}/attachments"},
+	},
+	"Integrations.CreateChangeSetChangeRequest": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/servicenow/change-requests"},
+	},
 	"Integrations.CreateInfoblox": {
 		{Method: "POST", Route: "/api/integrations/infoblox/instances"},
 	},
@@ -897,8 +903,14 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.DeleteTenableSC": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/tenable-sources/{sourceName}"},
 	},
+	"Integrations.DownloadChangeSetChangeRequestAttachment": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/servicenow/change-requests/{sysId}/attachments/{fileSysId}"},
+	},
 	"Integrations.EnableServiceNowCMDB": {
 		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
+	},
+	"Integrations.GetChangeSetChangeRequest": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/servicenow/change-requests/{sysId}"},
 	},
 	"Integrations.GetServiceNow": {
 		{Method: "GET", Route: "/api/integrations/servicenow"},
@@ -1361,6 +1373,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.Commit": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits"},
 	},
+	"Predict.CommitWithOptions": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits"},
+	},
 	"Predict.CommittedBGPAdvertisementDiffs": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}/devices/{device}/bgp-advertisements"},
 	},
@@ -1381,6 +1396,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.DeleteCommit": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
+	},
+	"Predict.DiscardAllDeviceChanges": {
+		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}"},
 	},
 	"Predict.DiscardDraftDevice": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}"},
@@ -1474,6 +1492,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.ProtocolModelingDone": {
 		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
 	},
+	"Predict.ProtocolPathSelection": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
+	},
+	"Predict.ProtocolSeedRoutes": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
+	},
 	"Predict.RemoveSecurityRule": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
 	},
@@ -1492,8 +1516,14 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.RestoreCommitAsNew": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}"},
 	},
+	"Predict.RetriggerProtocolModeling": {
+		{Method: "POST", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
+	},
 	"Predict.Run": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
+	},
+	"Predict.RunIEntryChecks": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}/ientrychecks"},
 	},
 	"Predict.RunOperation": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshots"},
@@ -1514,6 +1544,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.StageCommands": {
 		{Method: "PUT", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/commands"},
 	},
+	"Predict.TriggerProtocolModeling": {
+		{Method: "POST", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
+	},
 	"Predict.UpdateChangeSet": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
 	},
@@ -1522,6 +1555,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.ValidateCommands": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/commands"},
+	},
+	"Predict.VerifyPredictModeling": {
+		{Method: "POST", Route: "/api/internal/snapshots/{snapshotId}/verify-predict-modeling"},
 	},
 	"Predict.WithdrawBGPAdvertisement": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
@@ -1583,6 +1619,18 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Routing.PrefixTrace": {
 		{Method: "POST", Route: "/api/networks/{networkId}/bgp-prefix-trace"},
+	},
+	"Routing.RPDevicePrefixInfo": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}"},
+	},
+	"Routing.RPPrefixDetails": {
+		{Method: "POST", Route: "/api/networks/{networkId}/rp-prefix-details"},
+	},
+	"Routing.RPPrefixSearch": {
+		{Method: "POST", Route: "/api/networks/{networkId}/rp-prefix-search"},
+	},
+	"Routing.RPPrefixTrace": {
+		{Method: "POST", Route: "/api/networks/{networkId}/rp-prefix-trace"},
 	},
 	"SAML.GetSettings": {
 		{Method: "GET", Route: "/api/auth/saml-settings"},

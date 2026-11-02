@@ -152,6 +152,9 @@ type CommandError struct {
 	ErrorType         string          `json:"errorType"`
 	ErrorMsg          string          `json:"errorMsg"`
 	ExpectedArgs      json.RawMessage `json:"expectedArgs,omitempty"`
+	// Applied is only sent with ErrorType UNSUPPORTED: true means Forward kept the line in the predicted config text even though Predict
+	// does not model it. ErrorType is INCOMPLETE, INVALID or UNSUPPORTED.
+	Applied *bool `json:"applied,omitempty"`
 }
 
 // CommandValidation is Forward's ChangeSetValidationResponse. CommandErrors is

@@ -20,7 +20,12 @@ import (
 // The routes are the bgp-prefix-* spellings (bgp-prefix-search, -trace, -details, devices/{d}?view=bgp-prefix-info and
 // bgp-installed-prefixes) because both Forward builds this SDK pins serve them. Newer Forward source marks them @Deprecated in
 // favour of rp-prefix-* (and view=rp-prefix-info), which delegate to the same handlers and cover non-BGP protocols in the same way;
-// the pinned build does not have the rp-* names, so they are not used here. Move to them when the pins move.
+// stable b1feb6fe1c34 does not have the rp-* names, and primary 5f7e4ec1841 has them with the old body shapes, so the methods here use
+// the bgp-* names. RPPrefixSearch, RPPrefixTrace, RPPrefixDetails and RPDevicePrefixInfo (routing_rp.go) are the rp-* routes in master's
+// newer shapes, which also trace OSPF, IS_IS, OMP and CONFIG nodes. Move to them when the pins move. Forward master's bgp-* routes take the
+// NEW bodies too (a protocol on every router and origin, node keys), so the methods here fail on master with a router, origin or node:
+// they are for the pinned builds only. The RP* methods on a pinned primary answer a 400 or 500 (it reads the old bodies), not
+// ErrEndpointNotServed.
 type RoutingService service
 
 // Trace outcomes of a prefix on a router.

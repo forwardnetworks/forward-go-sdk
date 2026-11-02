@@ -138,6 +138,12 @@ type ScopedSecurityRule struct {
 	RulebaseID string                 `json:"rulebaseId"`
 	Rank       int                    `json:"rank"`
 	Definition SecurityRuleDefinition `json:"definition"`
+	// Lifecycle data (Forward's LifecycleData, flattened into the rule when the device recorded it): when the rule was created, last
+	// modified and last hit, and a truncated hit count.
+	CreatedAt    string `json:"createdAt,omitempty"`
+	LastModified string `json:"lastModified,omitempty"`
+	LastUsed     string `json:"lastUsed,omitempty"`
+	HitCount     *int   `json:"hitCount,omitempty"`
 }
 
 // SecurityRuleDiffEntry is one row of the device's rulebase diff: a = collected, b = staged.

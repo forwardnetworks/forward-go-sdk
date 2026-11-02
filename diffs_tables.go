@@ -254,7 +254,8 @@ type BidirectionalVulnerabilities struct {
 }
 
 // VulnerabilitiesBidirectional returns the vulnerability change in both directions (GET .../vulnerabilities/counts?view=bidirectional,
-// VIEW_CVE_DIFFS; needs the organization property PREDICT_DIFF_INSIGHT_ENHANCEMENTS, otherwise Forward refuses it).
+// VIEW_CVE_DIFFS; the pinned builds also need the organization property PREDICT_DIFF_INSIGHT_ENHANCEMENTS, otherwise Forward refuses it;
+// Forward master retired that property and needs only the permission).
 //
 // Preview: DiffController, not in the published spec.
 func (s *DiffsService) VulnerabilitiesBidirectional(ctx context.Context, snapshotA, snapshotB string) (*BidirectionalVulnerabilities, *Response, error) {
@@ -273,7 +274,7 @@ type BidirectionalRoutingLoops struct {
 }
 
 // RoutingLoopsBidirectional says whether the second snapshot introduced a routing loop (Warnings) or resolved one (Improvements) (GET
-// .../routing-loop/count?view=bidirectional, VIEW_CHECK_DIFFS; needs PREDICT_DIFF_INSIGHT_ENHANCEMENTS). Each Count is 0 or 1, not
+// .../routing-loop/count?view=bidirectional, VIEW_CHECK_DIFFS; the pinned builds also need PREDICT_DIFF_INSIGHT_ENHANCEMENTS, which master retired). Each Count is 0 or 1, not
 // a number of loops, and Complete=false with 0 means Forward could not tell, not "none yet". Diffs.Count with DiffRoutingLoop is the
 // one-directional count.
 //

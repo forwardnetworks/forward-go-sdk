@@ -169,7 +169,7 @@ func (s *PredictService) checkPath(networkID, changeSetID string) (string, error
 
 // AddChangeSetCheck attaches a check to a change set (POST .../change-sets/{id}/checks) and returns it with its result on the change
 // set's BASE snapshot: Forward runs a check that has not executed before it answers, so this call can take as long as the check, and
-// a check that fails to run comes back as a 2xx with Status ERROR or TIMEOUT, not as an error. Forward validates the definition (400
+// a check that fails to run comes back as a 2xx with Status ERROR or TIMEOUT, not as an error. Newer Forward also sends Status SKIPPED (a config-only change set skips checks that need behavioral modelling) and can send UNLICENSED, PROCESSING and REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING; Status is a string, so compare, do not assume a closed set. Forward validates the definition (400
 // with the reason: an intent check against the snapshot, an NQE check that its query exists in the NQE Library) and refuses a check
 // type the licence does not include (403). Forward does not deduplicate: if this call times out and is retried, there may be two
 // checks, so list them before adding again. MANAGE_CHANGE_SETS; the organization property PREDICT_MODELING must be on. Results on the snapshots predicted from

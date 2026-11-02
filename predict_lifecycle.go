@@ -26,6 +26,7 @@ type ChangeSetCommit struct {
 	Note            string                     `json:"note,omitempty"`
 	CommittedByID   Identifier                 `json:"committedById,omitempty"`
 	CommittedAt     string                     `json:"committedAt,omitempty"`
+	CommittedBy     string                     `json:"committedBy,omitempty"`
 	HiddenDevices   []string                   `json:"hiddenDevices,omitempty"`
 }
 
@@ -35,6 +36,8 @@ type ChangeSetCommitMetadata struct {
 	Note          string     `json:"note,omitempty"`
 	CommittedByID Identifier `json:"committedById,omitempty"`
 	CommittedAt   string     `json:"committedAt,omitempty"`
+	// CommittedBy is the committing user's name, where Forward adds it.
+	CommittedBy string `json:"committedBy,omitempty"`
 }
 
 // ChangeSetDraft is the caller's uncommitted edits to a change set (Forward auto-saves a draft per user). Draft is nil when there
@@ -109,7 +112,8 @@ func (s *PredictService) UpdateChangeSet(ctx context.Context, networkID, changeS
 	return out, resp, err
 }
 
-// DuplicateChangeSet copies a change set within its network (POST ...change-sets/{id}?action=duplicate) and returns the copy.
+// DuplicateChangeSet copies a change set within its network (POST ...change-sets/{id}?action=duplicate) and returns the copy. The copy
+// starts with no analysis mode, whatever the source had; its first commit fixes one again.
 func (s *PredictService) DuplicateChangeSet(ctx context.Context, networkID, changeSetID string, options DuplicateChangeSetOptions) (*ChangeSet, *Response, error) {
 	return s.duplicate(ctx, networkID, changeSetID, "", options)
 }
@@ -154,6 +158,21 @@ func (s *PredictService) GetDraft(ctx context.Context, networkID, changeSetID st
 	out := new(ChangeSetDraft)
 	resp, err := s.doJSON(ctx, http.MethodGet, path+"/draft", nil, out, "Predict.GetDraft")
 	return out, resp, err
+}
+
+// DiscardAllDeviceChanges clears EVERY change to one device, committed or not, so the next commit has the device as the base snapshot
+// has it (POST .../change-sets/{id}/devices/{device}?action=discardChanges; 204). It works from the draft, or from the head commit when
+// there is no draft, and answers 404 when that state has no such device. Unlike DiscardDraftDevice, which only drops the caller's
+// uncommitted edits back to the last commit, this one reaches the committed changes too.
+func (s *PredictService) DiscardAllDeviceChanges(ctx context.Context, networkID, changeSetID, deviceName string) (*Response, error) {
+	path, err := s.csPath(networkID, changeSetID)
+	if err != nil {
+		return nil, err
+	}
+	if deviceName = strings.TrimSpace(deviceName); deviceName == "" {
+		return nil, errors.New("forward: device name is required")
+	}
+	return s.doJSON(ctx, http.MethodPost, path+"/devices/"+url.PathEscape(deviceName)+"?action=discardChanges", nil, nil, "Predict.DiscardAllDeviceChanges")
 }
 
 // DiscardDraftDevice throws away the caller's uncommitted edits to one device (DELETE .../draft/devices/{device}).
