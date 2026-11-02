@@ -103,6 +103,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Admin.DeleteUser": {
 		{Method: "DELETE", Route: "/api/users/{userId}"},
 	},
+	"Admin.FDBSize": {
+		{Method: "GET", Route: "/api/system/fdb/size"},
+	},
+	"Admin.FDBUsage": {
+		{Method: "GET", Route: "/api/system/fdb/usage"},
+	},
 	"Admin.GrantOrganizationAdmin": {
 		{Method: "POST", Route: "/api/users/{userId}/roles/org/ADMIN"},
 	},
@@ -117,6 +123,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Admin.PatchUser": {
 		{Method: "PATCH", Route: "/api/users/{userId}"},
+	},
+	"Admin.PurgeFDBGarbage": {
+		{Method: "POST", Route: "/api/system/fdb/gc"},
 	},
 	"Admin.SetSupportedOrganizations": {
 		{Method: "PUT", Route: "/api/users/{userId}/supported-orgs"},
@@ -1227,6 +1236,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Organizations.Delete": {
 		{Method: "DELETE", Route: "/api/admin/orgs/{orgId}"},
+	},
+	"Organizations.DeleteNetworkInOrg": {
+		{Method: "DELETE", Route: "/api/orgs/{orgId}/networks/{networkId}"},
+	},
+	"Organizations.DeleteOrgCleanly": {
+		{Method: "DELETE", Route: "/api/admin/orgs/{orgId}"},
+		{Method: "DELETE", Route: "/api/orgs/{orgId}/networks"},
+		{Method: "DELETE", Route: "/api/orgs/{orgId}/networks/{networkId}"},
+		{Method: "GET", Route: "/api/admin/networks"},
+		{Method: "GET", Route: "/api/admin/users"},
+		{Method: "POST", Route: "/api/admin/orgs/{orgId}"},
+	},
+	"Organizations.DeleteOrgNetworks": {
+		{Method: "DELETE", Route: "/api/orgs/{orgId}/networks"},
 	},
 	"Organizations.List": {
 		{Method: "GET", Route: "/api/admin/orgs"},

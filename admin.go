@@ -292,3 +292,52 @@ func normalizeStrings(values []string) []string {
 	}
 	return out
 }
+
+// FDBUsage is the stored size under an FDB prefix, as Forward's usage trie lists it (GET /api/system/fdb/usage?prefix=). Sizes are left
+// raw: the shape is Forward's own debug output.
+type FDBUsage struct {
+	Sizes json.RawMessage `json:"sizes"`
+}
+
+// FDBUsage reads the jobs-v2 FDB usage under a key prefix such as "n/<orgId>/<networkId>/" (GET /api/system/fdb/usage?prefix=).
+// ADMINISTER_SYSTEM (the system ADMIN role); the prefix is required. Preview: appserver WorkersController, not in the published spec.
+func (s *AdminService) FDBUsage(ctx context.Context, prefix string) (*FDBUsage, *Response, error) {
+	if strings.TrimSpace(prefix) == "" {
+		return nil, nil, errors.New("forward: an FDB prefix is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/system/fdb/usage?"+url.Values{"prefix": []string{prefix}}.Encode(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := new(FDBUsage)
+	resp, err := s.client.doRequired(markOperation(req, "Admin.FDBUsage"), out)
+	return out, resp, err
+}
+
+// FDBSize reads the total stored size, in bytes, under an FDB key prefix (GET /api/system/fdb/size?prefix=). ADMINISTER_SYSTEM; Preview.
+func (s *AdminService) FDBSize(ctx context.Context, prefix string) (int64, *Response, error) {
+	if strings.TrimSpace(prefix) == "" {
+		return 0, nil, errors.New("forward: an FDB prefix is required")
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/system/fdb/size?"+url.Values{"prefix": []string{prefix}}.Encode(), nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	var size int64
+	resp, err := s.client.doRequired(markOperation(req, "Admin.FDBSize"), &size)
+	return size, resp, err
+}
+
+// PurgeFDBGarbage starts Forward's FDB garbage collection (POST /api/system/fdb/gc; ADMINISTER_SYSTEM): VACUUM ANALYZE, vacuumlo, and
+// dropping old FDB databases. It REMOVES data, though only what nothing references; it does not delete by prefix, and it does not
+// reclaim the data of a network deleted through an org cascade (see Organizations.Delete). Forward answers the text "Garbage collection
+// started" at once and works in the background. ADMINISTER_SYSTEM; Preview.
+func (s *AdminService) PurgeFDBGarbage(ctx context.Context) (string, *Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, "/api/system/fdb/gc", nil)
+	if err != nil {
+		return "", nil, err
+	}
+	var text strings.Builder
+	resp, err := s.client.Do(markOperation(req, "Admin.PurgeFDBGarbage"), &text)
+	return strings.TrimSpace(text.String()), resp, err
+}
