@@ -71,6 +71,9 @@ const (
 	// version-dependent, so a caller writing across releases needs to tell this
 	// apart from a real failure without matching prose.
 	ErrorKindUnknownOrgProperty ErrorKind = "unknown-org-property"
+	// ErrorKindGlobalDefaultNotAllowed is the 403 "Permission denied. Global default value cannot be changed for <property>" a global write
+	// gets for a property that can only be set per org (its Level is ORG, not BOTH). ErrorResponse.GateProperty carries the property name.
+	ErrorKindGlobalDefaultNotAllowed ErrorKind = "global-default-not-allowed"
 )
 
 var (
@@ -88,6 +91,7 @@ var (
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
 	ErrUnknownOrgProperty                = errors.New("forward: organization property not defined by this appserver")
+	ErrGlobalDefaultNotAllowed           = errors.New("forward: the property can only be set per organization, not as a global default")
 )
 
 // UnavailableError preserves the reason a fail-closed client could not be
@@ -185,6 +189,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindTrustedCertificateApplyInProgress
 	case ErrUnknownOrgProperty:
 		return e.Kind == ErrorKindUnknownOrgProperty
+	case ErrGlobalDefaultNotAllowed:
+		return e.Kind == ErrorKindGlobalDefaultNotAllowed
 	default:
 		return false
 	}
@@ -236,6 +242,12 @@ func IsTrustedCertificateApplyInProgress(err error) bool {
 	return errors.Is(err, ErrTrustedCertificateApplyInProgress)
 }
 
+// IsGlobalDefaultNotAllowed reports whether err is Forward's 403 for a global default write to a property that is only settable per
+// organization (see Properties.SetGlobal).
+func IsGlobalDefaultNotAllowed(err error) bool {
+	return errors.Is(err, ErrGlobalDefaultNotAllowed)
+}
+
 // IsUnknownOrgProperty reports whether err is the appserver's 400 for an org
 // property name its enum does not define.
 func IsUnknownOrgProperty(err error) bool {
@@ -270,6 +282,8 @@ func newErrorResponse(resp *http.Response) *ErrorResponse {
 	apiErr.Kind = classifyErrorResponse(apiErr)
 	return apiErr
 }
+
+var globalDefaultMessage = regexp.MustCompile(`(?i)^Permission denied\. Global default value cannot be changed for ([A-Za-z][A-Za-z0-9_]*)$`)
 
 func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	if apiErr == nil || apiErr.Response == nil {
@@ -312,6 +326,11 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 				return ErrorKindUnlicensedOperation
 			}
 			return ErrorKindPermissionDenied
+		}
+		// ConfigController.verifyGlobalConfigPermitted: "Permission denied. Global default value cannot be changed for <property>".
+		if match := globalDefaultMessage.FindStringSubmatch(message); match != nil {
+			apiErr.GateProperty = strings.ToUpper(match[1])
+			return ErrorKindGlobalDefaultNotAllowed
 		}
 		if match := featureGateMessage.FindStringSubmatch(message); match != nil {
 			apiErr.GateProperty, apiErr.GateEnabled, apiErr.GateScope = match[1], match[2] == "on", match[3]

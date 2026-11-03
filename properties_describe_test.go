@@ -60,13 +60,19 @@ func TestDescribeOrganizationJoinsEffectiveConfiguredAndDefaults(t *testing.T) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/api/orgs/22/config" && r.URL.Query().Get("filter") == "OFF":
 			seen["effective"] = true
-			_, _ = io.WriteString(w, `{"ai_allowed":true,"maximum_devices":1000,"background_snapshot_reprocess":"LOW_PRIORITY","brand_new_flag":false,"opaque":null,"hosts":["a"]}`)
+			_, _ = io.WriteString(w, `{"ai_allowed":true,"maximum_devices":500,"background_snapshot_reprocess":"LOW_PRIORITY","brand_new_flag":false,"opaque":null,"hosts":["a"]}`)
 		case r.Method == http.MethodGet && r.URL.Path == "/api/orgs/22/config" && r.URL.Query().Get("filter") == "CONFIGURED":
 			seen["configured"] = true
 			_, _ = io.WriteString(w, `{"background_snapshot_reprocess":"LOW_PRIORITY"}`)
 		case r.Method == http.MethodGet && r.URL.Path == "/api/global-config" && r.URL.Query().Get("filter") == "OFF":
 			seen["defaults"] = true
 			_, _ = io.WriteString(w, `{"ai_allowed":true,"maximum_devices":500,"background_snapshot_reprocess":"NORMAL","brand_new_flag":false,"opaque":7,"hosts":[]}`)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/orgs/22/config" && r.URL.Query().Get("filter") == "NONDEFAULT":
+			seen["nondefault"] = true
+			_, _ = io.WriteString(w, `{"maximum_devices":500,"background_snapshot_reprocess":"LOW_PRIORITY"}`)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/global-config" && r.URL.Query().Get("filter") == "CONFIGURED":
+			seen["globalrows"] = true
+			_, _ = io.WriteString(w, `{"maximum_devices":500,"background_snapshot_reprocess":"NORMAL"}`)
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
 			http.NotFound(w, r)
@@ -78,7 +84,7 @@ func TestDescribeOrganizationJoinsEffectiveConfiguredAndDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DescribeOrganization() error = %v", err)
 	}
-	for _, read := range []string{"effective", "configured", "defaults"} {
+	for _, read := range []string{"effective", "configured", "defaults", "nondefault", "globalrows"} {
 		if !seen[read] {
 			t.Errorf("the %s read was not made", read)
 		}
@@ -100,12 +106,33 @@ func TestDescribeOrganizationJoinsEffectiveConfiguredAndDefaults(t *testing.T) {
 	}
 	want := map[OrgProperty]PropertyDescription{
 		"AI_ALLOWED":                    {Kind: PropertyKindBoolean, Value: "true", HasDefault: true, Default: "true"},
-		"MAXIMUM_DEVICES":               {Kind: PropertyKindInteger, Value: "1000", HasDefault: true, Default: "500"},
+		"MAXIMUM_DEVICES":               {Kind: PropertyKindInteger, Value: "500", HasDefault: true, Default: "500"},
 		"BACKGROUND_SNAPSHOT_REPROCESS": {Kind: PropertyKindString, Value: "LOW_PRIORITY", Configured: true, ConfiguredValue: "LOW_PRIORITY", HasDefault: true, Default: "NORMAL"},
 		"BRAND_NEW_FLAG":                {Kind: PropertyKindBoolean, Value: "false", HasDefault: true, Default: "false"},
 		// null effective value: the kind is observed from the default.
 		"OPAQUE": {Kind: PropertyKindInteger, Value: "", HasDefault: true, Default: "7"},
 		"HOSTS":  {Kind: PropertyKindList, Value: `["a"]`, HasDefault: true, Default: `[]`},
+	}
+	// Where each value comes from: an org row wins, then a global default override, else Forward's built-in default.
+	layers := map[OrgProperty]struct {
+		layer      string
+		global     bool
+		nonDefault bool
+		compiled   string
+	}{
+		"AI_ALLOWED":                    {PropertyLayerCompiled, false, false, "true"},
+		"MAXIMUM_DEVICES":               {PropertyLayerGlobal, true, true, ""},
+		"BACKGROUND_SNAPSHOT_REPROCESS": {PropertyLayerOrg, true, true, ""},
+		"HOSTS":                         {PropertyLayerCompiled, false, false, "[]"},
+	}
+	if catalog.LayersErr != nil {
+		t.Fatalf("LayersErr = %v", catalog.LayersErr)
+	}
+	for name, l := range layers {
+		got := by[name]
+		if got.Layer != l.layer || got.GlobalOverridden != l.global || got.NonDefault != l.nonDefault || got.CompiledDefault != l.compiled || got.HasCompiledDefault != (l.compiled != "") {
+			t.Errorf("%s layer = %+v, want %+v", name, got, l)
+		}
 	}
 	for name, w := range want {
 		got, ok := by[name]

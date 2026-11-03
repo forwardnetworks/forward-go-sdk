@@ -72,7 +72,8 @@ func PropertyValueString(raw json.RawMessage) string {
 	return string(trimmed)
 }
 
-// PropertyDescription is one org property joined across the three reads that
+// PropertyDescription is one org property joined across the reads (five, made one after another, not one snapshot: a write between them
+// can give an impossible mix such as Layer built-in-default with NonDefault set) that
 // together describe it: the org's EFFECTIVE value, whether the org holds an
 // explicit override row, and the deployment DEFAULT.
 type PropertyDescription struct {
@@ -95,7 +96,27 @@ type PropertyDescription struct {
 	// (a global override if set, else the compiled default).
 	HasDefault bool
 	Default    string
+	// Layer says where the effective value comes from, when the extra reads below succeeded (else empty): PropertyLayerOrg (the org has an
+	// override row), PropertyLayerGlobal (no org row; a global default override is set) or PropertyLayerCompiled (neither: Forward's built-in
+	// default).
+	Layer string
+	// GlobalOverridden reports a global default override row (Default is then that override, and the built-in default is not exposed).
+	GlobalOverridden bool
+	// NonDefault reports that the effective value differs from Forward's built-in default.
+	NonDefault bool
+	// CompiledDefault is Forward's built-in default, known only when no global default override hides it (HasCompiledDefault).
+	HasCompiledDefault bool
+	CompiledDefault    string
 }
+
+// Where a property's effective value comes from (PropertyDescription.Layer). A network can override a few more properties for itself; that
+// layer is per network (Properties.NetworkValue), not per org. Forward publishes no Level (ORG or BOTH): a global write to an ORG-level
+// property is a 403 (IsGlobalDefaultNotAllowed).
+const (
+	PropertyLayerOrg      = "org-override"
+	PropertyLayerGlobal   = "global-default"
+	PropertyLayerCompiled = "built-in-default"
+)
 
 // OrganizationPropertyCatalog is every property the appserver reports for one
 // org, sorted by name.
@@ -107,6 +128,9 @@ type OrganizationPropertyCatalog struct {
 	// them, so losing that read leaves HasDefault false everywhere rather than
 	// failing the whole description.
 	DefaultsErr error
+	// LayersErr is non-nil when the reads that tell the layers apart (the global default overrides and the non-default values) failed;
+	// Layer, GlobalOverridden, NonDefault and CompiledDefault are then left unset.
+	LayersErr error
 }
 
 // DescribeOrganization lists EVERY property the appserver defines for orgID,
@@ -140,8 +164,20 @@ func (s *PropertiesService) DescribeOrganization(ctx context.Context, orgID stri
 		return out
 	}
 	eff, cfg, def := upper(effective), upper(configured), upper(defaults)
+	// Which values are the built-in ones: NONDEFAULT lists effective values that differ from it; the global CONFIGURED filter lists the
+	// global default overrides.
+	var globalRows, nonDefault map[string]json.RawMessage
+	nonDefaultValues, _, nonDefaultErr := s.Organization(ctx, orgID, PropertyFilterNondefault)
+	globalValues, _, globalErr := s.Global(ctx, PropertyFilterConfigured)
+	layersErr := nonDefaultErr
+	if layersErr == nil {
+		layersErr = globalErr
+	}
+	if layersErr == nil {
+		globalRows, nonDefault = upper(globalValues), upper(nonDefaultValues)
+	}
 
-	catalog := &OrganizationPropertyCatalog{OrgID: orgID, DefaultsErr: defaultsErr}
+	catalog := &OrganizationPropertyCatalog{OrgID: orgID, DefaultsErr: defaultsErr, LayersErr: layersErr}
 	catalog.Properties = make([]PropertyDescription, 0, len(eff))
 	for name, raw := range eff {
 		d := PropertyDescription{Name: OrgProperty(name), Kind: PropertyKindOf(raw), Value: PropertyValueString(raw), Raw: raw}
@@ -156,6 +192,21 @@ func (s *PropertiesService) DescribeOrganization(ctx context.Context, orgID stri
 				if d.Kind == PropertyKindNull {
 					d.Kind = PropertyKindOf(dv)
 				}
+			}
+		}
+		if layersErr == nil {
+			_, d.GlobalOverridden = globalRows[name]
+			_, d.NonDefault = nonDefault[name]
+			switch {
+			case d.Configured:
+				d.Layer = PropertyLayerOrg
+			case d.GlobalOverridden:
+				d.Layer = PropertyLayerGlobal
+			default:
+				d.Layer = PropertyLayerCompiled
+			}
+			if d.HasDefault && !d.GlobalOverridden {
+				d.HasCompiledDefault, d.CompiledDefault = true, d.Default
 			}
 		}
 		catalog.Properties = append(catalog.Properties, d)

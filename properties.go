@@ -76,7 +76,10 @@ func (s *PropertiesService) ClearCurrent(ctx context.Context, property OrgProper
 	return s.clear(ctx, "Properties.ClearCurrent", "/api/config", property)
 }
 
-// SetOrganization sets an organization override. Forward support permission is required.
+// SetOrganization sets an organization override. Forward support permission is required. This is the only way to set a property whose
+// Level is ORG: Forward answers a global write to one (SetGlobal) with a 403 (IsGlobalDefaultNotAllowed), so such a property is always
+// per organization and has to be set on each org you want it on. Most properties are ORG-level (for example
+// EDGE_ASSETS_IN_SOURCES and THREAT_EXPOSURE); Forward exposes no list of which, so the 403 is how you find out.
 func (s *PropertiesService) SetOrganization(
 	ctx context.Context,
 	orgID string,
@@ -103,7 +106,9 @@ func (s *PropertiesService) ClearOrganization(
 	return s.clear(ctx, "Properties.ClearOrganization", "/api/orgs/"+url.PathEscape(orgID)+"/config", property)
 }
 
-// SetGlobal sets a global default. Forward-admin permission is required.
+// SetGlobal sets a global default. Forward-admin permission is required. A property whose Level is ORG (not BOTH) has no global default to
+// change: Forward answers 403 "Permission denied. Global default value cannot be changed for <property>", which is
+// IsGlobalDefaultNotAllowed (ErrorResponse.GateProperty names it); use SetOrganization for those, one org at a time.
 func (s *PropertiesService) SetGlobal(
 	ctx context.Context,
 	property OrgProperty,

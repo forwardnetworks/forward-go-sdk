@@ -1584,8 +1584,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Properties.Global": {
 		{Method: "GET", Route: "/api/global-config"},
 	},
+	"Properties.NetworkOverrides": {
+		{Method: "GET", Route: "/api/config/{property}/overrides"},
+	},
+	"Properties.NetworkValue": {
+		{Method: "GET", Route: "/api/networks/{networkId}/config/{property}"},
+	},
 	"Properties.Organization": {
 		{Method: "GET", Route: "/api/orgs/{orgId}/config"},
+	},
+	"Properties.OrganizationOverrides": {
+		{Method: "GET", Route: "/api/global-config/{property}"},
+	},
+	"Properties.OrganizationValue": {
+		{Method: "GET", Route: "/api/orgs/{orgId}/config/{property}"},
 	},
 	"Properties.SetCurrent": {
 		{Method: "PUT", Route: "/api/config/{property}"},
