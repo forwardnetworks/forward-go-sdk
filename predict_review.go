@@ -143,6 +143,14 @@ type CommandValidationOptions struct {
 	CursorColumn int
 }
 
+// CommandError.ErrorType values (Forward's changeset.ErrorType): INCOMPLETE is a command that stops before it is complete, INVALID one the
+// grammar does not accept, UNSUPPORTED one Forward cannot model (see CommandError.Applied).
+const (
+	CommandErrorIncomplete  = "INCOMPLETE"
+	CommandErrorInvalid     = "INVALID"
+	CommandErrorUnsupported = "UNSUPPORTED"
+)
+
 // CommandError is one invalid or incomplete command line (Forward's
 // changeset.CommandError). Lines and columns are 1-based.
 type CommandError struct {

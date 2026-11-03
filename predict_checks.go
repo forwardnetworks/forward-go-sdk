@@ -233,3 +233,64 @@ func (s *PredictService) changeSetCheckPath(networkID, changeSetID, checkID stri
 	}
 	return path + "/" + url.PathEscape(checkID), nil
 }
+
+// NewExistentialCheck builds an Existential change-set check ("some traffic matching the query is delivered") from a typed query, with the
+// filters in canonical form. returnPath is ReturnPathAny, ReturnPathSymmetric or "" (no return path validated). The check type is the
+// literal "Existential" (ChangeSetCheckExists); the lowercase "exists"/"notexists" literals belong to unit packet tests (IEntryCheck),
+// not to checks. name may be empty (Forward names intent checks itself).
+func NewExistentialCheck(name string, query IntentQuery, returnPath string) (NewChangeSetCheck, error) {
+	return newIntentCheck(name, ChangeSetCheckExists, query, returnPath)
+}
+
+// NewReachabilityCheck builds a Reachability change-set check ("all traffic matching the query is delivered"). Forward refuses, when the
+// check runs, header filters on 'to', bypass filters and flowTypes in a Reachability check, so this builder refuses them first (use an
+// Existential or Isolation check for those).
+func NewReachabilityCheck(name string, query IntentQuery) (NewChangeSetCheck, error) {
+	return newIntentCheck(name, ChangeSetCheckReachability, query, "")
+}
+
+// NewIsolationCheck builds an Isolation change-set check ("no traffic matching the query is delivered").
+func NewIsolationCheck(name string, query IntentQuery) (NewChangeSetCheck, error) {
+	return newIntentCheck(name, ChangeSetCheckIsolation, query, "")
+}
+
+func newIntentCheck(name, checkType string, query IntentQuery, returnPath string) (NewChangeSetCheck, error) {
+	filters, err := query.CanonicalJSON()
+	if err != nil {
+		return NewChangeSetCheck{}, err
+	}
+	if query.From == nil && query.To == nil {
+		return NewChangeSetCheck{}, fmt.Errorf("forward: a %s check needs a from or a to (Forward allows either alone)", checkType)
+	}
+	if checkType == ChangeSetCheckReachability {
+		// Forward's Reachability interpreter refuses these when the check runs (PathQueryReachabilityCheckInterpreter).
+		if query.To != nil && len(query.To.Headers) > 0 {
+			return NewChangeSetCheck{}, errors.New("forward: a Reachability check takes no header filters on 'to'")
+		}
+		if len(query.Bypass) > 0 {
+			return NewChangeSetCheck{}, errors.New("forward: a Reachability check takes no bypass filters")
+		}
+		if len(query.FlowTypes) > 0 {
+			return NewChangeSetCheck{}, errors.New("forward: a Reachability check takes no flowTypes (it reads VALID itself)")
+		}
+	}
+	definition := ChangeSetCheckDefinition{CheckType: checkType, Filters: filters, ReturnPath: returnPath}
+	if err := definition.Validate(); err != nil {
+		return NewChangeSetCheck{}, err
+	}
+	return NewChangeSetCheck{Name: strings.TrimSpace(name), Definition: definition}, nil
+}
+
+// IntentCheckDefinition is the definition of a PERSISTENT network check (Checks.CreatePersistent, NewCheck.Definition) of an intent type
+// (ChangeSetCheckExists, ChangeSetCheckReachability or ChangeSetCheckIsolation) built from a typed query, filters in canonical form.
+func IntentCheckDefinition(checkType string, query IntentQuery, returnPath string) (map[string]any, error) {
+	check, err := newIntentCheck("", checkType, query, returnPath)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]any{"checkType": checkType, "filters": check.Definition.Filters}
+	if returnPath != "" {
+		out["returnPath"] = returnPath
+	}
+	return out, nil
+}
