@@ -99,3 +99,30 @@ func (s *PropertiesService) NetworkOverrides(ctx context.Context, property Netwo
 	}
 	return out, resp, nil
 }
+
+// PatchNetworkOverrides sets or clears one network property's per-network overrides in a single call (PATCH /api/config/{property}/overrides,
+// 204), keyed by network id. A non-nil value sets that network's override; a nil value deletes it, so the network falls back to the org's
+// value. Every id must be a network of the caller's own org (400 otherwise) and one the caller may edit settings of (403 otherwise).
+// Forward checks the ids, the permissions and every value before it writes anything, so a refused call wrote nothing; the one step that is not
+// atomic is that the sets are stored first and the deletes after, so a failure in between keeps the sets. A value of the wrong type may come
+// back as a 500 rather than a 400 (the parse throws IllegalArgumentException). Preview: ConfigController.patchNetworkPropertyOverrides at
+// master fe0daf63c899; the // same mapping exists at both pins. An empty map sends nothing and returns nil.
+func (s *PropertiesService) PatchNetworkOverrides(ctx context.Context, property NetworkProperty, updates map[string]any) (*Response, error) {
+	name, err := propertyName(string(property))
+	if err != nil {
+		return nil, err
+	}
+	if len(updates) == 0 {
+		return nil, nil
+	}
+	for id := range updates {
+		if strings.TrimSpace(id) == "" {
+			return nil, errors.New("forward: a network id is required for every override")
+		}
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, "/api/config/"+name+"/overrides", updates)
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Do(markOperation(req, "Properties.PatchNetworkOverrides"), nil)
+}

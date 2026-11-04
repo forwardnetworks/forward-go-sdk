@@ -1599,6 +1599,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Properties.OrganizationValue": {
 		{Method: "GET", Route: "/api/orgs/{orgId}/config/{property}"},
 	},
+	"Properties.PatchNetworkOverrides": {
+		{Method: "PATCH", Route: "/api/config/{property}/overrides"},
+	},
 	"Properties.SetCurrent": {
 		{Method: "PUT", Route: "/api/config/{property}"},
 	},
