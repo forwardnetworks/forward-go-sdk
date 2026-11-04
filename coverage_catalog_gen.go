@@ -1650,6 +1650,36 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"SAML.PutSettings": {
 		{Method: "PUT", Route: "/api/auth/saml-settings"},
 	},
+	"SaseSetups.Create": {
+		{Method: "POST", Route: "/api/networks/{networkId}/sase-setups"},
+	},
+	"SaseSetups.Delete": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/sase-setups/{name}"},
+	},
+	"SaseSetups.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}/sase-setups/{name}"},
+	},
+	"SaseSetups.List": {
+		{Method: "GET", Route: "/api/networks/{networkId}/sase-setups"},
+	},
+	"SaseSetups.NewlyDiscovered": {
+		{Method: "GET", Route: "/api/networks/{networkId}/sase-setups"},
+	},
+	"SaseSetups.Patch": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/sase-setups/{name}"},
+	},
+	"SaseSetups.Test": {
+		{Method: "POST", Route: "/api/networks/{networkId}/sase-setups"},
+	},
+	"SaseSetups.TestConnector": {
+		{Method: "POST", Route: "/api/networks/{networkId}/sase-setups/{name}/connectors/{connectorId}"},
+	},
+	"SaseSetups.TestConnectors": {
+		{Method: "POST", Route: "/api/networks/{networkId}/sase-setups/{name}/connectors"},
+	},
+	"SaseSetups.TestSetup": {
+		{Method: "POST", Route: "/api/networks/{networkId}/sase-setups/{name}"},
+	},
 	"Scorecards.Definitions": {
 		{Method: "GET", Route: "/api/networks/{networkId}/scorecards"},
 	},
