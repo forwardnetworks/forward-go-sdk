@@ -106,7 +106,7 @@ func (s *PropertiesService) NetworkOverrides(ctx context.Context, property Netwo
 // Forward checks the ids, the permissions and every value before it writes anything, so a refused call wrote nothing; the one step that is not
 // atomic is that the sets are stored first and the deletes after, so a failure in between keeps the sets. A value of the wrong type may come
 // back as a 500 rather than a 400 (the parse throws IllegalArgumentException). Preview: ConfigController.patchNetworkPropertyOverrides at
-// master fe0daf63c899; the // same mapping exists at both pins. An empty map sends nothing and returns nil.
+// master fe0daf63c899; the same mapping exists at both pins. An empty map sends nothing and returns nil.
 func (s *PropertiesService) PatchNetworkOverrides(ctx context.Context, property NetworkProperty, updates map[string]any) (*Response, error) {
 	name, err := propertyName(string(property))
 	if err != nil {

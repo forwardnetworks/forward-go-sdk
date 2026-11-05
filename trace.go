@@ -33,6 +33,11 @@ import (
 // other vendors, ACL kinds that carry rule lines, static NAT or port
 // translation, a predicted snapshot, loops, multicast or non-IPv4 flows.
 //
+// Source location differs from Networks.Paths: for a SrcIP that is a firewall's own interface address, the
+// facets started the path on that firewall (dropped at its input ACL) while getPaths located the source as
+// "self" and returned two security-denied paths through five devices (seen by forward-skills, live). Do not
+// assume the two agree on where a flow starts; name the device with From when it matters.
+//
 // The trace routes need the VIEW_PATHS network permission and a snapshot
 // processed to the reachability stage.
 type TraceService service
