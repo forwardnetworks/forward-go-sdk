@@ -1979,6 +1979,16 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Topology.StagedOverrideChanges": {
 		{Method: "GET", Route: "/api/networks/{networkId}/link-overrides"},
 	},
+	"Trace.Explain": {
+		{Method: "POST", Route: "/api/networks/{networkId}/trace"},
+		{Method: "POST", Route: "/api/networks/{networkId}/trace-facets"},
+	},
+	"Trace.Facets": {
+		{Method: "POST", Route: "/api/networks/{networkId}/trace-facets"},
+	},
+	"Trace.Trace": {
+		{Method: "POST", Route: "/api/networks/{networkId}/trace"},
+	},
 	"TrustedCertificates.Add": {
 		{Method: "POST", Route: "/api/trusted-certificates"},
 	},

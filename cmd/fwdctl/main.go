@@ -110,7 +110,7 @@ What the SDK calls do that their names do not say is in the help topics: fwdctl 
 	root.AddCommand(
 		newCollectorsCmd(), newCollectorCmd(), newDevicesCmd(), newLocationsCmd(), newCloudAccountsCmd(), newJumpServersCmd(),
 		newSnapshotCmd(), newChangeSetCmd(),
-		newCommitCmd(), newRunCmd(), newChecksCmd(), newPathsCmd(),
+		newCommitCmd(), newRunCmd(), newChecksCmd(), newPathsCmd(), newTraceCmd(),
 	)
 	return root
 }

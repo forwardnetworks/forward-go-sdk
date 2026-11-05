@@ -94,6 +94,7 @@ type Client struct {
 	CloudManagedSetups      *CloudManagedSetupsService
 	SaseSetups              *SaseSetupsService
 	Decorators              *DecoratorsService
+	Trace                   *TraceService
 	SyntheticNodes          *SyntheticNodesService
 	Credentials             *CredentialsService
 	CollectorTasks          *CollectorTasksService
@@ -281,6 +282,7 @@ func (c *Client) bindServices() {
 	c.CloudManagedSetups = (*CloudManagedSetupsService)(&service{client: c})
 	c.SaseSetups = (*SaseSetupsService)(&service{client: c})
 	c.Decorators = (*DecoratorsService)(&service{client: c})
+	c.Trace = (*TraceService)(&service{client: c})
 	c.SyntheticNodes = (*SyntheticNodesService)(&service{client: c})
 	c.Credentials = (*CredentialsService)(&service{client: c})
 	c.CollectorTasks = (*CollectorTasksService)(&service{client: c})
