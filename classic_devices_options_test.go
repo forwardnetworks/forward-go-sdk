@@ -237,3 +237,34 @@ func TestClassicDevicePatchClearsEveryClearableProperty(t *testing.T) {
 		}
 	}
 }
+
+// putBatch builds the stored device from the item alone, so a BMP station left out of the item is erased: it has to be a field of the
+// batch item (and of the single-device request) rather than a follow-up PATCH. Unset must send nothing so Forward's default applies.
+func TestClassicDeviceBMPStationHostOnBatchAndCreate(t *testing.T) {
+	var bodies []string
+	c := acClient(t, func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, r.URL.RawQuery+" "+string(b))
+		_, _ = w.Write([]byte(`{"name":"r1","host":"10.0.0.1","bmpStationHost":"10.9.9.9"}`))
+	})
+	ctx := context.Background()
+	if _, err := c.ClassicDevices.PutBatch(ctx, "n1", []ClassicDeviceBatchItem{{Name: "r1", Host: "10.0.0.1", BMPStationHost: "10.9.9.9"}, {Name: "r2", Host: "10.0.0.2"}}); err != nil {
+		t.Fatal(err)
+	}
+	dev, _, err := c.ClassicDevices.Create(ctx, "n1", ClassicDeviceRequest{Name: "r1", Host: "10.0.0.1", BMPStationHost: "10.9.9.9"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(bodies[0], "action=putBatch ") {
+		t.Fatalf("first request is not the batch: %s", bodies[0])
+	}
+	if !strings.Contains(bodies[0], `"bmpStationHost":"10.9.9.9"`) || strings.Count(bodies[0], "bmpStationHost") != 1 {
+		t.Fatalf("batch: only the item that sets it may send it: %s", bodies[0])
+	}
+	if !strings.Contains(bodies[1], `"bmpStationHost":"10.9.9.9"`) {
+		t.Fatalf("create: %s", bodies[1])
+	}
+	if dev == nil || dev.BMPStationHost != "10.9.9.9" {
+		t.Fatalf("a read must carry the station: %+v", dev)
+	}
+}

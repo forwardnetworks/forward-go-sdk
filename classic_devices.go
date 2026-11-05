@@ -46,7 +46,10 @@ type ClassicDeviceRequest struct {
 	BGPAndBMPFailureHandling string
 	DisableIPv6Collection    *bool
 	FullCollectionLog        *bool
-	Fields                   map[string]any
+	// BMPStationHost is the IP address or hostname of the BMP station to collect BGP from for this device; when set, no jump server is
+	// used for BMP collection (NewClassicDevice.bmpStationHost, a HostnameOrIp). Empty sends nothing; on a PUT that resets an existing station.
+	BMPStationHost string
+	Fields         map[string]any
 }
 
 // MarshalJSON preserves new appliance fields without weakening the common
@@ -68,6 +71,7 @@ func (r ClassicDeviceRequest) MarshalJSON() ([]byte, error) {
 		"cliCredentialId": r.CLICredentialID, "cliCredential2Id": r.CLICredential2ID,
 		"cliCredential3Id": r.CLICredential3ID, "httpCredentialId": r.HTTPCredentialID,
 		"snmpCredentialId": r.SNMPCredentialID, "jumpServerId": r.JumpServerID, "note": r.Note,
+		"bmpStationHost": r.BMPStationHost,
 	} {
 		if value != "" {
 			fields[key] = value
@@ -135,6 +139,9 @@ type ClassicDevice struct {
 	BGPAndBMPFailureHandling string `json:"bgpAndBmpFailureHandling,omitempty"`
 	DisableIPv6Collection    *bool  `json:"disableIpv6Collection,omitempty"`
 	FullCollectionLog        *bool  `json:"fullCollectionLog,omitempty"`
+	// BMPStationHost is the BMP station this device's BGP is collected from; empty when none is set (a jump server is not used for BMP when
+	// it is).
+	BMPStationHost string `json:"bmpStationHost,omitempty"`
 	// Who created and last changed the device, and when (Forward's Attribution, unwrapped into the device; the read fills the
 	// usernames, which are empty for a deleted user). Empty when Forward states none, as for a device created before it
 	// recorded them. Times are ISO-8601 strings.
@@ -199,6 +206,10 @@ type ClassicDeviceBatchItem struct {
 	BGPAndBMPFailureHandling string `json:"bgpAndBmpFailureHandling,omitempty"`
 	DisableIPv6Collection    *bool  `json:"disableIpv6Collection,omitempty"`
 	FullCollectionLog        *bool  `json:"fullCollectionLog,omitempty"`
+	// BMPStationHost is the IP address or hostname of the BMP station to collect BGP from for this device; when set, no jump server is used
+	// for BMP collection (NewClassicDevice.bmpStationHost). Empty sends nothing, so, like every field here, putBatch resets an
+	// existing device's station: state it on every PUT.
+	BMPStationHost string `json:"bmpStationHost,omitempty"`
 }
 
 func (s *ClassicDevicesService) PutBatch(ctx context.Context, networkID string, devices []ClassicDeviceBatchItem) (*Response, error) {
