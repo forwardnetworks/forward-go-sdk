@@ -93,6 +93,7 @@ type Client struct {
 	CustomCommandGroups     *CustomCommandGroupsService
 	CloudManagedSetups      *CloudManagedSetupsService
 	SaseSetups              *SaseSetupsService
+	Decorators              *DecoratorsService
 	SyntheticNodes          *SyntheticNodesService
 	Credentials             *CredentialsService
 	CollectorTasks          *CollectorTasksService
@@ -279,6 +280,7 @@ func (c *Client) bindServices() {
 	c.CustomCommandGroups = (*CustomCommandGroupsService)(&service{client: c})
 	c.CloudManagedSetups = (*CloudManagedSetupsService)(&service{client: c})
 	c.SaseSetups = (*SaseSetupsService)(&service{client: c})
+	c.Decorators = (*DecoratorsService)(&service{client: c})
 	c.SyntheticNodes = (*SyntheticNodesService)(&service{client: c})
 	c.Credentials = (*CredentialsService)(&service{client: c})
 	c.CollectorTasks = (*CollectorTasksService)(&service{client: c})

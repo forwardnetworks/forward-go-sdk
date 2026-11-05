@@ -656,6 +656,24 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DataFiles.Schema": {
 		{Method: "GET", Route: "/api/data-files/{dataFileName}/schema"},
 	},
+	"Decorators.Decorate": {
+		{Method: "POST", Route: "/api/networks/{networkId}/decorations"},
+	},
+	"Decorators.Delete": {
+		{Method: "DELETE", Route: "/api/decorators/{name}"},
+	},
+	"Decorators.Get": {
+		{Method: "GET", Route: "/api/decorators"},
+	},
+	"Decorators.List": {
+		{Method: "GET", Route: "/api/decorators"},
+	},
+	"Decorators.Put": {
+		{Method: "PATCH", Route: "/api/decorators/{name}"},
+	},
+	"Decorators.SetManagedEnabled": {
+		{Method: "PATCH", Route: "/api/system-managed-decorators/{name}"},
+	},
 	"DeviceDiscovery.CreateScheduled": {
 		{Method: "POST", Route: "/api/networks/{networkId}/scheduled-discoveries"},
 	},
