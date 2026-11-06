@@ -91,7 +91,9 @@ runtime evidence shared by scoped clones.
 3. **Port read-only snapshot, NQE, and check access.** Delegate snapshot listing
    and `ResolveSnapshot` to `Snapshots.ResolveID`; delegate NQE to `NQE.Run`
    and use `NQEResult.RowsAny` to preserve the existing call-site shape without
-   local response decoding.
+   local response decoding. RowsAny reads numbers as float64, which rounds
+   integers above 2^53; `NQEResult.RowsNumber` (json.Number) and
+   `NQERecord.Int64` read them exactly.
    Replace `GetChecks` in the gate with `Checks.ForScoring`, pass
    `CheckRequirements` derived from the pack selectors, and consume
    `CheckSet.Checks()`. `ErrNoChecks` and `ErrCheckCorpusIncomplete` are error

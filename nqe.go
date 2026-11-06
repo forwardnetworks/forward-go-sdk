@@ -1,6 +1,7 @@
 package forward
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -122,6 +123,73 @@ func (r *NQEResult) RowsAny() ([]map[string]any, error) {
 		rows[rowIndex] = row
 	}
 	return rows, nil
+}
+
+// RowsNumber is RowsAny with every JSON number kept exact: a number decodes to
+// a json.Number (at any depth, in nested objects and lists) instead of a
+// float64, which loses precision above 2^53 (byte counters, 64-bit IDs).
+// Convert with Int64(), Float64() or String(). RowsAny stays as it was for
+// callers that rely on float64.
+func (r *NQEResult) RowsNumber() ([]map[string]any, error) {
+	if r == nil {
+		return nil, nil
+	}
+	rows := make([]map[string]any, len(r.Items))
+	for rowIndex, record := range r.Items {
+		row := make(map[string]any, len(record))
+		for column, raw := range record {
+			value, err := decodeExactJSON(raw)
+			if err != nil {
+				return nil, fmt.Errorf("forward: decode NQE row %d column %q: %w", rowIndex, column, err)
+			}
+			row[column] = value
+		}
+		rows[rowIndex] = row
+	}
+	return rows, nil
+}
+
+// Int64 reads the column as an integer without going through float64. It
+// reports false when the column is absent or null, and an error when the value
+// is not a JSON integer that fits an int64 (a string, a fraction, 1e3, a number
+// beyond the int64 range). A nil *NQERecord (NQEDiff.Before or After when a row
+// exists on one side only) must be checked by the caller before calling.
+func (r NQERecord) Int64(column string) (int64, bool, error) {
+	raw, ok := r[column]
+	if !ok {
+		return 0, false, nil
+	}
+	value, err := decodeExactJSON(raw)
+	if err != nil {
+		return 0, false, fmt.Errorf("forward: decode NQE column %q: %w", column, err)
+	}
+	switch v := value.(type) {
+	case nil:
+		return 0, false, nil
+	case json.Number:
+		n, err := v.Int64()
+		if err != nil {
+			return 0, false, fmt.Errorf("forward: NQE column %q = %s is not an int64: %w", column, v, err)
+		}
+		return n, true, nil
+	default:
+		return 0, false, fmt.Errorf("forward: NQE column %q is %T, not a number", column, value)
+	}
+}
+
+func decodeExactJSON(raw json.RawMessage) (any, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return nil, err
+	}
+	// Decode stops after the first value; json.Unmarshal (RowsAny) rejects
+	// anything after it, so this does too.
+	if _, err := decoder.Token(); err != io.EOF {
+		return nil, errors.New("unexpected data after the JSON value")
+	}
+	return value, nil
 }
 
 // NQEExecutionRequest describes an asynchronous NQE execution. Exactly one of

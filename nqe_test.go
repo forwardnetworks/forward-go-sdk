@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -118,5 +119,83 @@ func TestNQEInputValidation(t *testing.T) {
 		if _, _, err := client.NQE.Run(ctx, "network", "", request); err == nil {
 			t.Fatalf("NQE.Run(%#v) error = nil", request)
 		}
+	}
+}
+
+// NQE counters and 64-bit IDs go above 2^53, where float64 silently rounds
+// (9007199254740993 reads back as ...992). RowsAny keeps its float64 shape for
+// existing callers; RowsNumber and NQERecord.Int64 decode the same cells
+// exactly, including inside nested objects and lists, and Int64 refuses
+// anything that is not an integer rather than truncating it.
+func TestNQEResultKeepsLargeIntegersExact(t *testing.T) {
+	t.Parallel()
+
+	var result NQEResult
+	body := `{"items":[{"bytes":9007199254740993,"max":9223372036854775807,"name":"r1","frac":1.5,"nothing":null,"nested":{"id":9007199254740993},"list":[9007199254740993]}]}`
+	if err := json.Unmarshal([]byte(body), &result); err != nil {
+		t.Fatal(err)
+	}
+
+	any1, err := result.RowsAny()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := any1[0]["bytes"]; got != float64(9007199254740992) {
+		t.Fatalf("RowsAny bytes = %v, want the float64 rounding the compat path keeps", got)
+	}
+
+	rows, err := result.RowsNumber()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := rows[0]["bytes"]; got != json.Number("9007199254740993") {
+		t.Fatalf("RowsNumber bytes = %#v", got)
+	}
+	if got := rows[0]["nested"].(map[string]any)["id"]; got != json.Number("9007199254740993") {
+		t.Fatalf("nested id = %#v", got)
+	}
+	if got := rows[0]["list"].([]any)[0]; got != json.Number("9007199254740993") {
+		t.Fatalf("list item = %#v", got)
+	}
+	if rows[0]["name"] != "r1" || rows[0]["nothing"] != nil {
+		t.Fatalf("non-numbers changed: %#v", rows[0])
+	}
+
+	record := result.Items[0]
+	if n, ok, err := record.Int64("bytes"); n != 9007199254740993 || !ok || err != nil {
+		t.Fatalf("Int64(bytes) = %d, %v, %v", n, ok, err)
+	}
+	if n, ok, err := record.Int64("max"); n != math.MaxInt64 || !ok || err != nil {
+		t.Fatalf("Int64(max) = %d, %v, %v", n, ok, err)
+	}
+	for _, absent := range []string{"nothing", "missing"} {
+		if _, ok, err := record.Int64(absent); ok || err != nil {
+			t.Fatalf("Int64(%s) ok=%v err=%v, want absent without error", absent, ok, err)
+		}
+	}
+	for _, bad := range []string{"frac", "name", "nested"} {
+		if _, ok, err := record.Int64(bad); ok || err == nil {
+			t.Fatalf("Int64(%s) ok=%v err=%v, want an error", bad, ok, err)
+		}
+	}
+	for _, tc := range []struct {
+		raw     string
+		want    int64
+		wantErr bool
+	}{
+		{`-9223372036854775808`, math.MinInt64, false},
+		{`-5`, -5, false},
+		{`1.0`, 0, true},
+		{`1e3`, 0, true},
+		{`1 2`, 0, true},
+	} {
+		n, ok, err := NQERecord{"n": json.RawMessage(tc.raw)}.Int64("n")
+		if tc.wantErr && (ok || err == nil) || !tc.wantErr && (!ok || err != nil || n != tc.want) {
+			t.Fatalf("Int64(%s) = %d, %v, %v", tc.raw, n, ok, err)
+		}
+	}
+	over := NQERecord{"n": json.RawMessage(`9223372036854775808`)}
+	if _, ok, err := over.Int64("n"); ok || err == nil {
+		t.Fatalf("Int64 beyond int64 ok=%v err=%v, want an error", ok, err)
 	}
 }
