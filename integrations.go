@@ -43,30 +43,77 @@ type Rapid7SourceRequest struct {
 	ReportNames          []string   `json:"reportNames,omitempty"`
 }
 
+// ServiceNowIntegrationSettings is the org's ServiceNow incident connection (Forward's ServiceNowSettings). Forward never returns a secret:
+// Password and Token come back as an empty string when one is stored and are absent otherwise, so a non-nil pointer means "set".
+// AutoCreateImpact and AutoCreateUrgency are the numeric strings "1" (high), "2" and "3" (ServiceNowIncidentLevelHigh and so on).
 type ServiceNowIntegrationSettings struct {
-	InstanceURL       string `json:"instanceUrl,omitempty"`
-	Username          string `json:"username,omitempty"`
-	Enabled           bool   `json:"enabled,omitempty"`
-	AutoCreate        bool   `json:"autoCreate,omitempty"`
-	AutoCreateImpact  string `json:"autoCreateImpact,omitempty"`
-	AutoCreateUrgency string `json:"autoCreateUrgency,omitempty"`
-	AutoUpdate        bool   `json:"autoUpdate,omitempty"`
+	InstanceURL       string  `json:"instanceUrl,omitempty"`
+	Certificate       string  `json:"certificate,omitempty"`
+	Username          string  `json:"username,omitempty"`
+	Password          *string `json:"password,omitempty"`
+	Token             *string `json:"token,omitempty"`
+	Enabled           bool    `json:"enabled,omitempty"`
+	AutoCreate        bool    `json:"autoCreate,omitempty"`
+	AutoCreateImpact  string  `json:"autoCreateImpact,omitempty"`
+	AutoCreateUrgency string  `json:"autoCreateUrgency,omitempty"`
+	AutoUpdate        bool    `json:"autoUpdate,omitempty"`
 }
+
+// ServiceNowIntegrationRequest states every field of the connection, so a PATCH with it sets all the booleans, including the ones left
+// false. Authenticate with Username and Password or with Token, not both (Forward answers 400): the unused ones are left out of the body.
+// Certificate (a PEM CA certificate to trust) is accepted on premises only. InstanceURL is refused (400) once a connection exists. A level
+// left empty is left out, so Forward keeps the stored one (LOW for a new connection); an empty level is a 400. For a change to a few fields use ServiceNowSettingsUpdate.
 type ServiceNowIntegrationRequest struct {
 	InstanceURL       string `json:"instanceUrl,omitempty"`
-	Username          string `json:"username"`
-	Password          string `json:"password"`
+	Certificate       string `json:"certificate,omitempty"`
+	Username          string `json:"username,omitempty"`
+	Password          string `json:"password,omitempty"`
+	Token             string `json:"token,omitempty"`
 	Enabled           bool   `json:"enabled"`
 	AutoCreate        bool   `json:"autoCreate"`
-	AutoCreateImpact  string `json:"autoCreateImpact"`
-	AutoCreateUrgency string `json:"autoCreateUrgency"`
+	AutoCreateImpact  string `json:"autoCreateImpact,omitempty"`
+	AutoCreateUrgency string `json:"autoCreateUrgency,omitempty"`
 	AutoUpdate        bool   `json:"autoUpdate"`
 }
 
+// ServiceNowSettingsUpdate is a partial change to the ServiceNow connection (Forward's UpdateServiceNowSettings): a nil field is left as it
+// is. Setting a Token clears the stored username and password and the other way round; an empty Certificate removes the stored one.
+// InstanceURL can only be given when no connection exists yet (BUG-14226).
+type ServiceNowSettingsUpdate struct {
+	InstanceURL       *string `json:"instanceUrl,omitempty"`
+	Certificate       *string `json:"certificate,omitempty"`
+	Username          *string `json:"username,omitempty"`
+	Password          *string `json:"password,omitempty"`
+	Token             *string `json:"token,omitempty"`
+	Enabled           *bool   `json:"enabled,omitempty"`
+	AutoCreate        *bool   `json:"autoCreate,omitempty"`
+	AutoUpdate        *bool   `json:"autoUpdate,omitempty"`
+	AutoCreateImpact  *string `json:"autoCreateImpact,omitempty"`
+	AutoCreateUrgency *string `json:"autoCreateUrgency,omitempty"`
+}
+
+// ServiceNowConnectionDetails is how Forward reaches a ServiceNow instance for the CMDB (Forward's ServiceNowCmdbConnectionDetails).
+// Forward returns every secret as an empty string, and an empty Password, ClientSecret or proxy password in a request means "keep the stored
+// one" -- but only while the instance URL and username (or client ID, or proxy host, port and username) are unchanged, so changing the
+// target means sending its secrets again (master fe0daf63c899, commit 626a2e9c8b2e; older builds echoed the secrets back).
 type ServiceNowConnectionDetails struct {
-	InstanceURL string `json:"instanceUrl"`
-	Username    string `json:"username"`
-	Password    string `json:"password"`
+	InstanceURL  string               `json:"instanceUrl"`
+	Certificate  string               `json:"certificate,omitempty"`
+	Username     string               `json:"username"`
+	Password     string               `json:"password"`
+	ClientID     string               `json:"clientId,omitempty"`
+	ClientSecret string               `json:"clientSecret,omitempty"`
+	ProxyConfig  *ServiceNowCMDBProxy `json:"proxyConfig,omitempty"`
+}
+
+// ServiceNowCMDBProxy is the HTTP proxy the CMDB connection goes through (Forward's ServiceNowCmdbProxyConfig). Username is required when
+// Password or Realm is set.
+type ServiceNowCMDBProxy struct {
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	Realm    string `json:"realm,omitempty"`
 }
 type ServiceNowCMDBField struct {
 	Label     string `json:"label"`
@@ -202,6 +249,23 @@ func (s *IntegrationsService) DeleteServiceNow(ctx context.Context) (*Response, 
 }
 func (s *IntegrationsService) PatchServiceNow(ctx context.Context, input ServiceNowIntegrationRequest) (*Response, error) {
 	return s.writeServiceNow(ctx, http.MethodPatch, input, "Integrations.PatchServiceNow")
+}
+
+// UpdateServiceNow changes some fields of the ServiceNow connection and leaves the rest (PATCH /integrations/servicenow, the same route
+// as PatchServiceNow). It sends only the fields that are set, so it cannot switch a flag off by leaving it out. The first call for an org
+// has to carry InstanceURL and either a username and password or a token, because Forward builds the connection from it. Token and
+// username/password together are refused here, as Forward refuses them.
+func (s *IntegrationsService) UpdateServiceNow(ctx context.Context, update ServiceNowSettingsUpdate) (*ServiceNowIntegrationSettings, *Response, error) {
+	if update.Token != nil && (update.Username != nil || update.Password != nil) {
+		return nil, nil, errors.New("forward: a ServiceNow connection takes a username and password or a token, not both")
+	}
+	req, err := s.client.newJSONRequest(ctx, http.MethodPatch, "/api/integrations/servicenow", update)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := new(ServiceNowIntegrationSettings)
+	resp, err := s.client.doRequired(markOperation(req, "Integrations.UpdateServiceNow"), out)
+	return out, resp, err
 }
 func (s *IntegrationsService) writeServiceNow(ctx context.Context, method string, input ServiceNowIntegrationRequest, operation string) (*Response, error) {
 	req, err := s.client.newJSONRequest(ctx, method, "/api/integrations/servicenow", input)

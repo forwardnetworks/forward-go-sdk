@@ -84,8 +84,9 @@ func (s *IntegrationsService) changeRequestPath(networkID, changeSetID string, r
 }
 
 // CreateChangeSetChangeRequest raises a ServiceNow change request for a change set (POST .../change-sets/{id}/servicenow/change-requests).
-// Forward checks the change set exists before it creates the ticket, but there is no route to list a change set's requests and the ticket
-// is created before it is linked: keep the answer's SysID, because a lost response leaves a ticket you cannot find again from here.
+// Forward checks the change set exists before it creates the ticket and creates the ticket before it links it. A change set's linked requests
+// (number and sys id) are listed by Predict.GetChangeSetSummary, so a lost response is recoverable only if the link was made; keep the answer's
+// SysID anyway.
 func (s *IntegrationsService) CreateChangeSetChangeRequest(ctx context.Context, networkID, changeSetID string, input ServiceNowChangeRequestInput) (*ServiceNowChangeRequest, *Response, error) {
 	if strings.TrimSpace(input.Summary) == "" {
 		return nil, nil, errors.New("forward: a change request needs a summary")

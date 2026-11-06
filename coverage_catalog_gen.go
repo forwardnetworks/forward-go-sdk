@@ -894,8 +894,23 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Endpoints.UpdateProfile": {
 		{Method: "PATCH", Route: "/api/endpoint-profiles/{profileId}"},
 	},
+	"Integrations.AddCheckIncident": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
+	},
+	"Integrations.AddCheckIncidents": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
 	"Integrations.AttachToChangeSetChangeRequest": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/servicenow/change-requests/{sysId}/attachments"},
+	},
+	"Integrations.CheckIncidentUpdateHistory": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
+	},
+	"Integrations.CloseServiceNowIncident": {
+		{Method: "POST", Route: "/api/integrations/servicenow/incidents/{incidentNumber}"},
+	},
+	"Integrations.CloseServiceNowIncidents": {
+		{Method: "POST", Route: "/api/integrations/servicenow/incidents"},
 	},
 	"Integrations.CreateChangeSetChangeRequest": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/servicenow/change-requests"},
@@ -918,11 +933,23 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.DeleteServiceNow": {
 		{Method: "DELETE", Route: "/api/integrations/servicenow"},
 	},
+	"Integrations.DeleteServiceNowCMDBConfiguration": {
+		{Method: "DELETE", Route: "/api/integrations/servicenow-cmdb/configuration"},
+	},
 	"Integrations.DeleteTenableSC": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/tenable-sources/{sourceName}"},
 	},
+	"Integrations.DisableServiceNowCMDB": {
+		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
+	},
 	"Integrations.DownloadChangeSetChangeRequestAttachment": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/servicenow/change-requests/{sysId}/attachments/{fileSysId}"},
+	},
+	"Integrations.DownloadServiceNowCMDBPayload": {
+		{Method: "GET", Route: "/api/integrations/servicenow-cmdb"},
+	},
+	"Integrations.DownloadServiceNowCMDBSyncReport": {
+		{Method: "GET", Route: "/api/integrations/servicenow-cmdb/synchronization-report"},
 	},
 	"Integrations.EnableServiceNowCMDB": {
 		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
@@ -932,6 +959,18 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Integrations.GetServiceNow": {
 		{Method: "GET", Route: "/api/integrations/servicenow"},
+	},
+	"Integrations.GetServiceNowCMDBConfiguration": {
+		{Method: "GET", Route: "/api/integrations/servicenow-cmdb/configuration"},
+	},
+	"Integrations.GetServiceNowIncident": {
+		{Method: "GET", Route: "/api/integrations/servicenow/incidents/{incidentNumber}"},
+	},
+	"Integrations.LinkCheckIncident": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
+	},
+	"Integrations.ListCheckIncidents": {
+		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
 	},
 	"Integrations.ListInfoblox": {
 		{Method: "GET", Route: "/api/integrations/infoblox/instances"},
@@ -948,20 +987,50 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.PatchServiceNow": {
 		{Method: "PATCH", Route: "/api/integrations/servicenow"},
 	},
+	"Integrations.PushServiceNowCMDB": {
+		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
+	},
+	"Integrations.RefreshCheckIncidents": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks"},
+	},
 	"Integrations.SaveServiceNowCMDB": {
 		{Method: "POST", Route: "/api/integrations/servicenow-cmdb/configuration"},
+	},
+	"Integrations.ServiceNowCMDBConfigurationItems": {
+		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
+	},
+	"Integrations.ServiceNowCMDBDiscoverySources": {
+		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
+	},
+	"Integrations.ServiceNowCMDBPayload": {
+		{Method: "GET", Route: "/api/integrations/servicenow-cmdb"},
 	},
 	"Integrations.ServiceNowCMDBSchema": {
 		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
 	},
+	"Integrations.ServiceNowCMDBStatusReport": {
+		{Method: "GET", Route: "/api/integrations/servicenow-cmdb/status"},
+	},
+	"Integrations.ServiceNowCMDBSyncHistory": {
+		{Method: "GET", Route: "/api/integrations/servicenow-cmdb/synchronization-history"},
+	},
+	"Integrations.TestServiceNowCMDB": {
+		{Method: "POST", Route: "/api/integrations/servicenow-cmdb/test"},
+	},
 	"Integrations.TestTenableSC": {
 		{Method: "POST", Route: "/api/networks/{networkId}/tenable-sources"},
+	},
+	"Integrations.UnlinkCheckIncident": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
 	},
 	"Integrations.UpdateInfoblox": {
 		{Method: "PATCH", Route: "/api/integrations/infoblox/instances/{instanceId}"},
 	},
 	"Integrations.UpdateRapid7": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/rapid7-sources/{sourceName}"},
+	},
+	"Integrations.UpdateServiceNow": {
+		{Method: "PATCH", Route: "/api/integrations/servicenow"},
 	},
 	"Integrations.UpdateTenableSC": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/tenable-sources/{sourceName}"},
