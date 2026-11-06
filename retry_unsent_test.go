@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -333,10 +334,18 @@ func TestWithIdempotentChangesNothingElse(t *testing.T) {
 		"marked 500 under RefusedOnly":       {marked(), status(500), nil, true, false},
 		"marked transport error repeated":    {marked(), nil, errors.New("reset"), false, true},
 		"marked transport under RefusedOnly": {marked(), nil, errors.New("reset"), true, false},
+		"marked permanent is not repeated":   {marked(), nil, fmt.Errorf("guard: %w", ErrPermanent), false, false},
+		"permanent method is not repeated":   {marked(), nil, fmt.Errorf("guard: %w", permanentMethodErr{}), false, false},
 	} {
 		if got := retryable(tc.req, tc.resp, tc.err, tc.refusedOnly, false); got != tc.want {
 			t.Errorf("%s: retryable = %v, want %v", name, got, tc.want)
 		}
+	}
+	// A permanent refusal wins even when nothing was sent (notConnected) and the
+	// method is a POST: the marker is the transport saying a repeat cannot help.
+	post, _ := http.NewRequest(http.MethodPost, "http://x/api", nil)
+	if retryable(post, nil, fmt.Errorf("guard: %w", ErrPermanent), false, true) {
+		t.Error("a permanent error is not repeated even when the connection was never obtained")
 	}
 	unrewindable, _ := http.NewRequestWithContext(WithIdempotent(context.Background()), http.MethodPatch, "http://x/api", io.NopCloser(strings.NewReader("{}")))
 	unrewindable.GetBody = nil

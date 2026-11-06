@@ -321,6 +321,12 @@ worse than its failure on a client whose policy is set for reads. A 503 is not
 proof a request went unprocessed (Spring maps an asynchronous handler's timeout
 to 503, which can come after the work started). It wins over `WithIdempotent`.
 
+A `RoundTripper` under `Config.HTTPClient` that refuses a request for good (a
+client-side guard, a policy check) can return an error that wraps
+`forward.ErrPermanent`, or has a `Permanent() bool` method answering true. The
+retry loop then returns it at once for every method instead of backing off;
+`errors.Is` still reaches your own error.
+
 `DefaultRetryPolicy()` is a sensible starting point: five attempts, exponential
 backoff from one second capped at two minutes, half jitter. Forward's API rate
 limiter locks the whole user out (more than 2000 requests a minute by default,

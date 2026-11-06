@@ -386,7 +386,7 @@ func checksPath(snapshotID string) (string, error) {
 }
 
 func isClientTimeout(err error) bool {
-	if err == nil || errors.Is(err, context.Canceled) {
+	if err == nil || errors.Is(err, context.Canceled) || isPermanent(err) {
 		return false
 	}
 	if errors.Is(err, context.DeadlineExceeded) {

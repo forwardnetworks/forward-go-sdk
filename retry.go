@@ -155,6 +155,31 @@ func notConnected(err error, getConn, gotConn bool) bool {
 	return true
 }
 
+// ErrPermanent marks a transport failure that repeating cannot fix. A
+// RoundTripper wrapped under Config.HTTPClient (a guard that refuses a request
+// before sending it, a policy check, a credential that will never work) returns
+// an error that wraps ErrPermanent, or that has a Permanent() bool method
+// answering true, and the retry loop returns it at once instead of backing off
+// and trying again. errors.Is and errors.As still see the caller's own error
+// through the SDK's wrapping, so a guard needs nothing else:
+//
+//	return nil, fmt.Errorf("%w: network not allowed: %w", ErrGuardRefused, forward.ErrPermanent)
+//
+// The first Permanent() method found in the error chain decides. It applies to
+// every method and wins over WithIdempotent. It changes nothing
+// when no retry policy is set (the zero policy retries nothing anyway).
+var ErrPermanent = errors.New("forward: permanent failure, do not retry")
+
+// isPermanent reports whether err wraps ErrPermanent or carries a
+// Permanent() bool method that answers true.
+func isPermanent(err error) bool {
+	if errors.Is(err, ErrPermanent) {
+		return true
+	}
+	var p interface{ Permanent() bool }
+	return errors.As(err, &p) && p.Permanent()
+}
+
 func retryable(req *http.Request, resp *http.Response, err error, refusedOnly, notConnected bool) bool {
 	// A body that cannot be rewound cannot be sent twice.
 	if req.Body != nil && req.GetBody == nil {
@@ -164,6 +189,11 @@ func retryable(req *http.Request, resp *http.Response, err error, refusedOnly, n
 		return false
 	}
 	if err != nil {
+		// A transport that says its refusal is final (see ErrPermanent) is
+		// believed over every other rule: repeating cannot change the answer.
+		if isPermanent(err) {
+			return false
+		}
 		if refusedOnly {
 			return false
 		}

@@ -2,6 +2,8 @@ package forward
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -286,5 +288,70 @@ func TestRetryDefaultMaxDelayKeepsExistingSchedules(t *testing.T) {
 		if wait, ok := retryWait(nil, 5*time.Second, i+1, defaultRetryMaxDelay, 0); !ok || wait != seconds*time.Second {
 			t.Fatalf("attempt %d: wait = %s, want %ds", i+1, wait, seconds)
 		}
+	}
+}
+
+type permanentMethodErr struct{}
+
+func (permanentMethodErr) Error() string   { return "guard says no" }
+func (permanentMethodErr) Permanent() bool { return true }
+
+type refusingTransport struct {
+	calls atomic.Int32
+	err   error
+}
+
+func (r *refusingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	r.calls.Add(1)
+	return nil, r.err
+}
+
+// A client-side guard (a RoundTripper that refuses a request before it is sent)
+// is permanent: waiting and asking again gets the same refusal. An error that
+// wraps ErrPermanent, or answers Permanent() true, ends the retry loop at the
+// first attempt for every method, and the caller's own error stays reachable
+// through the SDK's wrapping. An ordinary transport error is still retried for
+// an idempotent method, so the marker is what changes the behaviour.
+func TestRetryStopsOnPermanentTransportError(t *testing.T) {
+	t.Parallel()
+
+	errGuard := errors.New("guard refused")
+	for _, tc := range []struct {
+		name      string
+		err       error
+		wantCalls int32
+	}{
+		{"sentinel", fmt.Errorf("%w: %w", errGuard, ErrPermanent), 1},
+		{"method", fmt.Errorf("blocked: %w", permanentMethodErr{}), 1},
+		{"unmarked is retried", errGuard, 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			rt := &refusingTransport{err: tc.err}
+			client, err := NewClient(Config{
+				HTTPClient: &http.Client{Transport: rt},
+				BaseURL:    "http://forward.invalid",
+				Username:   "user",
+				Password:   "pass",
+				Retry:      RetryPolicy{MaxAttempts: 3, Delay: time.Millisecond},
+			})
+			if err != nil {
+				t.Fatalf("NewClient() error = %v", err)
+			}
+			_, _, err = client.Networks.List(WithIdempotent(context.Background()))
+			if err == nil {
+				t.Fatal("Networks.List() succeeded through a refusing transport")
+			}
+			if !errors.Is(err, errGuard) && tc.name != "method" {
+				t.Fatalf("error %v lost the caller's error", err)
+			}
+			var pm permanentMethodErr
+			if tc.name == "method" && !errors.As(err, &pm) {
+				t.Fatalf("error %v lost the caller's error type", err)
+			}
+			if got := rt.calls.Load(); got != tc.wantCalls {
+				t.Fatalf("transport calls = %d, want %d", got, tc.wantCalls)
+			}
+		})
 	}
 }
