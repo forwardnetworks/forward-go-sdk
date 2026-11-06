@@ -130,8 +130,10 @@ func (s *IntegrationsService) CloseServiceNowIncidents(ctx context.Context, numb
 	return s.client.Do(markOperation(req, "Integrations.CloseServiceNowIncidents"), nil)
 }
 
-// Check types the incident view filters by, spelled as Forward parses the `type` query parameter (CheckType.fromJson; the legacy spellings
-// also work). They are not the Java enum names: "ISOLATION" is a 400.
+// Check types the incident view filters by, spelled as Forward's source parses the `type` query parameter (CheckType.fromJson on master;
+// the legacy spellings also work). Master's source rejects the Java enum names ("ISOLATION"), but a live 26.10.5 build was seen to answer
+// 200 to one, which the source does not explain: send these spellings, which both accept, and do not rely on either behaviour for the names.
+// An unknown type is a 400 "Invalid check type" and no type at all is a 400 "At least one 'type' is required".
 const (
 	CheckTypeIsolation    = "Isolation"
 	CheckTypeReachability = "Reachability"
@@ -271,7 +273,7 @@ func (s *IntegrationsService) RefreshCheckIncidents(ctx context.Context, snapsho
 }
 
 // CheckIncidentUpdateHistory lists the work-note updates Forward made to one incident of a check (GET /snapshots/{id}/checks/{checkId}
-// ?view=serviceNowIncidentUpdateHistory&incident=NUMBER).
+// ?view=serviceNowIncidentUpdateHistory&incident=NUMBER). An incident that is not linked to the check is a 400.
 func (s *IntegrationsService) CheckIncidentUpdateHistory(ctx context.Context, snapshotID, checkID, incidentNumber string) ([]ServiceNowIncidentUpdate, *Response, error) {
 	if incidentNumber = strings.TrimSpace(incidentNumber); incidentNumber == "" {
 		return nil, nil, errors.New("forward: an incident number is required")

@@ -170,7 +170,7 @@ func (s *IntegrationsService) PushServiceNowCMDB(ctx context.Context) (*Response
 }
 
 // ServiceNowCMDBSyncHistory lists the recent pushes (GET /integrations/servicenow-cmdb/synchronization-history). It is empty before the
-// first push.
+// first push (Forward answers {"infos":[]}, not 404).
 func (s *IntegrationsService) ServiceNowCMDBSyncHistory(ctx context.Context) ([]ServiceNowCMDBSyncRun, *Response, error) {
 	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/integrations/servicenow-cmdb/synchronization-history", nil)
 	if err != nil {
@@ -184,7 +184,7 @@ func (s *IntegrationsService) ServiceNowCMDBSyncHistory(ctx context.Context) ([]
 }
 
 // ServiceNowCMDBStatusReport checks the saved configuration against the instance (GET /integrations/servicenow-cmdb/status). It calls out
-// to ServiceNow.
+// to ServiceNow, and answers 404 while no configuration is saved.
 func (s *IntegrationsService) ServiceNowCMDBStatusReport(ctx context.Context) (*ServiceNowCMDBStatus, *Response, error) {
 	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/integrations/servicenow-cmdb/status", nil)
 	if err != nil {
