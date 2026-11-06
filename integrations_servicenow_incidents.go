@@ -98,7 +98,9 @@ func (s *IntegrationsService) GetServiceNowIncident(ctx context.Context, number 
 }
 
 // CloseServiceNowIncident closes one incident in ServiceNow (POST /integrations/servicenow/incidents/{number}?action=close). It changes the
-// customer's ServiceNow record.
+// customer's ServiceNow record. It does not detach the incident from its check: Forward answers 400 "Cannot close incident X. Incident is
+// still active." while the incident still applies to a check (no end instant yet), and UnlinkCheckIncident is what detaches it. An incident
+// already Closed in ServiceNow is not touched there; Forward still marks its own copy closed.
 func (s *IntegrationsService) CloseServiceNowIncident(ctx context.Context, number string) (*Response, error) {
 	path, err := incidentNumberPath(number)
 	if err != nil {
@@ -112,7 +114,8 @@ func (s *IntegrationsService) CloseServiceNowIncident(ctx context.Context, numbe
 }
 
 // CloseServiceNowIncidents closes several incidents in ServiceNow (POST /integrations/servicenow/incidents?action=close, 204). It changes
-// the customer's ServiceNow records.
+// the customer's ServiceNow records. Forward checks every incident for the "still active" refusal (see CloseServiceNowIncident) before it
+// closes any, so one active incident means none are closed.
 func (s *IntegrationsService) CloseServiceNowIncidents(ctx context.Context, numbers []string) (*Response, error) {
 	cleaned := make([]string, 0, len(numbers))
 	for _, number := range numbers {

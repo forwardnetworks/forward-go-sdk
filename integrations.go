@@ -95,7 +95,9 @@ type ServiceNowSettingsUpdate struct {
 // ServiceNowConnectionDetails is how Forward reaches a ServiceNow instance for the CMDB (Forward's ServiceNowCmdbConnectionDetails).
 // Forward returns every secret as an empty string, and an empty Password, ClientSecret or proxy password in a request means "keep the stored
 // one" -- but only while the instance URL and username (or client ID, or proxy host, port and username) are unchanged, so changing the
-// target means sending its secrets again (master fe0daf63c899, commit 626a2e9c8b2e; older builds echoed the secrets back).
+// target means sending its secrets again (master fe0daf63c899, commit 626a2e9c8b2e; older builds echoed the secrets back). Forward compares
+// the URLs as java.net.URI values, exactly: send InstanceURL (and the proxy Host) back as read, because "https://host" and "https://host/"
+// differ and the stored secret is then not reused (400 "'password' is required").
 type ServiceNowConnectionDetails struct {
 	InstanceURL  string               `json:"instanceUrl"`
 	Certificate  string               `json:"certificate,omitempty"`

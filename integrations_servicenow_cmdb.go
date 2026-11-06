@@ -16,16 +16,17 @@ import (
 
 // ServiceNowCMDBFieldContext says where in a CI a push error happened (Forward's ServiceNowCmdbError.FieldContext).
 type ServiceNowCMDBFieldContext struct {
-	MatchingAttributesTried []string       `json:"matchingAttributesTried,omitempty"`
-	CITableName             string         `json:"ciTableName,omitempty"`
-	FieldName               string         `json:"fieldName,omitempty"`
-	ExpectedType            string         `json:"expectedType,omitempty"`
-	ActualValue             string         `json:"actualValue,omitempty"`
-	ReferenceTargetTable    string         `json:"referenceTargetTable,omitempty"`
-	NQESource               map[string]any `json:"nqeSource,omitempty"`
+	MatchingAttributesTried []string `json:"matchingAttributesTried,omitempty"`
+	CITableName             string   `json:"ciTableName,omitempty"`
+	FieldName               string   `json:"fieldName,omitempty"`
+	ExpectedType            string   `json:"expectedType,omitempty"`
+	ActualValue             string   `json:"actualValue,omitempty"`
+	ReferenceTargetTable    string   `json:"referenceTargetTable,omitempty"`
+	// NQESource is the NQE query and column that produced the value: queryId, queryName and columnName.
+	NQESource map[string]any `json:"nqeSource,omitempty"`
 }
 
-// ServiceNowCMDBError is a structured CMDB error (Forward's ServiceNowCmdbError). ErrorType is Forward's ServiceNowErrorType, for example
+// ServiceNowCMDBError is a structured CMDB error (Forward's ServiceNowCmdbError; Count is always present and at least 1). ErrorType is Forward's ServiceNowErrorType, for example
 // AUTH_INVALID_CREDENTIALS, CONNECTION_SSL_ERROR, PERMISSION_ACL_RESTRICTION, SCHEMA_FIELD_NOT_FOUND or UNKNOWN_ERROR; it is a free string
 // here because ServiceNow instances add cases.
 type ServiceNowCMDBError struct {
