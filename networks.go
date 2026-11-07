@@ -280,6 +280,37 @@ func (s *NetworksService) Paths(ctx context.Context, networkID string, input Pat
 	return out, response, err
 }
 
+// Get returns one network's basic information. GET /api/networks/{id}
+// (NetworkController.getNetwork; published from Forward 26.11, FWD-61722). A
+// network that has expired is a 404. A build before 26.11 does not map GET on
+// this path (only PATCH and DELETE), so it refuses the request instead of
+// answering "No endpoint": Spring normally answers 405 for a path that has other
+// methods mapped, which is not ErrEndpointNotServed and was not checked live.
+// List and filter there. From 26.11 this is
+// also the way to read a network's own properties, because every property of the
+// snapshot listing except its snapshots list is deprecated (FWD-61718, removal in
+// 27.2).
+func (s *NetworksService) Get(ctx context.Context, networkID string) (*Network, *Response, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	path, err := networkPath(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	network := new(Network)
+	resp, err := s.client.Do(req, network)
+	if err != nil {
+		return nil, resp, err
+	}
+	return network, resp, nil
+}
+
 // Create creates a network with name.
 func (s *NetworksService) Create(ctx context.Context, name string) (*Network, *Response, error) {
 	name = strings.TrimSpace(name)

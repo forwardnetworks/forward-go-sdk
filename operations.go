@@ -608,7 +608,9 @@ func (o *SnapshotOperation) publishSnapshot(
 
 func (s *SnapshotsService) find(ctx context.Context, networkID, snapshotID string) (*Snapshot, *Response, error) {
 	limit := operationSnapshotListLimit
-	snapshots, response, err := s.List(ctx, networkID, SnapshotListOptions{Limit: &limit})
+	// Looked up by ID, so a prediction counts (Forward 26.11 hides them by default).
+	includePredicted := true
+	snapshots, response, err := s.List(ctx, networkID, SnapshotListOptions{Limit: &limit, IncludePredicted: &includePredicted})
 	if err != nil {
 		return nil, response, err
 	}

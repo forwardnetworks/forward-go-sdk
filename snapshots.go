@@ -64,6 +64,16 @@ type SnapshotListOptions struct {
 	Limit                       *int32
 	IncludeArchived             *bool
 
+	// IncludePredicted asks for Predict's forked snapshots (those with a
+	// ParentSnapshotID) as well. From Forward 26.11 (FWD-61712) the listing
+	// leaves them out unless this is true, so that State "PROCESSED" with a
+	// Limit of 1 is always the newest collected snapshot even on a network that
+	// uses Predict (drafts and imports are not collections, so "collected" is
+	// loose); earlier builds ignore the parameter and list them anyway.
+	// Get sets it, because it looks a snapshot up by ID and the snapshot may be
+	// a prediction.
+	IncludePredicted *bool
+
 	// Preview: MaxResults and SkipUnprocessed are accepted by some Forward
 	// versions but are not in the published snapshot OpenAPI contract.
 	MaxResults      *int32
@@ -140,6 +150,7 @@ func (s *SnapshotsService) List(
 	setFloat64(query, "maxParsingFailureDevicePct", options.MaxParsingFailurePercent)
 	setInt32(query, "limit", options.Limit)
 	setBool(query, "includeArchived", options.IncludeArchived)
+	setBool(query, "includePredicted", options.IncludePredicted)
 	setInt32(query, "maxResults", options.MaxResults)
 	setBool(query, "skipUnprocessed", options.SkipUnprocessed)
 	if len(query) != 0 {
@@ -166,7 +177,7 @@ var ErrSnapshotNotFound = errors.New("forward: snapshot not found")
 const snapshotSearchLimit = 1000
 
 // Get returns snapshot metadata by searching the network's snapshot listing
-// (archived snapshots included).
+// (archived and predicted snapshots included).
 //
 // Forward has no per-snapshot metadata route: GET
 // /api/networks/{networkId}/snapshots/{snapshotId} is not mapped at primary
@@ -190,9 +201,13 @@ func (s *SnapshotsService) Get(ctx context.Context, networkID, snapshotID string
 func (s *SnapshotsService) findInListing(ctx context.Context, networkID, snapshotID string) (*Snapshot, *Response, error) {
 	limit := int32(snapshotSearchLimit)
 	includeArchived := true
+	// A predicted snapshot is a snapshot too: Predict.RunOperation polls the one
+	// it started through Get, and Forward 26.11's listing hides forks unless asked.
+	includePredicted := true
 	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{
-		Limit:           &limit,
-		IncludeArchived: &includeArchived,
+		Limit:            &limit,
+		IncludeArchived:  &includeArchived,
+		IncludePredicted: &includePredicted,
 	})
 	if err != nil {
 		return nil, resp, err
@@ -209,14 +224,16 @@ func (s *SnapshotsService) findInListing(ctx context.Context, networkID, snapsho
 // the network was actually in: Predict results, forks (a parent snapshot) and drafts are skipped, as Forward's own
 // SnapshotService.getLatestProcessedSnapshot does. "Newest" is the listing's order (newest first); the rows are not re-sorted.
 //
-// Forward's snapshot listing includes predicted snapshots (Predict forks a
-// snapshot and processes it like any other), so the newest PROCESSED row on a
-// network that uses Predict is frequently a prediction. The dedicated
+// Before Forward 26.11 the snapshot listing included predicted snapshots
+// (Predict forks a snapshot and processes it like any other), so the newest
+// PROCESSED row on a network that uses Predict was frequently a prediction; 26.11
+// leaves them out unless IncludePredicted is set (FWD-61712), and this still
+// applies the rule itself so both generations agree. The dedicated
 // /latestProcessed route skipped forks, but it is deprecated for removal in
 // 26.12; this reads the listing instead and applies the same rule. The listing
 // has no offset, so it is read without a limit -- Forward assembles every row
 // server-side either way. A caller that does want predictions included can
-// take the first row of List with State "PROCESSED". LatestCollected is the
+// take the first row of List with State "PROCESSED" and IncludePredicted set. LatestCollected is the
 // same call.
 //
 // ErrNoSnapshots means the network has no processed, non-predicted snapshot.
@@ -260,7 +277,8 @@ const (
 
 // ComputeAdvancedReachability asks Forward to compute advanced reachability for a snapshot -- the analysis internet-exposure and other
 // security answers need, which a reprocessed or imported snapshot can be left without (AdvancedReachabilityState UNPROCESSED). It returns
-// as soon as Forward accepts (204) and runs asynchronously; watch the snapshot's AdvancedReachabilityState or Snapshots.Progress. POST
+// as soon as Forward accepts (204) and runs asynchronously; from 26.11 (FWD-61031) it also reruns a computation that failed, was canceled or timed out
+// (it still does nothing for one that succeeded or is in progress); watch the snapshot's AdvancedReachabilityState or Snapshots.Progress. POST
 // /api/snapshots/{id}?action=computeAdvancedReachability (published, computeAdvancedReachability; SnapshotController on primary 15398425a69
 // and stable 67e89c87124). The handler requires the REACHABILITY stage, so a snapshot that has not finished it is ErrSnapshotNotProcessed
 // (409 SNAPSHOT_UNAVAILABLE) and one whose processing failed is ErrSnapshotProcessingFailed. Compute-heavy, but it changes no data.
@@ -311,6 +329,32 @@ func (s *SnapshotsService) Invalidate(ctx context.Context, snapshotID string) (*
 	if err == nil && strings.TrimSpace(out.State) == "" {
 		err = errors.New("forward: snapshot invalidate returned no state")
 	}
+	return out, response, err
+}
+
+// ReprocessInvalidated reprocesses a snapshot that is already invalidated
+// (Snapshots.Invalidate, or any other invalidation); it does not invalidate
+// first, which is what Reprocess does. POST /api/snapshots/{id}?action=reprocess
+// answers 202 with the state change (SnapshotController.reprocessSnapshot,
+// Forward 26.11, FWD-61280; published). A snapshot that is not invalidated is a
+// 400 "must be invalidated before reprocessing". Unlike invalidation, which needs
+// the INVALIDATE_SNAPSHOTS permission, this needs only network view access, but an
+// org can set a minimum role for reprocessing (SnapshotReprocessMinimumRole;
+// verifyMinimumRoleRequirement refuses a caller below it). Not verified live: the
+// status a build before 26.11 answers for the unmapped action, or the refusal's
+// status and body. Reprocess works on every build.
+func (s *SnapshotsService) ReprocessInvalidated(ctx context.Context, snapshotID string) (*SnapshotStateTransition, *Response, error) {
+	path, err := topologySnapshotPath(snapshotID)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path+"?action=reprocess", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Snapshots.ReprocessInvalidated")
+	out := new(SnapshotStateTransition)
+	response, err := s.client.doRequired(req, out)
 	return out, response, err
 }
 
@@ -583,6 +627,7 @@ func (s *SnapshotsService) ListDocument(ctx context.Context, networkID string, o
 	if options.State != "" {
 		query.Set("state", options.State)
 	}
+	setBool(query, "includePredicted", options.IncludePredicted)
 	if len(query) != 0 {
 		path += "?" + query.Encode()
 	}
@@ -597,7 +642,7 @@ func (s *SnapshotsService) ListDocument(ctx context.Context, networkID string, o
 }
 
 // ResolveID implements the consumer-safe "latest" rule: prefer a processed,
-// real collected snapshot; then any processed snapshot; then the newest row.
+// real collected snapshot; then any processed snapshot (a prediction only on builds before 26.11, which list them by default); then the newest row.
 // A concrete ID is returned unchanged without a request.
 func (s *SnapshotsService) ResolveID(ctx context.Context, networkID, which string) (Identifier, *Response, error) {
 	which = strings.TrimSpace(which)

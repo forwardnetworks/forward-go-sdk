@@ -1297,6 +1297,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Networks.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}"},
 	},
+	"Networks.Get": {
+		{Method: "GET", Route: "/api/networks/{networkId}"},
+	},
 	"Networks.GetSnapshotRetentionPolicy": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snapshotRetentionPolicy"},
 	},
@@ -1869,6 +1872,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/progress"},
 	},
 	"Snapshots.Reprocess": {
+		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
+	},
+	"Snapshots.ReprocessInvalidated": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}"},
 	},
 	"Snapshots.ResolveID": {
