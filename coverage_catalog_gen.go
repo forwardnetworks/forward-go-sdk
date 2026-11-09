@@ -1457,8 +1457,20 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.BGPAdvertisementDiffs": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
 	},
+	"Predict.BGPNode": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/devices/{deviceName}/vrfs/{vrfName}/bgp-node"},
+	},
+	"Predict.BGPNodeDevices": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/bgp-nodes"},
+	},
+	"Predict.BGPRules": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/bgp-rules"},
+	},
 	"Predict.ChangeSetNQEChecks": {
 		{Method: "GET", Route: "/api/nqe/verificationQueries"},
+	},
+	"Predict.ChangeSetSubset": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/rp-nodes"},
 	},
 	"Predict.Commit": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits"},
@@ -1495,6 +1507,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.DiscardSecurityRuleChange": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
+	},
+	"Predict.DownloadProtocolModeling": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
 	},
 	"Predict.DuplicateChangeSet": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}"},
@@ -1567,6 +1582,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.MoveSecurityRule": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/scopes/{scopeId}/rulebases/{rulebaseId}/security-rules/{uuid}"},
 	},
+	"Predict.OSPFNodeDevices": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/ospf-nodes"},
+	},
+	"Predict.OSPFNodes": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/devices/{deviceName}/ospf-nodes"},
+	},
 	"Predict.PatchChangeSetsTags": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/change-sets"},
 	},
@@ -1580,6 +1601,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/config"},
 	},
 	"Predict.ProtocolModelingDone": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
+	},
+	"Predict.ProtocolModelingPartitions": {
 		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/protocol-modeling"},
 	},
 	"Predict.ProtocolPathSelection": {

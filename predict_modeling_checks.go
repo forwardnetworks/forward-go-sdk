@@ -151,12 +151,8 @@ func (s *PredictService) VerifyPredictModeling(ctx context.Context, snapshotID s
 		return nil, nil, err
 	}
 	req = markOperation(req, "Predict.VerifyPredictModeling")
-	timeout := VerifyPredictModelingTimeout
-	if s.client.httpClient != nil && (s.client.httpClient.Timeout == 0 || s.client.httpClient.Timeout > timeout) {
-		timeout = 0 // the client's own limit is longer or off: keep it
-	}
 	out := new(PredictModelVerification)
-	resp, err := s.client.doWithTimeout(req, out, false, nil, timeout)
+	resp, err := s.client.doWithTimeout(req, out, false, nil, s.extendTimeout(VerifyPredictModelingTimeout))
 	if err != nil {
 		return out, resp, err
 	}
