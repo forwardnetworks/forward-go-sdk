@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // Predict model verification and protocol-modeling debug reads (IEntryCheckController, BenchmarkController; master fe0daf63c899).
@@ -67,17 +68,71 @@ func (s *PredictService) RunIEntryChecks(ctx context.Context, snapshotID string,
 	return out, resp, err
 }
 
+// PredictModelScore is one precision/recall/F1 score from the Predict model check (PredictModelScore in Forward's client-plus-structs). The
+// three are PERCENTAGES from 0 to 100, not fractions: precision = 100 * matching / modeled, recall = 100 * matching / collected, and F1 their
+// harmonic mean. Forward answers all three as 0 whenever no entry matched, so 0 means "nothing matched" and cannot be told apart from
+// "nothing modeled" or "nothing collected": the entry counts are not in the response.
+type PredictModelScore struct {
+	Precision float64 `json:"precision"`
+	Recall    float64 `json:"recall"`
+	F1        float64 `json:"f1"`
+}
+
 // PredictModelVerification is what VerifyPredictModeling answers (SnapshotIEntryComparisonResult): per-device differences between what
-// Predict models and what the snapshot collected, an overall score and a score per protocol. The parts are left raw.
+// Predict models and what the snapshot collected, an overall score and a score per protocol. The parts are left raw; OverallScore and
+// ProtocolScores decode the scores.
 type PredictModelVerification struct {
 	Diffs            map[string]json.RawMessage `json:"diffs"`
 	Score            json.RawMessage            `json:"score"`
 	ScoresByProtocol map[string]json.RawMessage `json:"scoresByProtocol"`
 }
 
+// OverallScore decodes Score. It reports false when the response carried none.
+func (v *PredictModelVerification) OverallScore() (PredictModelScore, bool, error) {
+	if v == nil || len(v.Score) == 0 || string(v.Score) == "null" {
+		return PredictModelScore{}, false, nil
+	}
+	var score PredictModelScore
+	if err := json.Unmarshal(v.Score, &score); err != nil {
+		return PredictModelScore{}, false, fmt.Errorf("forward: decode the overall model score: %w", err)
+	}
+	return score, true, nil
+}
+
+// ProtocolScores decodes ScoresByProtocol, keyed by Forward's ProtocolConfigType name. The keys that can appear follow the org's
+// PREDICT_MODEL_* properties: BGP (MPLS entries count as BGP), OSPF, CONFIG, OMP and IS_IS, narrowed per device by vendor.
+// A key is present only for a protocol for which some device counted at least one entry (Forward builds the map from those counts and
+// keeps zero rows only in its own logs): a missing key means nothing was counted for that protocol, while a key with all zeros means
+// entries existed and none matched. A score that does not decode as precision/recall/f1 reads as zeros, as does an absent field.
+func (v *PredictModelVerification) ProtocolScores() (map[string]PredictModelScore, error) {
+	if v == nil {
+		return nil, nil
+	}
+	out := make(map[string]PredictModelScore, len(v.ScoresByProtocol))
+	for protocol, raw := range v.ScoresByProtocol {
+		var score PredictModelScore
+		if err := json.Unmarshal(raw, &score); err != nil {
+			return nil, fmt.Errorf("forward: decode the %s model score: %w", protocol, err)
+		}
+		out[protocol] = score
+	}
+	return out, nil
+}
+
+// VerifyPredictModelingTimeout is the HTTP timeout VerifyPredictModeling uses when the client's own timeout is shorter (and keeps the
+// client's when it is longer or disabled). Forward lets the comparison run for up to 90 minutes; this stops well short of that, so a
+// snapshot that needs longer still fails here, and a caller can lower it for one call with a context deadline.
+const VerifyPredictModelingTimeout = 30 * time.Minute
+
 // VerifyPredictModeling compares Predict's model of a BASE snapshot with the entries the snapshot collected (POST /api/internal/snapshots/
-// {snapshotId}/verify-predict-modeling?mode=base&returnDiffs=; MANAGE_PROTOCOL_MODELING; the snapshot must be past creation). With
-// returnDiffs false only the scores come back. It can be slow on a large snapshot.
+// {snapshotId}/verify-predict-modeling?mode=base&returnDiffs=; IEntryCheckController at master fe0daf63c899, read from source, not run live).
+// With returnDiffs false only the scores come back and diffs is an empty object; the server default is true, which returns the
+// missing and extra entries of every device that has a difference and can be very large. Needs MANAGE_PROTOCOL_MODELING (the network ADMIN role; PREDICT licence facet)
+// and a snapshot past creation; the route is not gated on the PREDICT_MODELING org property, but with it off no protocol is supported, so the scores should
+// come back zero (or the call fails if the prerequisite jobs do; not traced). It is computed on every call, with no stored result to read instead: the master first triggers (or reuses the
+// finished result of) the snapshot's protocol-modeling and predictable-routes jobs, which cache derived data for the snapshot, then runs
+// the comparison on a search worker with a 90 minute task timeout. Nothing in the comparison itself writes a result, and the route is
+// not audited. It can be slow on a large snapshot, so the call waits up to VerifyPredictModelingTimeout instead of the client's usual timeout.
 func (s *PredictService) VerifyPredictModeling(ctx context.Context, snapshotID string, returnDiffs bool) (*PredictModelVerification, *Response, error) {
 	snapshotID = strings.TrimSpace(snapshotID)
 	if snapshotID == "" {
@@ -87,10 +142,26 @@ func (s *PredictService) VerifyPredictModeling(ctx context.Context, snapshotID s
 	if !returnDiffs {
 		query.Set("returnDiffs", "false")
 	}
-	out := new(PredictModelVerification)
+	if err := s.client.requireCapability(CapabilityPredict); err != nil {
+		return nil, nil, err
+	}
 	path := "/api/internal/snapshots/" + url.PathEscape(snapshotID) + "/verify-predict-modeling?" + query.Encode()
-	resp, err := s.doJSON(ctx, http.MethodPost, path, nil, out, "Predict.VerifyPredictModeling")
-	return out, resp, err
+	req, err := s.client.bodyRequest(ctx, http.MethodPost, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Predict.VerifyPredictModeling")
+	timeout := VerifyPredictModelingTimeout
+	if s.client.httpClient != nil && (s.client.httpClient.Timeout == 0 || s.client.httpClient.Timeout > timeout) {
+		timeout = 0 // the client's own limit is longer or off: keep it
+	}
+	out := new(PredictModelVerification)
+	resp, err := s.client.doWithTimeout(req, out, false, nil, timeout)
+	if err != nil {
+		return out, resp, err
+	}
+	s.client.observeCapability(CapabilityPredict)
+	return out, resp, nil
 }
 
 // ProtocolModelingQuery narrows the seed-route and path-selection reads. Prefix is required; Device limits the answer to that device, and

@@ -3,6 +3,7 @@ package forward
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -146,16 +147,43 @@ func TestIEntryChecksAndProtocolModelingReads(t *testing.T) {
 		t.Errorf("ientrychecks request = %+v", seen[0])
 	}
 
-	verify := newTestClient(t, predictRecorder(t, 200, `{"diffs":{"r1":{"missingPredictedEntries":[]}},"score":{"matched":9},"scoresByProtocol":{"BGP":{"matched":4}}}`, &seen).URL).Predict
+	verify := newTestClient(t, predictRecorder(t, 200, `{"diffs":{"r1":{"missingPredictedEntries":[]}},"score":{"precision":90,"recall":80,"f1":84.7},"scoresByProtocol":{"BGP":{"precision":90,"recall":80,"f1":84.7}}}`, &seen).URL).Predict
 	v, _, err := verify.VerifyPredictModeling(ctx, "s1", false)
 	if err != nil || v.Diffs["r1"] == nil || v.ScoresByProtocol["BGP"] == nil || v.Score == nil {
 		t.Fatalf("verification = %+v, %v", v, err)
 	}
-	if _, _, err := verify.VerifyPredictModeling(ctx, "s1", true); err != nil {
+	// The typed accessors decode Forward's PredictModelScore (percentages) from the raw parts, and a response without a score is not an error.
+	typed := newTestClient(t, predictRecorder(t, 200, `{"diffs":{},"score":{"precision":97.5,"recall":88.25,"f1":92.64},"scoresByProtocol":{"BGP":{"precision":100.0,"recall":50.0,"f1":66.67}}}`, &seen).URL).Predict
+	tv, _, err := typed.VerifyPredictModeling(ctx, "s1", false)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if got := seen[len(seen)-2].uri; got != "/api/internal/snapshots/s1/verify-predict-modeling?mode=base&returnDiffs=false" {
+	if overall, ok, err := tv.OverallScore(); err != nil || !ok || overall != (PredictModelScore{Precision: 97.5, Recall: 88.25, F1: 92.64}) {
+		t.Fatalf("OverallScore = %+v, %v, %v", overall, ok, err)
+	}
+	if byProto, err := tv.ProtocolScores(); err != nil || byProto["BGP"] != (PredictModelScore{Precision: 100, Recall: 50, F1: 66.67}) || len(byProto) != 1 {
+		t.Fatalf("ProtocolScores = %+v, %v", byProto, err)
+	}
+	if _, ok, err := (&PredictModelVerification{}).OverallScore(); ok || err != nil {
+		t.Fatalf("an empty verification reported a score: %v, %v", ok, err)
+	}
+	if _, ok, err := (&PredictModelVerification{Score: json.RawMessage(`"x"`)}).OverallScore(); ok || err == nil {
+		t.Fatalf("a malformed score was accepted: %v, %v", ok, err)
+	}
+	if _, ok, err := (*PredictModelVerification)(nil).OverallScore(); ok || err != nil {
+		t.Fatalf("a nil verification reported a score: %v, %v", ok, err)
+	}
+	if _, err := (&PredictModelVerification{ScoresByProtocol: map[string]json.RawMessage{"BGP": json.RawMessage(`"x"`)}}).ProtocolScores(); err == nil {
+		t.Fatal("a malformed protocol score was accepted")
+	}
+	if _, _, err := verify.VerifyPredictModeling(ctx, "s1", false); err != nil {
+		t.Fatal(err)
+	}
+	if got := seen[len(seen)-1].uri; got != "/api/internal/snapshots/s1/verify-predict-modeling?mode=base&returnDiffs=false" {
 		t.Errorf("verify (no diffs) = %s", got)
+	}
+	if _, _, err := verify.VerifyPredictModeling(ctx, "s1", true); err != nil {
+		t.Fatal(err)
 	}
 	if got := seen[len(seen)-1].uri; got != "/api/internal/snapshots/s1/verify-predict-modeling?mode=base" {
 		t.Errorf("verify (diffs) = %s", got)
