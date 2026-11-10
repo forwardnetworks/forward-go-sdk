@@ -242,3 +242,33 @@ func (s *PredictService) ChangeSetSubset(ctx context.Context, snapshotID string,
 	}
 	return out.Names, resp, nil
 }
+
+// ConfigNodeDevices lists the devices that host at least one modeled config node (the routes derived from configuration, static or direct),
+// as an object of device id to device name (GET .../config-nodes?devices; BenchmarkController.getConfigNodeDevices, Forward master after
+// 26.10; not mapped at the 26.10 builds, so those answer 404 "No endpoint" and ErrEndpointNotServed).
+func (s *PredictService) ConfigNodeDevices(ctx context.Context, snapshotID string) (json.RawMessage, *Response, error) {
+	path, err := internalSnapshotPath(snapshotID, "config-nodes")
+	if err != nil {
+		return nil, nil, err
+	}
+	return s.internalGet(ctx, path, url.Values{"devices": []string{""}}, "Predict.ConfigNodeDevices")
+}
+
+// ConfigNodes returns the modeled config nodes on a device, one per VRF with direct, local or static routes, as {"configNodes": [...]} (GET
+// .../devices/{device}/config-nodes; BenchmarkController.getConfigNodes). A non-empty vrf limits it to that VRF's node. A device without any
+// gives an empty list; an unknown device or VRF is a 404.
+func (s *PredictService) ConfigNodes(ctx context.Context, snapshotID, device, vrf string) (json.RawMessage, *Response, error) {
+	device = strings.TrimSpace(device)
+	if device == "" {
+		return nil, nil, errors.New("forward: a device is required")
+	}
+	path, err := internalSnapshotPath(snapshotID, "devices", device, "config-nodes")
+	if err != nil {
+		return nil, nil, err
+	}
+	query := url.Values{}
+	if vrf = strings.TrimSpace(vrf); vrf != "" {
+		query.Set("vrfName", vrf)
+	}
+	return s.internalGet(ctx, path, query, "Predict.ConfigNodes")
+}

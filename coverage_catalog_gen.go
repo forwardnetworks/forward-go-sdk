@@ -1298,6 +1298,7 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "DELETE", Route: "/api/networks/{networkId}"},
 	},
 	"Networks.Get": {
+		{Method: "GET", Route: "/api/networks"},
 		{Method: "GET", Route: "/api/networks/{networkId}"},
 	},
 	"Networks.GetSnapshotRetentionPolicy": {
@@ -1480,6 +1481,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.CommittedBGPAdvertisementDiffs": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/{commitId}/devices/{device}/bgp-advertisements"},
+	},
+	"Predict.ConfigNodeDevices": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/config-nodes"},
+	},
+	"Predict.ConfigNodes": {
+		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/devices/{deviceName}/config-nodes"},
 	},
 	"Predict.CreateChangeSet": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets"},

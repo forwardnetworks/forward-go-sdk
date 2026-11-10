@@ -47,6 +47,8 @@ func TestPredictInternalReadsSendTheParametersForwardSelectsOn(t *testing.T) {
 		{"GET /api/internal/snapshots/s1/devices/r%201/vrfs/mgmt/bgp-node accept=application/json", func() error { _, _, err := p.BGPNode(ctx, "s1", "r 1", "mgmt"); return err }},
 		{"GET /api/internal/snapshots/s1/devices/r1/ospf-nodes accept=application/json", func() error { _, _, err := p.OSPFNodes(ctx, "s1", "r1", ""); return err }},
 		{"GET /api/internal/snapshots/s1/devices/r1/ospf-nodes?vrfName=mgmt accept=application/json", func() error { _, _, err := p.OSPFNodes(ctx, "s1", "r1", "mgmt"); return err }},
+		{"GET /api/internal/snapshots/s1/config-nodes?devices= accept=application/json", func() error { _, _, err := p.ConfigNodeDevices(ctx, "s1"); return err }},
+		{"GET /api/internal/snapshots/s1/devices/r1/config-nodes?vrfName=mgmt accept=application/json", func() error { _, _, err := p.ConfigNodes(ctx, "s1", "r1", "mgmt"); return err }},
 		{"GET /api/internal/snapshots/s1/bgp-rules?deviceName=r1&vrfName=default accept=application/json", func() error { _, _, err := p.BGPRules(ctx, "s1", "r1", "default", ""); return err }},
 		{"GET /api/internal/snapshots/s1/bgp-rules?deviceName=r1&neighborAddr=10.0.0.2&vrfName=default accept=application/json", func() error { _, _, err := p.BGPRules(ctx, "s1", "r1", "default", "10.0.0.2"); return err }},
 	}
@@ -95,10 +97,11 @@ func TestPredictInternalReadsRefuseBadInputWithoutSending(t *testing.T) {
 	zero, neg := 0, -1
 
 	for name, err := range map[string]error{
-		"no snapshot":     func() error { _, _, err := p.BGPNodeDevices(ctx, " "); return err }(),
-		"node no vrf":     func() error { _, _, err := p.BGPNode(ctx, "s1", "r1", ""); return err }(),
-		"rules no device": func() error { _, _, err := p.BGPRules(ctx, "s1", "", "default", ""); return err }(),
-		"ospf no device":  func() error { _, _, err := p.OSPFNodes(ctx, "s1", "", ""); return err }(),
+		"no snapshot":      func() error { _, _, err := p.BGPNodeDevices(ctx, " "); return err }(),
+		"node no vrf":      func() error { _, _, err := p.BGPNode(ctx, "s1", "r1", ""); return err }(),
+		"rules no device":  func() error { _, _, err := p.BGPRules(ctx, "s1", "", "default", ""); return err }(),
+		"config no device": func() error { _, _, err := p.ConfigNodes(ctx, "s1", "", ""); return err }(),
+		"ospf no device":   func() error { _, _, err := p.OSPFNodes(ctx, "s1", "", ""); return err }(),
 		"subset no device": func() error {
 			_, _, err := p.ChangeSetSubset(ctx, "s1", []string{" "}, ChangeSetSubsetOptions{})
 			return err

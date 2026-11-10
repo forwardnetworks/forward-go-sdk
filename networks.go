@@ -283,10 +283,10 @@ func (s *NetworksService) Paths(ctx context.Context, networkID string, input Pat
 // Get returns one network's basic information. GET /api/networks/{id}
 // (NetworkController.getNetwork; published from Forward 26.11, FWD-61722). A
 // network that has expired is a 404. A build before 26.11 does not map GET on
-// this path (only PATCH and DELETE), so it refuses the request instead of
-// answering "No endpoint": Spring normally answers 405 for a path that has other
-// methods mapped, which is not ErrEndpointNotServed and was not checked live.
-// List and filter there. From 26.11 this is
+// this path (only PATCH and DELETE) and answers 405, seen live on 26.10.5 with
+// an HTML body; Get then reads the network from List instead (a 405, or a 404
+// "No endpoint", is the signal; a plain 404 is returned as it is). The fallback
+// returns ErrNetworkNotFound when the listing has no such network. From 26.11 this is
 // also the way to read a network's own properties, because every property of the
 // snapshot listing except its snapshots list is deprecated (FWD-61718, removal in
 // 27.2).
@@ -306,9 +306,25 @@ func (s *NetworksService) Get(ctx context.Context, networkID string) (*Network, 
 	network := new(Network)
 	resp, err := s.client.Do(req, network)
 	if err != nil {
+		if IsStatus(err, http.StatusMethodNotAllowed) || IsErrorKind(err, ErrorKindEndpointNotServed) {
+			return s.getFromList(ctx, networkID)
+		}
 		return nil, resp, err
 	}
 	return network, resp, nil
+}
+
+func (s *NetworksService) getFromList(ctx context.Context, networkID string) (*Network, *Response, error) {
+	networks, resp, err := s.List(ctx)
+	if err != nil {
+		return nil, resp, err
+	}
+	for i := range networks {
+		if string(networks[i].ID) == networkID {
+			return &networks[i], resp, nil
+		}
+	}
+	return nil, resp, fmt.Errorf("%w: %s", ErrNetworkNotFound, networkID)
 }
 
 // Create creates a network with name.

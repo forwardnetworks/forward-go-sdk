@@ -24,3 +24,7 @@ GET /api/networks/{networkId} pin=primary  # GET on the network itself is new in
 GET /api/networks/{networkId} pin=stable  # same: new in Forward 26.11, not mapped at stable b1feb6fe1c34; remove when the pins move
 GET /api/internal/snapshots/{snapshotId}/ospf-nodes pin=stable  # the OSPF node debug reads (BenchmarkController getOspfNodeDevices / getOspfNodes) are mapped at primary 5f7e4ec1841 but not at stable b1feb6fe1c34; a build without them answers 404 (ErrEndpointNotServed); remove when the pins move
 GET /api/internal/snapshots/{snapshotId}/devices/{deviceName}/ospf-nodes pin=stable  # same: mapped at primary 5f7e4ec1841, not at stable b1feb6fe1c34; remove when the pins move
+GET /api/internal/snapshots/{snapshotId}/config-nodes pin=primary  # the config-node debug reads (BenchmarkController getConfigNodeDevices / getConfigNodes) are in Forward master after 26.10 and mapped at neither pin; a 26.10 build answers 404 (ErrEndpointNotServed); remove when the pins move
+GET /api/internal/snapshots/{snapshotId}/devices/{deviceName}/config-nodes pin=primary  # same
+GET /api/internal/snapshots/{snapshotId}/config-nodes pin=stable  # the config-node debug reads (BenchmarkController getConfigNodeDevices / getConfigNodes) are in Forward master after 26.10 and mapped at neither pin; a 26.10 build answers 404 (ErrEndpointNotServed); remove when the pins move
+GET /api/internal/snapshots/{snapshotId}/devices/{deviceName}/config-nodes pin=stable  # same
