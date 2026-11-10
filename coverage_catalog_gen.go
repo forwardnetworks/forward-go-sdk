@@ -912,6 +912,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.CloseServiceNowIncidents": {
 		{Method: "POST", Route: "/api/integrations/servicenow/incidents"},
 	},
+	"Integrations.CollectVulnerabilityScanner": {
+		{Method: "POST", Route: "/api/vulnerability-scanners/{name}"},
+	},
 	"Integrations.CreateChangeSetChangeRequest": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/servicenow/change-requests"},
 	},
@@ -923,6 +926,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Integrations.CreateTenableSC": {
 		{Method: "POST", Route: "/api/networks/{networkId}/tenable-sources"},
+	},
+	"Integrations.CreateVulnerabilityScanner": {
+		{Method: "POST", Route: "/api/vulnerability-scanners"},
 	},
 	"Integrations.DeleteInfoblox": {
 		{Method: "DELETE", Route: "/api/integrations/infoblox/instances/{instanceId}"},
@@ -938,6 +944,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Integrations.DeleteTenableSC": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/tenable-sources/{sourceName}"},
+	},
+	"Integrations.DeleteVulnerabilityScanner": {
+		{Method: "DELETE", Route: "/api/vulnerability-scanners/{name}"},
 	},
 	"Integrations.DisableServiceNowCMDB": {
 		{Method: "POST", Route: "/api/integrations/servicenow-cmdb"},
@@ -978,11 +987,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.ListInfobloxLegacy": {
 		{Method: "GET", Route: "/api/integrations/infoblox"},
 	},
+	"Integrations.ListNetworkVulnerabilityScanners": {
+		{Method: "GET", Route: "/api/networks/{networkId}/vulnerability-scanners"},
+	},
 	"Integrations.ListRapid7": {
 		{Method: "GET", Route: "/api/networks/{networkId}/end-host-scanners"},
 	},
 	"Integrations.ListTenableSC": {
 		{Method: "GET", Route: "/api/networks/{networkId}/end-host-scanners"},
+	},
+	"Integrations.ListVulnerabilityScanners": {
+		{Method: "GET", Route: "/api/vulnerability-scanners"},
 	},
 	"Integrations.PatchServiceNow": {
 		{Method: "PATCH", Route: "/api/integrations/servicenow"},
@@ -1014,11 +1029,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.ServiceNowCMDBSyncHistory": {
 		{Method: "GET", Route: "/api/integrations/servicenow-cmdb/synchronization-history"},
 	},
+	"Integrations.SetNetworkVulnerabilityScannerInclude": {
+		{Method: "PATCH", Route: "/api/networks/{networkId}/vulnerability-scanners/{name}"},
+	},
 	"Integrations.TestServiceNowCMDB": {
 		{Method: "POST", Route: "/api/integrations/servicenow-cmdb/test"},
 	},
 	"Integrations.TestTenableSC": {
 		{Method: "POST", Route: "/api/networks/{networkId}/tenable-sources"},
+	},
+	"Integrations.TestVulnerabilityScanner": {
+		{Method: "POST", Route: "/api/vulnerability-scanner-tests"},
 	},
 	"Integrations.UnlinkCheckIncident": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
@@ -1034,6 +1055,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Integrations.UpdateTenableSC": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/tenable-sources/{sourceName}"},
+	},
+	"Integrations.UpdateVulnerabilityScanner": {
+		{Method: "PATCH", Route: "/api/vulnerability-scanners/{name}"},
 	},
 	"Jobs.Cancel": {
 		{Method: "DELETE", Route: "/api/jobs/{cancelLink}"},

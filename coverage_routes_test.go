@@ -34,7 +34,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 702
+	const minExercised = 710
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -139,6 +139,13 @@ var wireArgOverrides = map[string]map[int]any{
 	"Predict.FirewallObjects":                               {4: FirewallZones},
 	"Predict.ExportChangeSetZip":                            {3: io.Discard},
 	"Predict.BGPRules":                                      {4: "10.0.0.2"},
+	"Integrations.ListNetworkVulnerabilityScanners":         {1: "n1"},
+	"Integrations.SetNetworkVulnerabilityScannerInclude":    {1: "n1", 2: "tvm", 3: true},
+	"Integrations.CreateVulnerabilityScanner":               {1: NewVulnerabilityScanner{Name: "tvm", CredentialID: "h1", CollectorID: "c1", Schedule: IntervalSchedule{IntervalDays: 1}, AllowedForAllNetworks: true}},
+	"Integrations.UpdateVulnerabilityScanner":               {1: "tvm", 2: VulnerabilityScannerPatch{CollectionEnabled: new(bool)}},
+	"Integrations.DeleteVulnerabilityScanner":               {1: "tvm"},
+	"Integrations.CollectVulnerabilityScanner":              {1: "tvm"},
+	"Integrations.TestVulnerabilityScanner":                 {1: VulnerabilityScannerTest{Name: "tvm", CredentialID: "h1", CollectorID: "c1"}},
 	"Routing.PrefixSearch":                                  {3: RoutingPrefixSearch{Prefix: "10.0.0.0/8"}},
 	"Routing.PrefixTrace":                                   {3: RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: DeviceVRF{Device: "r1"}, OriginatedFrom: DeviceVRF{Device: "r2"}, Outcome: RouteOutcomeInstalled}},
 	"Routing.PrefixDetails":                                 {3: RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: "r1"}}},
