@@ -524,6 +524,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Credentials.CreateHTTP": {
 		{Method: "POST", Route: "/api/networks/{networkId}/http-credentials"},
 	},
+	"Credentials.CreateOrgHTTP": {
+		{Method: "POST", Route: "/api/http-credentials"},
+	},
 	"Credentials.CreateSNMP": {
 		{Method: "POST", Route: "/api/networks/{networkId}/snmpCredentials"},
 	},
@@ -536,6 +539,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Credentials.DeleteHTTP": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/http-credentials/{credentialId}"},
 	},
+	"Credentials.DeleteOrgHTTP": {
+		{Method: "DELETE", Route: "/api/http-credentials/{credentialId}"},
+	},
 	"Credentials.DeleteSNMP": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},
 	},
@@ -545,11 +551,17 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Credentials.GetHTTP": {
 		{Method: "GET", Route: "/api/networks/{networkId}/http-credentials/{credentialId}"},
 	},
+	"Credentials.GetOrgHTTP": {
+		{Method: "GET", Route: "/api/http-credentials/{credentialId}"},
+	},
 	"Credentials.ListCLI": {
 		{Method: "GET", Route: "/api/networks/{networkId}/cli-credentials"},
 	},
 	"Credentials.ListHTTP": {
 		{Method: "GET", Route: "/api/networks/{networkId}/http-credentials"},
+	},
+	"Credentials.ListOrgHTTP": {
+		{Method: "GET", Route: "/api/http-credentials"},
 	},
 	"Credentials.ListSNMP": {
 		{Method: "GET", Route: "/api/networks/{networkId}/snmpCredentials"},
@@ -565,6 +577,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Credentials.UpdateHTTPWithResult": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/http-credentials/{credentialId}"},
+	},
+	"Credentials.UpdateOrgHTTP": {
+		{Method: "PATCH", Route: "/api/http-credentials/{credentialId}"},
 	},
 	"Credentials.UpdateSNMP": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/snmpCredentials/{credentialId}"},

@@ -34,7 +34,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 710
+	const minExercised = 715
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -146,6 +146,10 @@ var wireArgOverrides = map[string]map[int]any{
 	"Integrations.DeleteVulnerabilityScanner":               {1: "tvm"},
 	"Integrations.CollectVulnerabilityScanner":              {1: "tvm"},
 	"Integrations.TestVulnerabilityScanner":                 {1: VulnerabilityScannerTest{Name: "tvm", CredentialID: "h1", CollectorID: "c1"}},
+	"Credentials.CreateOrgHTTP":                             {1: HTTPCredentialRequest{Name: "tvm", Username: "AK", Password: "SK"}},
+	"Credentials.GetOrgHTTP":                                {1: "H-0"},
+	"Credentials.UpdateOrgHTTP":                             {1: "H-0"},
+	"Credentials.DeleteOrgHTTP":                             {1: "H-0"},
 	"Routing.PrefixSearch":                                  {3: RoutingPrefixSearch{Prefix: "10.0.0.0/8"}},
 	"Routing.PrefixTrace":                                   {3: RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: DeviceVRF{Device: "r1"}, OriginatedFrom: DeviceVRF{Device: "r2"}, Outcome: RouteOutcomeInstalled}},
 	"Routing.PrefixDetails":                                 {3: RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: "r1"}}},
