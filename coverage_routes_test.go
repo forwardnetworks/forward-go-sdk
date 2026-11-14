@@ -34,7 +34,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 715
+	const minExercised = 716
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -150,6 +150,7 @@ var wireArgOverrides = map[string]map[int]any{
 	"Credentials.GetOrgHTTP":                                {1: "H-0"},
 	"Credentials.UpdateOrgHTTP":                             {1: "H-0"},
 	"Credentials.DeleteOrgHTTP":                             {1: "H-0"},
+	"Trace.FacetsQuery":                                     {3: TracePathQuery{From: &TraceEndpoint{Location: TraceDevice("d1")}}},
 	"Routing.PrefixSearch":                                  {3: RoutingPrefixSearch{Prefix: "10.0.0.0/8"}},
 	"Routing.PrefixTrace":                                   {3: RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: DeviceVRF{Device: "r1"}, OriginatedFrom: DeviceVRF{Device: "r2"}, Outcome: RouteOutcomeInstalled}},
 	"Routing.PrefixDetails":                                 {3: RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: "r1"}}},

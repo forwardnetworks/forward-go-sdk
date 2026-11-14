@@ -134,8 +134,9 @@ type TraceFacets struct {
 	PagedResults int                 `json:"pagedResults,omitempty"`
 	TimedOut     bool                `json:"timedOut,omitempty"`
 	CoveredTopo  json.RawMessage     `json:"coveredTopo,omitempty"`
-	// PossibleIPLocations is set INSTEAD of path groups when the source address could be at more than one
-	// place: name the device with TraceQuery.From and ask again.
+	// PossibleIPLocations is set INSTEAD of path groups when an address could be at more than one place
+	// (the source for a TraceQuery, either side for a TracePathQuery): name the device with TraceQuery.From,
+	// or use TraceSubnetAtDevice, and ask again. PossibleLocations decodes it.
 	PossibleIPLocations json.RawMessage `json:"possibleIpLocations,omitempty"`
 	// Raw is the whole response body, unchanged. The path groups and outcomes sit under its "facets" object.
 	Raw json.RawMessage `json:"-"`
@@ -276,10 +277,15 @@ func (s *TraceService) Facets(ctx context.Context, networkID, snapshotID string,
 	if err := q.validate(); err != nil {
 		return nil, nil, err
 	}
+	return s.facets(ctx, networkID, snapshotID, q.filters(), opts, "Trace.Facets")
+}
+
+// facets sends a trace-facets request for an already built PathQuery and decodes the answer. Facets and FacetsQuery share it.
+func (s *TraceService) facets(ctx context.Context, networkID, snapshotID string, filters map[string]any, opts TraceFacetsOptions, operation string) (*TraceFacets, *Response, error) {
 	if opts.MaxResults < 0 || opts.MaxFacetValues < 0 {
 		return nil, nil, errors.New("forward: trace limits must not be negative")
 	}
-	body := map[string]any{"filters": q.filters()}
+	body := map[string]any{"filters": filters}
 	if opts.MaxResults > 0 {
 		body["maxResults"] = opts.MaxResults
 	}
@@ -287,7 +293,7 @@ func (s *TraceService) Facets(ctx context.Context, networkID, snapshotID string,
 	if opts.MaxFacetValues > 0 {
 		query.Set("maxFacetValues", strconv.Itoa(opts.MaxFacetValues))
 	}
-	req, err := s.request(ctx, "/trace-facets", "Trace.Facets", networkID, snapshotID, query, body)
+	req, err := s.request(ctx, "/trace-facets", operation, networkID, snapshotID, query, body)
 	if err != nil {
 		return nil, nil, err
 	}

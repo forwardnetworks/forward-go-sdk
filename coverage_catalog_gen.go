@@ -2131,6 +2131,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Trace.Facets": {
 		{Method: "POST", Route: "/api/networks/{networkId}/trace-facets"},
 	},
+	"Trace.FacetsQuery": {
+		{Method: "POST", Route: "/api/networks/{networkId}/trace-facets"},
+	},
 	"Trace.Trace": {
 		{Method: "POST", Route: "/api/networks/{networkId}/trace"},
 	},
