@@ -283,3 +283,31 @@ func TestServiceNowCMDBRoutes(t *testing.T) {
 		t.Errorf("an empty network ID reached the wire: %v", err)
 	}
 }
+
+// Forward maps GET .../infoblox/instances only with ?view=status (it answers connection statuses), so the instance list must read the
+// integration object instead: a plain GET on /instances is the 400 forward-skills saw on 26.10.6.
+func TestInfobloxListAndStatusRoutes(t *testing.T) {
+	var seen []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.Method+" "+r.URL.RequestURI())
+		switch r.URL.RequestURI() {
+		case "/api/integrations/infoblox":
+			_, _ = w.Write([]byte(`{"enabled":true,"instances":[{"id":"1","name":"ib","ipAddress":"10.0.0.9","username":"u"}]}`))
+		case "/api/integrations/infoblox/instances?view=status":
+			_, _ = w.Write([]byte(`{"instances":[{"id":"1"},{"id":"2","error":{"message":"down","type":"CONNECTION_FAILED"}}]}`))
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"message":"Parameter conditions \"view=status\" not met for actual request parameters: "}`))
+		}
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	list, _, err := client.Integrations.ListInfoblox(context.Background())
+	if err != nil || len(list) != 1 || list[0].Name != "ib" {
+		t.Fatalf("list=%+v err=%v", list, err)
+	}
+	status, _, err := client.Integrations.InfobloxStatus(context.Background())
+	if err != nil || len(status) != 2 || status[0].Error != nil || status[1].Error == nil || status[1].Error.Type != "CONNECTION_FAILED" {
+		t.Fatalf("status=%+v err=%v", status, err)
+	}
+}

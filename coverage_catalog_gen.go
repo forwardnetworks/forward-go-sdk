@@ -999,6 +999,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Integrations.GetServiceNowIncident": {
 		{Method: "GET", Route: "/api/integrations/servicenow/incidents/{incidentNumber}"},
 	},
+	"Integrations.InfobloxStatus": {
+		{Method: "GET", Route: "/api/integrations/infoblox/instances"},
+	},
 	"Integrations.LinkCheckIncident": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
 	},
@@ -1006,7 +1009,7 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks"},
 	},
 	"Integrations.ListInfoblox": {
-		{Method: "GET", Route: "/api/integrations/infoblox/instances"},
+		{Method: "GET", Route: "/api/integrations/infoblox"},
 	},
 	"Integrations.ListInfobloxLegacy": {
 		{Method: "GET", Route: "/api/integrations/infoblox"},

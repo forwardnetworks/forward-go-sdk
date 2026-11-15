@@ -157,9 +157,42 @@ type ServiceNowCMDBSyncConfig struct {
 	NetworkIDs []string `json:"networkIds"`
 }
 
+// ListInfoblox returns the organization's Infoblox instances (GET /api/integrations/infoblox, whose body is {"enabled":..,"instances":[..]};
+// InfobloxController.getInfobloxIntegration, MANAGE_INFOBLOX_INTEGRATION). Before v0.8.38 this read GET /api/integrations/infoblox/instances
+// without a query, a route Forward maps only with ?view=status (it answers the instances' connection status, not the instances): every build
+// answered it 400 `Parameter conditions "view=status" not met`, seen live by forward-skills on 26.10.6. See InfobloxStatus for that route.
 func (s *IntegrationsService) ListInfoblox(ctx context.Context) ([]InfobloxInstance, *Response, error) {
-	return s.listInfoblox(ctx, "/api/integrations/infoblox/instances", "Integrations.ListInfoblox")
+	return s.listInfoblox(ctx, "/api/integrations/infoblox", "Integrations.ListInfoblox")
 }
+
+// InfobloxInstanceError is why an Infoblox instance failed its connection test; Type is Forward's InfobloxInstanceError.Type (for example
+// CONNECTION_FAILED).
+type InfobloxInstanceError struct {
+	Message string `json:"message"`
+	Type    string `json:"type"`
+}
+
+// InfobloxInstanceStatus is one instance's connection status: Error is nil when the instance answered.
+type InfobloxInstanceStatus struct {
+	ID    Identifier             `json:"id"`
+	Error *InfobloxInstanceError `json:"error,omitempty"`
+}
+
+// InfobloxStatus tests every configured instance and returns each one's status (GET /api/integrations/infoblox/instances?view=status;
+// InfobloxController.getStatus, MANAGE_INFOBLOX_INTEGRATION). It contacts each Infoblox appliance, so it can be slow. Preview: shape from
+// Forward's source (InfobloxInstancesStatus), not seen live.
+func (s *IntegrationsService) InfobloxStatus(ctx context.Context) ([]InfobloxInstanceStatus, *Response, error) {
+	result := listResponse[InfobloxInstanceStatus]{Keys: []string{"instances"}}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/integrations/infoblox/instances?view=status", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Integrations.InfobloxStatus")
+	response, err := s.client.doRequired(req, &result)
+	return result.Items, response, err
+}
+
+// ListInfobloxLegacy is ListInfoblox on the same route; kept for callers of the older name.
 func (s *IntegrationsService) ListInfobloxLegacy(ctx context.Context) ([]InfobloxInstance, *Response, error) {
 	return s.listInfoblox(ctx, "/api/integrations/infoblox", "Integrations.ListInfobloxLegacy")
 }
