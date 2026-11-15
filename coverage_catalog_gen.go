@@ -1532,6 +1532,11 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/networks/{networkId}/bgp-collection-requirements"},
 		{Method: "GET", Route: "/api/networks/{networkId}/classic-devices"},
 	},
+	"Predict.BGPAdvertisementReadinessFor": {
+		{Method: "GET", Route: "/api/config"},
+		{Method: "GET", Route: "/api/networks/{networkId}/bgp-collection-requirements"},
+		{Method: "GET", Route: "/api/networks/{networkId}/classic-devices"},
+	},
 	"Predict.BGPCollectionRequirements": {
 		{Method: "GET", Route: "/api/networks/{networkId}/bgp-collection-requirements"},
 	},

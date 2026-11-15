@@ -3,6 +3,7 @@ package forward
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -89,26 +90,45 @@ func (r *BGPReadiness) Ready() bool { return r != nil && len(r.Problems) == 0 &&
 func (r *BGPReadiness) Blocked() bool { return r != nil && len(r.Problems) != 0 }
 
 // BGPAdvertisementReadiness checks, before a Predict run that stages or withdraws external BGP advertisements on a device, the three
-// things that otherwise make Predict model nothing without an error: the organization properties PREDICT_MODELING and
+// things that otherwise make Predict model nothing without an error: the organization properties PREDICT_MODELING, PREDICT_MODEL_BGP and
 // PREDICT_MODEL_EXT_ADV, the device's collection setup (collectBgpAdvertisements on, a table type that includes ADJ_RIB_IN so received
 // routes exist to withdraw), and the network's requirement groups. It only reads: Properties.Current, ClassicDevices.List and
-// BGPCollectionRequirements. A read that fails with a permission or not-served error becomes a note, not an error, so a caller without
-// organization-configuration access still gets the device half. Preview: every shape is from Forward's source.
+// BGPCollectionRequirements. A read that fails with a permission or not-served error becomes an Unknown entry and a note, not an error,
+// so a caller without organization-configuration access still gets the rest; Ready is false while anything is Unknown. For several
+// devices use BGPAdvertisementReadinessFor, which makes those reads once. Preview: every shape is from Forward's source.
 func (s *PredictService) BGPAdvertisementReadiness(ctx context.Context, networkID, deviceName string) (*BGPReadiness, *Response, error) {
-	deviceName = strings.TrimSpace(deviceName)
-	if _, err := modeledDevicePath(networkID, deviceName); err != nil {
-		return nil, nil, err
+	reports, resp, err := s.BGPAdvertisementReadinessFor(ctx, networkID, []string{deviceName})
+	if err != nil {
+		return nil, resp, err
+	}
+	return reports[0], resp, nil
+}
+
+// BGPAdvertisementReadinessFor is BGPAdvertisementReadiness for several devices of one network, in the order given. The three reads it
+// is built on (the organization's properties, the network's collection sources and its requirement groups) are the same for every
+// device, so they are made once however many devices are asked about: three requests, not three per device.
+func (s *PredictService) BGPAdvertisementReadinessFor(ctx context.Context, networkID string, deviceNames []string) ([]*BGPReadiness, *Response, error) {
+	if len(deviceNames) == 0 {
+		return nil, nil, errors.New("forward: at least one device name is required")
+	}
+	names := make([]string, len(deviceNames))
+	for i, name := range deviceNames {
+		names[i] = strings.TrimSpace(name)
+		if _, err := modeledDevicePath(networkID, names[i]); err != nil {
+			return nil, nil, err
+		}
 	}
 	networkID, err := s.client.resolveNetworkID(networkID)
 	if err != nil {
 		return nil, nil, err
 	}
-	report := &BGPReadiness{Device: deviceName}
 	var last *Response
-
-	soft := func(err error, what string) (hard error) {
+	// shared holds what every device's report shares: what could not be read (Unknown, Notes) and the org-wide findings.
+	shared := &BGPReadiness{}
+	refused := func(err error, unknown, what string) (hard error) {
 		if IsErrorKind(err, ErrorKindPermissionDenied) || IsErrorKind(err, ErrorKindEndpointNotServed) || IsStatus(err, http.StatusForbidden) {
-			report.Notes = append(report.Notes, fmt.Sprintf("%s could not be read: %v", what, err))
+			shared.Unknown = append(shared.Unknown, unknown)
+			shared.Notes = append(shared.Notes, fmt.Sprintf("%s could not be read: %v", what, err))
 			return nil
 		}
 		return err
@@ -117,90 +137,112 @@ func (s *PredictService) BGPAdvertisementReadiness(ctx context.Context, networkI
 	props, resp, err := s.client.Properties.Current(ctx, PropertyFilterOff)
 	last = resp
 	if err != nil {
-		if hard := soft(err, "organization properties"); hard != nil {
+		if hard := refused(err, "organization-properties", "organization properties"); hard != nil {
 			return nil, resp, hard
 		}
 	} else {
-		report.PredictModeling = propertyBool(propertyRaw(props, PropertyPredictModeling))
-		report.PredictModelExtAdv = propertyBool(propertyRaw(props, PropertyPredictModelExtAdv))
-		report.PredictModelBGP = propertyBool(propertyRaw(props, PropertyPredictModelBGP))
-	}
-	for _, p := range []struct {
-		name  OrgProperty
-		value *bool
-	}{{PropertyPredictModeling, report.PredictModeling}, {PropertyPredictModelExtAdv, report.PredictModelExtAdv}, {PropertyPredictModelBGP, report.PredictModelBGP}} {
-		if p.value == nil {
-			report.Unknown = append(report.Unknown, string(p.name))
+		shared.PredictModeling = propertyBool(propertyRaw(props, PropertyPredictModeling))
+		shared.PredictModelExtAdv = propertyBool(propertyRaw(props, PropertyPredictModelExtAdv))
+		shared.PredictModelBGP = propertyBool(propertyRaw(props, PropertyPredictModelBGP))
+		var missing []string
+		for _, p := range []struct {
+			name  OrgProperty
+			value *bool
+		}{{PropertyPredictModeling, shared.PredictModeling}, {PropertyPredictModelExtAdv, shared.PredictModelExtAdv}, {PropertyPredictModelBGP, shared.PredictModelBGP}} {
+			if p.value == nil {
+				missing = append(missing, string(p.name))
+			}
+		}
+		if len(missing) != 0 {
+			shared.Unknown = append(shared.Unknown, missing...)
+			shared.Notes = append(shared.Notes, "not returned by the organization properties API (default true in Forward's source): "+strings.Join(missing, ", "))
 		}
 	}
-	if len(report.Unknown) != 0 && len(report.Notes) == 0 {
-		report.Notes = append(report.Notes, "not returned by the organization properties API (default true in Forward's source): "+strings.Join(report.Unknown, ", "))
+	if shared.PredictModeling != nil && !*shared.PredictModeling {
+		shared.Problems = append(shared.Problems, "PREDICT_MODELING is off for the organization: Predict change sets are unavailable")
 	}
-	if report.PredictModeling != nil && !*report.PredictModeling {
-		report.Problems = append(report.Problems, "PREDICT_MODELING is off for the organization: Predict change sets are unavailable")
+	if shared.PredictModelBGP != nil && !*shared.PredictModelBGP {
+		shared.Problems = append(shared.Problems, "PREDICT_MODEL_BGP is off: Predict does not model BGP")
 	}
-	if report.PredictModelBGP != nil && !*report.PredictModelBGP {
-		report.Problems = append(report.Problems, "PREDICT_MODEL_BGP is off: Predict does not model BGP")
-	}
-	if report.PredictModelExtAdv != nil && !*report.PredictModelExtAdv {
-		report.Problems = append(report.Problems, "PREDICT_MODEL_EXT_ADV is off: protocol modeling does not seed routes from the collected BGP received-route tables")
+	if shared.PredictModelExtAdv != nil && !*shared.PredictModelExtAdv {
+		shared.Problems = append(shared.Problems, "PREDICT_MODEL_EXT_ADV is off: protocol modeling does not seed routes from the collected BGP received-route tables")
 	}
 
 	devices, resp, err := s.client.ClassicDevices.List(ctx, networkID)
 	if resp != nil {
 		last = resp
 	}
+	devicesRead := err == nil
 	if err != nil {
-		if hard := soft(err, "the network's collection sources"); hard != nil {
+		if hard := refused(err, "classic-devices", "the network's collection sources"); hard != nil {
 			return nil, last, hard
 		}
-	} else {
-		for _, d := range devices {
-			if !strings.EqualFold(d.Name, deviceName) {
-				continue
-			}
-			report.DeviceFound = true
-			report.CollectBGPAdvertisements = d.CollectBGPAdvertisements
-			report.BGPTableType, report.BGPPeerType = d.BGPTableType, d.BGPPeerType
-			break
-		}
-		switch {
-		case !report.DeviceFound:
-			report.Problems = append(report.Problems, "the network has no collection source named "+deviceName+" (a controller-managed device does not take this setting)")
-		case report.CollectBGPAdvertisements == nil || !*report.CollectBGPAdvertisements:
-			report.Problems = append(report.Problems, "collectBgpAdvertisements is not on for the device, so there are no received routes to override or withdraw")
-		default:
-			// Forward leaves bgpTableType and bgpPeerType out when they are BOTH.
-			if report.BGPTableType == "" {
-				report.BGPTableType = "BOTH"
-			}
-			if report.BGPPeerType == "" {
-				report.BGPPeerType = "BOTH"
-			}
-			if report.BGPTableType == "ADJ_RIB_OUT" {
-				report.Problems = append(report.Problems, "bgpTableType is ADJ_RIB_OUT: received routes are not collected; use BOTH or ADJ_RIB_IN")
-			}
-		}
 	}
-
 	reqs, resp, err := s.BGPCollectionRequirements(ctx, networkID)
 	if resp != nil {
 		last = resp
 	}
+	reqsRead := err == nil
 	if err != nil {
-		if hard := soft(err, "the network's BGP collection requirements"); hard != nil {
+		if hard := refused(err, "bgp-collection-requirements", "the network's BGP collection requirements"); hard != nil {
 			return nil, last, hard
 		}
-	} else {
-		for _, group := range reqs {
-			for _, name := range group.Devices {
-				if strings.EqualFold(name, deviceName) {
-					report.RequiredByNetwork = true
+	}
+
+	reports := make([]*BGPReadiness, len(names))
+	for i, name := range names {
+		report := &BGPReadiness{
+			Device:             name,
+			PredictModeling:    shared.PredictModeling,
+			PredictModelExtAdv: shared.PredictModelExtAdv,
+			PredictModelBGP:    shared.PredictModelBGP,
+			Problems:           append([]string(nil), shared.Problems...),
+			Unknown:            append([]string(nil), shared.Unknown...),
+			Notes:              append([]string(nil), shared.Notes...),
+		}
+		if devicesRead {
+			for _, d := range devices {
+				if !strings.EqualFold(d.Name, name) {
+					continue
+				}
+				report.DeviceFound = true
+				report.CollectBGPAdvertisements = d.CollectBGPAdvertisements
+				report.BGPTableType, report.BGPPeerType = d.BGPTableType, d.BGPPeerType
+				break
+			}
+			switch {
+			case !report.DeviceFound:
+				// Not a problem found: a controller-managed device has no classic collection source and takes its BGP setting elsewhere,
+				// so this cannot tell "absent" from "configured another way".
+				report.Unknown = append(report.Unknown, "collection-source:"+name)
+				report.Notes = append(report.Notes, "the network has no classic collection source named "+name+" (a controller-managed device is configured elsewhere, and this read cannot check it)")
+			case report.CollectBGPAdvertisements == nil || !*report.CollectBGPAdvertisements:
+				report.Problems = append(report.Problems, "collectBgpAdvertisements is not on for the device, so there are no received routes to override or withdraw")
+			default:
+				// Forward leaves bgpTableType and bgpPeerType out when they are BOTH.
+				if report.BGPTableType == "" {
+					report.BGPTableType = "BOTH"
+				}
+				if report.BGPPeerType == "" {
+					report.BGPPeerType = "BOTH"
+				}
+				if report.BGPTableType == "ADJ_RIB_OUT" {
+					report.Problems = append(report.Problems, "bgpTableType is ADJ_RIB_OUT: received routes are not collected; use BOTH or ADJ_RIB_IN")
 				}
 			}
 		}
+		if reqsRead {
+			for _, group := range reqs {
+				for _, groupDevice := range group.Devices {
+					if strings.EqualFold(groupDevice, name) {
+						report.RequiredByNetwork = true
+					}
+				}
+			}
+		}
+		reports[i] = report
 	}
-	return report, last, nil
+	return reports, last, nil
 }
 
 // propertyRaw finds a property by name ignoring case: 26.11.0-03 answers /api/config with lower-case keys (predict_modeling), where the
