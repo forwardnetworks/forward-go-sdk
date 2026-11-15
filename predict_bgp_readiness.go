@@ -20,11 +20,15 @@ const (
 )
 
 // BGPCollectionRequirement is one group of devices Forward requires BGP advertisement collection on: the network's gateways to
-// adjacent networks, the internet and intranet nodes and L3 VPNs whose subnets come from BGP routes. Forward serializes only the
-// device names; the table and peer type each group needs (BOTH/EBGP for adjacent-network gateways, ADJ_RIB_OUT for the others) stay
-// server-side and are enforced when a device is saved.
+// adjacent networks, the internet and intranet nodes and L3 VPNs whose subnets come from BGP routes. Devices is what Forward's
+// DeviceBgpCollectionReq always serializes. The permitted table and peer types (BOTH plus the one the group requires: BOTH/EBGP for
+// adjacent-network gateways, ADJ_RIB_OUT for the others) have no @JsonIgnore in Forward's source, so they are probably sent too, but
+// this is not confirmed live (the lists read so far were empty); the required type itself is @JsonIgnore and never sent. Both stay
+// nil when Forward sends neither.
 type BGPCollectionRequirement struct {
-	Devices []string `json:"devices"`
+	Devices             []string `json:"devices"`
+	PermittedTableTypes []string `json:"permittedTableTypes,omitempty"`
+	PermittedPeerTypes  []string `json:"permittedPeerTypes,omitempty"`
 }
 
 // BGPCollectionRequirements returns the groups of devices whose collection setup must include BGP advertisements (GET
