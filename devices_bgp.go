@@ -17,7 +17,9 @@ import (
 // Forward requires both vrf and prefix: there is no "list everything" form, so a caller that wants a withdraw pre-check asks for the
 // key's own VRF and prefix and looks for a row with the same ExternalPeer. The prefix is an IP subnet, "10.10.10.0/24"; an empty
 // snapshotID lets Forward use the latest processed snapshot. A VRF or prefix with no advertisements is an empty list, not an error.
-// A predicted snapshot works too, which is how the post-stage state is read.
+// Seen live (26.11.0-03, cEOS): a host route comes back with a BARE prefix ("10.0.0.2", no /32), the query accepts the bare or the /32 form,
+// unset localPref and med are absent and communities is null, and a snapshot with no BGP routes answers 200 with an empty list. Compare
+// returned prefixes after normalising a bare address to its host route. // A predicted snapshot works too, which is how the post-stage state is read.
 func (s *DevicesService) BGPAdvertisements(ctx context.Context, networkID, deviceName, snapshotID, vrf, prefix string) ([]BGPAdvertisement, *Response, error) {
 	path, err := modeledDevicePath(networkID, deviceName)
 	if err != nil {
