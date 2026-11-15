@@ -135,6 +135,14 @@ type PredictedSnapshot struct {
 // and at prediction time it overrides a RECEIVED advertisement with the same key only when its Type matches that peer's type
 // (otherwise the received route stays and the staged one is added next to it). WithdrawBGPAdvertisement(s) withdraws a received
 // advertisement by key, and RestoreBGPAdvertisement(s) drops whatever is staged for a key, back to the collected state.
+//
+// Repeating a call is safe, by Forward's own rules (DeviceChanges.addNewAdvertisements / addRemovedAdvertisements / withDeletedAdvertisements,
+// pinned by DeviceChangesTest; source evidence, not recorded live): staging a key again replaces the staged one rather than adding a second
+// (so StageBGPAdvertisements with a key already staged, by bulkAdd or by add, leaves one), withdrawing a key again leaves one withdrawal, and
+// restoring a key that has nothing staged is ignored. A retried stage, withdraw or restore after a crash therefore ends in the same draft. The SDK does
+// NOT mark these calls idempotent for you: its retry policy re-sends a write after a 5xx or a written-then-failed transport error only when
+// the caller asserts it with WithIdempotent(ctx), so wrap these calls in it when you want that. What is not covered: staging and
+// withdrawing the same key in one change set cancel each other (the later call wins), so replay in the original order.
 type BGPAdvertisement struct {
 	Device       string   `json:"-"`
 	VRF          string   `json:"vrf"`

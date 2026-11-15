@@ -1215,8 +1215,14 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Locations.PatchCluster": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}"},
 	},
+	"NQE.CheckResult": {
+		{Method: "POST", Route: "/api/nqe/queryResults"},
+	},
 	"NQE.Diff": {
 		{Method: "POST", Route: "/api/nqe-diffs/{before}/{after}"},
+	},
+	"NQE.DiffSource": {
+		{Method: "POST", Route: "/api/nqe"},
 	},
 	"NQE.ExplainPath": {
 		{Method: "POST", Route: "/api/internal/users/current/nqe/queries/explain"},

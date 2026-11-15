@@ -51,4 +51,19 @@ func TestVerifyBGPStaging(t *testing.T) {
 	if !errors.Is(err, ErrBGPKeyMatchedNothing) {
 		t.Fatalf("err = %v", err)
 	}
+
+	// A key both staged and withdrawn has two rows; each must be matched to its own kind, never one for the other.
+	both := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+		 {"change":"INJECTED","updateAdded":{"vrf":"default","externalPeer":"192.0.2.1","prefix":"203.0.113.0/24","type":"EBGP","nextHop":"192.0.2.1","origin":"IGP","asPath":[64500]}},
+		 {"change":"ABSENT","updateRemoved":{"vrf":"default","externalPeer":"192.0.2.1","prefix":"203.0.113.0/24"}}
+		]`))
+	}))
+	defer both.Close()
+	key := BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "203.0.113.0/24"}
+	report, _, err = newTestClient(t, both.URL).Predict.VerifyBGPStaging(context.Background(), "n1", "c1", "edge",
+		[]BGPAdvertisement{{VRF: key.VRF, ExternalPeer: key.ExternalPeer, Prefix: key.Prefix}}, []BGPAdvertisementKey{key})
+	if !errors.Is(err, ErrBGPKeyMatchedNothing) || report.Staged[0].Change != BGPChangeInjected || report.Withdrawn[0].Change != BGPChangeAbsent {
+		t.Fatalf("report = %+v err = %v", report, err)
+	}
 }

@@ -92,26 +92,38 @@ func (s *PredictService) VerifyBGPStaging(ctx context.Context, networkID, change
 	if err != nil {
 		return nil, resp, err
 	}
-	byKey := map[BGPAdvertisementKey]*BGPAdvertisementDiff{}
+	// Forward keeps staged and withdrawn advertisements as two sets (computeBgpAdvertisementDiff) and a key can be in both, so a staged
+	// key is matched only against added rows and a withdrawal only against withdrawn rows: one map would let a withdrawn row answer
+	// for a staged key, or an added row for a withdrawal.
+	added := map[BGPAdvertisementKey]*BGPAdvertisementDiff{}
+	removed := map[BGPAdvertisementKey]*BGPAdvertisementDiff{}
 	for i := range diffs {
 		d := &diffs[i]
-		var key *BGPAdvertisementKey
-		if added, err := d.AddedAdvertisement(); err != nil {
+		ad, err := d.AddedAdvertisement()
+		if err != nil {
 			return nil, resp, err
-		} else if added != nil {
-			key = &BGPAdvertisementKey{VRF: added.VRF, ExternalPeer: added.ExternalPeer, Prefix: added.Prefix}
-		} else if key, err = d.RemovedKey(); err != nil {
+		}
+		if ad != nil {
+			added[diffKeyForm(BGPAdvertisementKey{VRF: ad.VRF, ExternalPeer: ad.ExternalPeer, Prefix: ad.Prefix})] = d
+			continue
+		}
+		key, err := d.RemovedKey()
+		if err != nil {
 			return nil, resp, err
 		}
 		if key != nil {
-			byKey[diffKeyForm(*key)] = d
+			removed[diffKeyForm(*key)] = d
 		}
 	}
 	report := &BGPStagingReport{}
 	var missed []string
 	look := func(key BGPAdvertisementKey, withdrawal bool) BGPKeyOutcome {
 		out := BGPKeyOutcome{Key: key}
-		if d := byKey[diffKeyForm(key)]; d != nil {
+		rows := added
+		if withdrawal {
+			rows = removed
+		}
+		if d := rows[diffKeyForm(key)]; d != nil {
 			out.Found, out.Change, out.Diff = true, d.Kind(), d
 		}
 		if !out.Found || (withdrawal && out.Change == BGPChangeAbsent) {

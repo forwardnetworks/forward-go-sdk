@@ -15,6 +15,8 @@ import (
 const (
 	PropertyPredictModeling    OrgProperty = "PREDICT_MODELING"
 	PropertyPredictModelExtAdv OrgProperty = "PREDICT_MODEL_EXT_ADV"
+	// PropertyPredictModelBGP is PREDICT_MODEL_BGP, the switch for modeling BGP at all (default true, on-premises configurable).
+	PropertyPredictModelBGP OrgProperty = "PREDICT_MODEL_BGP"
 )
 
 // BGPCollectionRequirement is one group of devices Forward requires BGP advertisement collection on: the network's gateways to
@@ -58,6 +60,7 @@ type BGPReadiness struct {
 	// PredictModeling and PredictModelExtAdv are the effective values for the calling user's organization.
 	PredictModeling    *bool
 	PredictModelExtAdv *bool
+	PredictModelBGP    *bool
 	// DeviceFound is false when the network has no collection source with that name (a controller-managed device is not one).
 	DeviceFound              bool
 	CollectBGPAdvertisements *bool
@@ -66,12 +69,20 @@ type BGPReadiness struct {
 	BGPPeerType  string
 	// RequiredByNetwork is true when the device is in one of the network's BGP collection requirement groups.
 	RequiredByNetwork bool
-	Problems          []string
-	Notes             []string
+	// Problems are reasons Predict would model nothing, found by a read that succeeded. Unknown names what could NOT be checked: an
+	// organization property the API did not return, or a read that was refused. Forward's source default for the three Predict
+	// switches is true, but this does not assume it.
+	Problems []string
+	Unknown  []string
+	Notes    []string
 }
 
-// Ready reports that no problem was found.
-func (r *BGPReadiness) Ready() bool { return r != nil && len(r.Problems) == 0 }
+// Ready reports that every check ran and found no problem. A value that could not be read (see Unknown) is not a pass, so on a
+// deployment that hides the Predict properties from the caller Ready stays false; use Blocked for "something is definitely wrong".
+func (r *BGPReadiness) Ready() bool { return r != nil && len(r.Problems) == 0 && len(r.Unknown) == 0 }
+
+// Blocked reports that a check that ran found a problem: Predict would model nothing for the device.
+func (r *BGPReadiness) Blocked() bool { return r != nil && len(r.Problems) != 0 }
 
 // BGPAdvertisementReadiness checks, before a Predict run that stages or withdraws external BGP advertisements on a device, the three
 // things that otherwise make Predict model nothing without an error: the organization properties PREDICT_MODELING and
@@ -106,11 +117,26 @@ func (s *PredictService) BGPAdvertisementReadiness(ctx context.Context, networkI
 			return nil, resp, hard
 		}
 	} else {
-		report.PredictModeling = propertyBool(props[PropertyPredictModeling])
-		report.PredictModelExtAdv = propertyBool(props[PropertyPredictModelExtAdv])
+		report.PredictModeling = propertyBool(propertyRaw(props, PropertyPredictModeling))
+		report.PredictModelExtAdv = propertyBool(propertyRaw(props, PropertyPredictModelExtAdv))
+		report.PredictModelBGP = propertyBool(propertyRaw(props, PropertyPredictModelBGP))
+	}
+	for _, p := range []struct {
+		name  OrgProperty
+		value *bool
+	}{{PropertyPredictModeling, report.PredictModeling}, {PropertyPredictModelExtAdv, report.PredictModelExtAdv}, {PropertyPredictModelBGP, report.PredictModelBGP}} {
+		if p.value == nil {
+			report.Unknown = append(report.Unknown, string(p.name))
+		}
+	}
+	if len(report.Unknown) != 0 && len(report.Notes) == 0 {
+		report.Notes = append(report.Notes, "not returned by the organization properties API (default true in Forward's source): "+strings.Join(report.Unknown, ", "))
 	}
 	if report.PredictModeling != nil && !*report.PredictModeling {
 		report.Problems = append(report.Problems, "PREDICT_MODELING is off for the organization: Predict change sets are unavailable")
+	}
+	if report.PredictModelBGP != nil && !*report.PredictModelBGP {
+		report.Problems = append(report.Problems, "PREDICT_MODEL_BGP is off: Predict does not model BGP")
 	}
 	if report.PredictModelExtAdv != nil && !*report.PredictModelExtAdv {
 		report.Problems = append(report.Problems, "PREDICT_MODEL_EXT_ADV is off: protocol modeling does not seed routes from the collected BGP received-route tables")
@@ -171,6 +197,20 @@ func (s *PredictService) BGPAdvertisementReadiness(ctx context.Context, networkI
 		}
 	}
 	return report, last, nil
+}
+
+// propertyRaw finds a property by name ignoring case: 26.11.0-03 answers /api/config with lower-case keys (predict_modeling), where the
+// Java enum and Forward's documentation use upper case.
+func propertyRaw(props PropertyValues, name OrgProperty) json.RawMessage {
+	if raw, ok := props[name]; ok {
+		return raw
+	}
+	for key, raw := range props {
+		if strings.EqualFold(string(key), string(name)) {
+			return raw
+		}
+	}
+	return nil
 }
 
 func propertyBool(raw json.RawMessage) *bool {

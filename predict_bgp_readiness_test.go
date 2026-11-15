@@ -11,7 +11,7 @@ import (
 // Predict models nothing, without an error, when the org property is off, when the device does not collect received routes, or when
 // it collects only ADJ_RIB_OUT; the preflight must name each, and must still answer the device half when the org config is forbidden.
 func TestBGPAdvertisementReadiness(t *testing.T) {
-	config := `{"PREDICT_MODELING":true,"PREDICT_MODEL_EXT_ADV":true}`
+	config := `{"PREDICT_MODELING":true,"PREDICT_MODEL_EXT_ADV":true,"PREDICT_MODEL_BGP":true}`
 	configStatus := http.StatusOK
 	devices := `[{"name":"Edge1","host":"10.0.0.1","collectBgpAdvertisements":true}]`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -53,5 +53,21 @@ func TestBGPAdvertisementReadiness(t *testing.T) {
 	r, _, err = client.Predict.BGPAdvertisementReadiness(ctx, "n1", "nosuch")
 	if err != nil || r.PredictModelExtAdv != nil || len(r.Notes) != 1 || r.DeviceFound || r.Ready() {
 		t.Fatalf("forbidden config / missing device: %+v, %v", r, err)
+	}
+
+	// 26.11.0-03 sends the keys in lower case (seen live): they must still be found.
+	config, configStatus = `{"predict_modeling":true,"predict_model_ext_adv":false,"predict_model_bgp":true}`, http.StatusOK
+	devices = `[{"name":"edge1","host":"10.0.0.1","collectBgpAdvertisements":true}]`
+	r, _, err = client.Predict.BGPAdvertisementReadiness(ctx, "n1", "edge1")
+	if err != nil || r.PredictModelExtAdv == nil || *r.PredictModelExtAdv || len(r.Unknown) != 0 || !r.Blocked() {
+		t.Fatalf("lower-case keys: %+v, %v", r, err)
+	}
+
+	// A property the API does not return is unknown, never a pass.
+	config, configStatus = `{"SOME_OTHER_PROPERTY":true}`, http.StatusOK
+	devices = `[{"name":"edge1","host":"10.0.0.1","collectBgpAdvertisements":true}]`
+	r, _, err = client.Predict.BGPAdvertisementReadiness(ctx, "n1", "edge1")
+	if err != nil || r.Ready() || r.Blocked() || len(r.Unknown) != 3 || len(r.Notes) != 1 || r.PredictModeling != nil {
+		t.Fatalf("absent properties: %+v, %v", r, err)
 	}
 }
