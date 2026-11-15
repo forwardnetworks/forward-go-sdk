@@ -26,6 +26,11 @@ type NQEPagedOptions struct {
 	// can repeat while others go missing with the total unchanged, which only a
 	// unique key can catch.
 	KeyColumn string
+	// KeyColumns is a composite key for a result no single column identifies (BGP sessions are unique per device, VRF and neighbor).
+	// When set it replaces KeyColumn: a row's key is the tuple of these columns' values, the check that no key repeats and none is
+	// missing runs on the tuple, and the sort is on the FIRST column only (Forward sorts by one column), so rows tied on it are
+	// not ordered stably; a boundary repeat that creates is caught by the tuple check and retried like any other inconsistency.
+	KeyColumns []string
 	// MaxRows stops a runaway read: an error when the total exceeds it. Zero
 	// means one million; every row is held in memory as a map, so size it to the
 	// memory you have. It cannot exceed what an int32 offset can address.
@@ -66,12 +71,18 @@ func (s *NQEService) RunAll(ctx context.Context, networkID, snapshotID string, q
 	if attempts <= 0 {
 		attempts = 3
 	}
-	if strings.TrimSpace(options.KeyColumn) == "" {
-		return nil, nil, errors.New("forward: RunAll needs a KeyColumn, a column unique per row: without one only the row count can be checked, and a repeated row that hides a missing one keeps the count")
+	keys := options.KeyColumns
+	if len(keys) == 0 {
+		keys = []string{options.KeyColumn}
+	}
+	for _, key := range keys {
+		if strings.TrimSpace(key) == "" {
+			return nil, nil, errors.New("forward: RunAll needs a KeyColumn, a column unique per row: without one only the row count can be checked, and a repeated row that hides a missing one keeps the count")
+		}
 	}
 	// The key is the sort, unless the query states its own (which should then
 	// still order ties by the key).
-	sortBy := &NQESortOrder{ColumnName: options.KeyColumn, Order: "ASC"}
+	sortBy := &NQESortOrder{ColumnName: keys[0], Order: "ASC"}
 	if query.Options != nil && query.Options.SortBy != nil {
 		sortBy = query.Options.SortBy
 	}
@@ -79,7 +90,7 @@ func (s *NQEService) RunAll(ctx context.Context, networkID, snapshotID string, q
 	var lastProblem error
 	var resp *Response
 	for attempt := 0; attempt < attempts; attempt++ {
-		rows, r, problem, err := s.runAllOnce(ctx, networkID, snapshotID, query, sortBy, pageSize, maxRows, options.KeyColumn)
+		rows, r, problem, err := s.runAllOnce(ctx, networkID, snapshotID, query, sortBy, pageSize, maxRows, keys)
 		if err != nil {
 			return nil, r, err
 		}
@@ -94,7 +105,7 @@ func (s *NQEService) RunAll(ctx context.Context, networkID, snapshotID string, q
 
 // runAllOnce makes one pass. A non-nil problem is an inconsistency to retry; err
 // is a failure to give up on.
-func (s *NQEService) runAllOnce(ctx context.Context, networkID, snapshotID string, query NQEQueryRequest, sortBy *NQESortOrder, pageSize int32, maxRows int64, keyColumn string) (rows []NQERecord, resp *Response, problem, err error) {
+func (s *NQEService) runAllOnce(ctx context.Context, networkID, snapshotID string, query NQEQueryRequest, sortBy *NQESortOrder, pageSize int32, maxRows int64, keyColumns []string) (rows []NQERecord, resp *Response, problem, err error) {
 	pinned := snapshotID
 	var total int64 = -1
 	seen := map[string]struct{}{}
@@ -127,18 +138,20 @@ func (s *NQEService) runAllOnce(ctx context.Context, networkID, snapshotID strin
 		} else if result.TotalNumItems != total {
 			return nil, resp, fmt.Errorf("the total changed from %d to %d at offset %d", total, result.TotalNumItems, offset), nil
 		}
-		if keyColumn != "" {
-			for _, item := range result.Items {
-				raw, present := item[keyColumn]
+		for _, item := range result.Items {
+			parts := make([]string, len(keyColumns))
+			for i, column := range keyColumns {
+				raw, present := item[column]
 				if !present || len(raw) == 0 || string(raw) == "null" {
-					return nil, resp, nil, fmt.Errorf("forward: a row has no %q column, so RunAll cannot check keys; KeyColumn must name a column the query selects", keyColumn)
+					return nil, resp, nil, fmt.Errorf("forward: a row has no %q column, so RunAll cannot check keys; KeyColumn must name a column the query selects", column)
 				}
-				key := string(raw)
-				if _, dup := seen[key]; dup {
-					return nil, resp, fmt.Errorf("key %s appeared twice (page at offset %d)", key, offset), nil
-				}
-				seen[key] = struct{}{}
+				parts[i] = string(raw)
 			}
+			key := strings.Join(parts, "\x00")
+			if _, dup := seen[key]; dup {
+				return nil, resp, fmt.Errorf("key %s appeared twice (page at offset %d)", strings.Join(parts, ", "), offset), nil
+			}
+			seen[key] = struct{}{}
 		}
 		rows = append(rows, result.Items...)
 		if int64(len(rows)) >= total || len(result.Items) == 0 {
