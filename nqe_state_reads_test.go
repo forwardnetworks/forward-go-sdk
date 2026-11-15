@@ -131,6 +131,10 @@ func TestACLEntriesWithKey(t *testing.T) {
 	if err != nil || len(got) != 2 || got[0].Key() != [3]string{"a", "r", "u1"} || got[0].Key() == got[1].Key() {
 		t.Fatalf("got=%+v err=%v", got, err)
 	}
+	// The typed view must not lose the columns the key used: Row keeps all of them and Identity is the key columns' values.
+	if got[0].Identity[2] != "u1" || got[0].IdentityKey() == got[1].IdentityKey() || len(got[0].Row) != 4 {
+		t.Fatalf("identity=%v row=%v", got[0].Identity, got[0].Row)
+	}
 	rows = `[{"Device":"a","AclName":"r","Action":"x","UUID":"u1"},{"Device":"a","AclName":"r","Action":"x","UUID":"u1"}]`
 	if _, _, err = client.NQE.ACLEntriesWith(ctx, "n1", "9", options); err == nil {
 		t.Fatal("a repeated identifying key must be reported")

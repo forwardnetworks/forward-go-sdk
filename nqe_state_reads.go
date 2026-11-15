@@ -2,6 +2,7 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -211,7 +212,16 @@ type ACLEntry struct {
 	Action      string `json:"Action"`
 	UUID        string `json:"UUID,omitempty"`
 	Description string `json:"Description,omitempty"`
+	// Row is the whole row as the query returned it, every selected column, so a query that selects more than the typed fields (Forward's
+	// library identity has eighteen) loses none. Set by ACLEntriesWith; nil from ACLEntries, whose query selects only the typed columns.
+	Row NQERecord `json:"-"`
+	// Identity holds the value of each of ACLReadOptions.KeyColumns, in that order, as text (a string column unquoted, any other value
+	// as its JSON). Set by ACLEntriesWith when KeyColumns is given; compare entries on IdentityKey rather than the five typed fields.
+	Identity []string `json:"-"`
 }
+
+// IdentityKey is Identity joined into one comparable string, for use as a map key; empty when the read named no KeyColumns.
+func (e ACLEntry) IdentityKey() string { return strings.Join(e.Identity, "\x00") }
 
 // Key is the entry's identity as far as the row says: Device, AclName and UUID (empty when the query did not select one). It is
 // unique only if the query selects an identifying column; with UUID empty, two entries sharing a name have the same Key.
@@ -285,7 +295,28 @@ func (s *NQEService) ACLEntriesWith(ctx context.Context, networkID, snapshotID s
 		return nil, resp, err
 	}
 	out, err := DecodeNQE[ACLEntry](rows)
-	return out, resp, err
+	if err != nil {
+		return nil, resp, err
+	}
+	for i := range out {
+		out[i].Row = rows[i]
+		if unique {
+			out[i].Identity = make([]string, len(keys))
+			for j, column := range keys {
+				out[i].Identity[j] = nqeCellText(rows[i][column])
+			}
+		}
+	}
+	return out, resp, nil
+}
+
+// nqeCellText renders one NQE value as text: a JSON string unquoted, anything else (a number, a list) as its JSON.
+func nqeCellText(raw json.RawMessage) string {
+	var text string
+	if json.Unmarshal(raw, &text) == nil {
+		return text
+	}
+	return strings.TrimSpace(string(raw))
 }
 
 // ACLCounts is the number of entries of each ACL, from ACLEntries: the "count" the change gate compares before and after.
