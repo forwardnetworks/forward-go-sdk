@@ -1221,6 +1221,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"NQE.ACLEntries": {
 		{Method: "POST", Route: "/api/nqe"},
 	},
+	"NQE.ACLEntriesWith": {
+		{Method: "POST", Route: "/api/nqe"},
+	},
 	"NQE.BGPSessions": {
 		{Method: "POST", Route: "/api/nqe"},
 	},

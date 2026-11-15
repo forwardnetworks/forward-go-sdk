@@ -115,3 +115,27 @@ func TestInterfaceAdminAndACLReads(t *testing.T) {
 		t.Fatalf("counts = %v err = %v", counts, err)
 	}
 }
+
+// With an identifying column named in KeyColumns the repeated-key check is back on: distinct UUIDs read fine, a repeated tuple is
+// reported, and KeyColumns without a query that selects them is refused.
+func TestACLEntriesWithKey(t *testing.T) {
+	rows := `[{"Device":"a","AclName":"r","Action":"AclAction.PERMIT","UUID":"u1"},{"Device":"a","AclName":"r","Action":"AclAction.PERMIT","UUID":"u2"}]`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"snapshotId":"9","totalNumItems":2,"items":` + rows + `}`))
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := context.Background()
+	options := ACLReadOptions{StateReadOptions: StateReadOptions{Attempts: 1}, Query: "select {Device: 1}", KeyColumns: []string{"Device", "AclName", "UUID"}}
+	got, _, err := client.NQE.ACLEntriesWith(ctx, "n1", "9", options)
+	if err != nil || len(got) != 2 || got[0].Key() != [3]string{"a", "r", "u1"} || got[0].Key() == got[1].Key() {
+		t.Fatalf("got=%+v err=%v", got, err)
+	}
+	rows = `[{"Device":"a","AclName":"r","Action":"x","UUID":"u1"},{"Device":"a","AclName":"r","Action":"x","UUID":"u1"}]`
+	if _, _, err = client.NQE.ACLEntriesWith(ctx, "n1", "9", options); err == nil {
+		t.Fatal("a repeated identifying key must be reported")
+	}
+	if _, _, err = client.NQE.ACLEntriesWith(ctx, "n1", "9", ACLReadOptions{KeyColumns: []string{"UUID"}}); err == nil {
+		t.Fatal("KeyColumns with the default query must be refused")
+	}
+}

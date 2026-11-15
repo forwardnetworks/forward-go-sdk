@@ -529,7 +529,7 @@ The inventory becomes stale when the consumer adds, removes, or changes a Forwar
 | POST | `/api/networks/{networkId}/unhealthy-interfaces` | `Performance.UnhealthyInterfaces` | COVERED |
 | POST | `/api/networks/{networkId}/wan-circuits` | `WanCircuits.Backdate` | COVERED |
 | POST | `/api/networks/{networkId}/workspaces` | `Networks.CreateWorkspace` | COVERED |
-| POST | `/api/nqe` | `NQE.ACLCounts`, `NQE.ACLEntries`, `NQE.BGPSessions`, `NQE.DiffSource`, `NQE.InterfaceAdmin`, `NQE.LLDPAdjacencies`, `NQE.Run`, `NQE.RunAll` | COVERED |
+| POST | `/api/nqe` | `NQE.ACLCounts`, `NQE.ACLEntries`, `NQE.ACLEntriesWith`, `NQE.BGPSessions`, `NQE.DiffSource`, `NQE.InterfaceAdmin`, `NQE.LLDPAdjacencies`, `NQE.Run`, `NQE.RunAll` | COVERED |
 | POST | `/api/nqe-diffs/{before}/{after}` | `NQE.Diff` | COVERED |
 | POST | `/api/nqe/doc-assists` | `AIAssist.AskNQEDocs` | COVERED |
 | POST | `/api/nqe/doc-assists/{docAssistId}/followup` | `AIAssist.SuggestNQEDocFollowups` | COVERED |

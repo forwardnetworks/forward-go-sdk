@@ -2082,6 +2082,7 @@
       "symbols": [
         "NQE.ACLCounts",
         "NQE.ACLEntries",
+        "NQE.ACLEntriesWith",
         "NQE.BGPSessions",
         "NQE.DiffSource",
         "NQE.InterfaceAdmin",

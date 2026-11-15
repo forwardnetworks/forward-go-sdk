@@ -2,6 +2,7 @@ package forward
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -199,13 +200,22 @@ func (i InterfaceAdmin) Key() [2]string { return [2]string{i.Device, i.Interface
 // Up reports an administratively up interface.
 func (i InterfaceAdmin) Up() bool { return i.AdminStatus == InterfaceAdminUp }
 
-// ACLEntry is one entry of an ACL: the NQE read has one row per entry, so Device and AclName repeat and only count the entries of
-// each ACL. Action is Forward's enum text (for example "AclAction.PERMIT").
+// ACLEntry is one row of the ACL entry read: one per entry of device.aclEntries, so Device and AclName can repeat. AclName is the
+// entry's own name (NQE's aclEntry.name, which Forward's library query calls "Rule"), which a vendor may leave empty or share across
+// entries. Action is Forward's enum text (for example "AclAction.PERMIT"). UUID and Description are optional columns a query may add
+// (aclEntry.uuid, aclEntry.description): UUID is the only per-entry identifier Forward's data model has, and only for vendors that give
+// entries one.
 type ACLEntry struct {
-	Device  string `json:"Device"`
-	AclName string `json:"AclName"`
-	Action  string `json:"Action"`
+	Device      string `json:"Device"`
+	AclName     string `json:"AclName"`
+	Action      string `json:"Action"`
+	UUID        string `json:"UUID,omitempty"`
+	Description string `json:"Description,omitempty"`
 }
+
+// Key is the entry's identity as far as the row says: Device, AclName and UUID (empty when the query did not select one). It is
+// unique only if the query selects an identifying column; with UUID empty, two entries sharing a name have the same Key.
+func (e ACLEntry) Key() [3]string { return [3]string{e.Device, e.AclName, e.UUID} }
 
 // ACLKey identifies one ACL.
 type ACLKey struct{ Device, AclName string }
@@ -230,6 +240,46 @@ func (s *NQEService) ACLEntries(ctx context.Context, networkID, snapshotID strin
 	rows, resp, err := s.RunAll(ctx, networkID, snapshotID, NQEQueryRequest{Query: nqeACLQuery}, NQEPagedOptions{
 		PageSize: options.PageSize, MaxRows: options.MaxRows, Attempts: options.Attempts,
 		KeyColumns: []string{"Device", "AclName"}, NonUniqueKey: true,
+	})
+	if err != nil {
+		return nil, resp, err
+	}
+	out, err := DecodeNQE[ACLEntry](rows)
+	return out, resp, err
+}
+
+// ACLReadOptions is for ACLEntriesWith: a query of your own that selects an identifying column, and the columns that identify an
+// entry in it.
+type ACLReadOptions struct {
+	StateReadOptions
+	// Query is the NQE source. It must select the Device, AclName and Action columns of ACLEntry, and every column in KeyColumns. Empty
+	// uses the default query (Skyforge's: Device, AclName and Action only), which cannot identify an entry, so KeyColumns must be empty
+	// with it.
+	Query string
+	// KeyColumns identify an entry, e.g. {"Device", "AclName", "UUID"}. When set the read keeps RunAll's repeated-key check on the
+	// tuple, so a repeated row that hides a missing one is caught (and an identical key repeating is ErrNQEPagingInconsistent). When
+	// empty the key is {Device, AclName} and the repeated-key check is off (see NQEPagedOptions.NonUniqueKey).
+	KeyColumns []string
+}
+
+// ACLEntriesWith is ACLEntries with a query and key of your own, for the stronger guarantee: select a column that makes each entry
+// unique (aclEntry.uuid where the vendor has one, or the header-match columns Forward's own "ACL entries" library query keys on)
+// and name it in KeyColumns.
+func (s *NQEService) ACLEntriesWith(ctx context.Context, networkID, snapshotID string, options ACLReadOptions) ([]ACLEntry, *Response, error) {
+	query := options.Query
+	if query == "" {
+		if len(options.KeyColumns) != 0 {
+			return nil, nil, errors.New("forward: KeyColumns names columns the default ACL query does not select; give a Query that does")
+		}
+		query = nqeACLQuery
+	}
+	keys, unique := options.KeyColumns, true
+	if len(keys) == 0 {
+		keys, unique = []string{"Device", "AclName"}, false
+	}
+	rows, resp, err := s.RunAll(ctx, networkID, snapshotID, NQEQueryRequest{Query: query}, NQEPagedOptions{
+		PageSize: options.PageSize, MaxRows: options.MaxRows, Attempts: options.Attempts,
+		KeyColumns: keys, NonUniqueKey: !unique,
 	})
 	if err != nil {
 		return nil, resp, err
