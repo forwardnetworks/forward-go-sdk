@@ -14,7 +14,10 @@ import (
 // Forward 26.11.0-03, snapshot of a two-device NX-OS lab, read-only probes; the lab had no IPv6, no internet node and no chain hop in the probes);
 // anything not marked confirmed was not run.
 
-// Transit types of a chain hop (TransitType; lower case on the wire). Source-only: no chain hop was in the live probes.
+// Transit types of a chain hop (TransitType; lower case on the wire). A DeviceFilter through hop sent with "values" (what this SDK sends)
+// narrowed a path search live on a 26.x demo network (forward-skills), and the singular "value" form was accepted and judged correctly in a
+// persistent Existential check on 26.10.6 (the AutoCon6 workshop), so Forward takes both for a DeviceFilter; other hop locations and
+// ingress hops are still unseen.
 const (
 	TraceTransitThrough = "through"
 	TraceTransitIngress = "ingress"
