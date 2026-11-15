@@ -81,6 +81,13 @@ const (
 	// version-dependent, so a caller writing across releases needs to tell this
 	// apart from a real failure without matching prose.
 	ErrorKindUnknownOrgProperty ErrorKind = "unknown-org-property"
+	// ErrorKindUnknownNetworkProperty is the same refusal for a NETWORK property name (Spring's 400 "No enum constant
+	// com.forwardnetworks.cv.config.NetworkProperty.X"): Forward defines far fewer network properties than org properties, so an org-only
+	// property such as LOCATION_CONNECTIVITY_DIFFS written per network answers this (seen live on 26.10.6).
+	ErrorKindUnknownNetworkProperty ErrorKind = "unknown-network-property"
+	// ErrorKindOrgNotAccessible is the 403 "Org <id> is not accessible to user <id>" a support or cross-org key gets for an organization that
+	// has not granted it access (seen live on 26.10.6 with a support-org key on /api/orgs/{id}/config).
+	ErrorKindOrgNotAccessible ErrorKind = "org-not-accessible"
 	// ErrorKindGlobalDefaultNotAllowed is the 403 "Permission denied. Global default value cannot be changed for <property>" a global write
 	// gets for a property that can only be set per org (its Level is ORG, not BOTH). ErrorResponse.GateProperty carries the property name.
 	ErrorKindGlobalDefaultNotAllowed ErrorKind = "global-default-not-allowed"
@@ -103,6 +110,8 @@ var (
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
 	ErrUnknownOrgProperty                = errors.New("forward: organization property not defined by this appserver")
+	ErrUnknownNetworkProperty            = errors.New("forward: network property not defined by this appserver")
+	ErrOrgNotAccessible                  = errors.New("forward: the organization is not accessible to this user")
 	ErrGlobalDefaultNotAllowed           = errors.New("forward: the property can only be set per organization, not as a global default")
 )
 
@@ -205,6 +214,10 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindTrustedCertificateApplyInProgress
 	case ErrUnknownOrgProperty:
 		return e.Kind == ErrorKindUnknownOrgProperty
+	case ErrUnknownNetworkProperty:
+		return e.Kind == ErrorKindUnknownNetworkProperty
+	case ErrOrgNotAccessible:
+		return e.Kind == ErrorKindOrgNotAccessible
 	case ErrGlobalDefaultNotAllowed:
 		return e.Kind == ErrorKindGlobalDefaultNotAllowed
 	default:
@@ -353,6 +366,10 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 			return ErrorKindFeatureGated
 		}
 	}
+	// TaskPermissionsService: AccessDeniedException("Org %s is not accessible to user %s").
+	if status == http.StatusForbidden && orgNotAccessibleMessage.MatchString(strings.TrimSpace(apiErr.Message)) {
+		return ErrorKindOrgNotAccessible
+	}
 	// RateDetectionFilter / SessionRateLimitFilter: 429 "Rate limit exceeded, please try again later".
 	if status == http.StatusTooManyRequests && strings.HasPrefix(strings.TrimSpace(apiErr.Message), "Rate limit exceeded") {
 		return ErrorKindRateLimited
@@ -445,6 +462,10 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 		strings.Contains(detail, "no enum constant") && strings.Contains(detail, "orgproperty") {
 		return ErrorKindUnknownOrgProperty
 	}
+	if status == http.StatusBadRequest &&
+		strings.Contains(detail, "no enum constant") && strings.Contains(detail, "networkproperty") {
+		return ErrorKindUnknownNetworkProperty
+	}
 	// Requests.validate in NetworkEndpointService.deleteProfile: "Profile is still used in %s network(s): %s".
 	if method == http.MethodDelete && status == http.StatusBadRequest && strings.HasPrefix(path, "/api/endpoint-profiles/") &&
 		strings.Contains(detail, "profile is still used in") {
@@ -462,6 +483,15 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 // "... for your deployment") -- a 403 with no reason code, so this fixed
 // template is the only stable signal. It is anchored so only that exact
 // sentence classifies, never a message that merely contains it.
+// orgNotAccessibleMessage is the whole message of Forward's refusal for an organization the user may not access. Anchored.
+var orgNotAccessibleMessage = regexp.MustCompile(`^Org \S+ is not accessible to user \S+$`)
+
+// IsUnknownNetworkProperty reports whether err is the 400 for a network property name the appserver does not define.
+func IsUnknownNetworkProperty(err error) bool { return errors.Is(err, ErrUnknownNetworkProperty) }
+
+// IsOrgNotAccessible reports whether err is the 403 for an organization the caller has not been granted access to.
+func IsOrgNotAccessible(err error) bool { return errors.Is(err, ErrOrgNotAccessible) }
+
 // serviceNowAsleepMessage is the whole message of Forward's refusal for a ServiceNow instance that answered its wake-up page. Anchored, so a
 // message that merely contains the words does not classify.
 var serviceNowAsleepMessage = regexp.MustCompile(`(?i)^ServiceNow instance is (hibernating|suspended)\.?$`)

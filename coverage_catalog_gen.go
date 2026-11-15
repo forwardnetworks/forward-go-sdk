@@ -1783,6 +1783,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Properties.ClearGlobal": {
 		{Method: "DELETE", Route: "/api/global-config/{property}"},
 	},
+	"Properties.ClearNetwork": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/config/{property}"},
+	},
 	"Properties.ClearOrganization": {
 		{Method: "DELETE", Route: "/api/orgs/{orgId}/config/software_central"},
 	},
@@ -1819,6 +1822,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Properties.SetGlobal": {
 		{Method: "PUT", Route: "/api/global-config/{property}"},
+	},
+	"Properties.SetNetwork": {
+		{Method: "PUT", Route: "/api/networks/{networkId}/config/{property}"},
 	},
 	"Properties.SetOrganization": {
 		{Method: "PUT", Route: "/api/orgs/{orgId}/config/{property}"},

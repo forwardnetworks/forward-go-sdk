@@ -13,6 +13,22 @@ import (
 // NetworkProperty is a property a single NETWORK can override for itself (Forward's NetworkProperty: a subset of the org properties).
 type NetworkProperty string
 
+// The network properties Forward defines (NetworkProperty at master, a subset of the org properties), in the lower-case spelling a live
+// 26.10.6 appserver answers and accepts. A build may define more or fewer: an unknown one is a 400 (ErrUnknownNetworkProperty).
+const (
+	NetworkPropertyDisableFlowComputation          NetworkProperty = "disable_flow_computation"
+	NetworkPropertyAlertNewDeviceFailurePercentage NetworkProperty = "alert_new_device_failure_percentage"
+	NetworkPropertyAdvancedReachabilityAnalysis    NetworkProperty = "advanced_reachability_analysis"
+)
+
+// Values of NetworkPropertyAdvancedReachabilityAnalysis (Forward's AdvancedReachabilityAnalysisMode): ON_DEMAND (the default) computes the
+// advanced analysis only when a user triggers it, ASYNC computes it after each snapshot finishes processing. An unknown value is a 400 that
+// changes nothing. The retired INLINE value is read as ASYNC by Forward.
+const (
+	AdvancedReachabilityAsync    = "ASYNC"
+	AdvancedReachabilityOnDemand = "ON_DEMAND"
+)
+
 func propertyName(property string) (string, error) {
 	if property = strings.TrimSpace(property); property == "" {
 		return "", errors.New("forward: a property name is required")
@@ -125,4 +141,54 @@ func (s *PropertiesService) PatchNetworkOverrides(ctx context.Context, property 
 		return nil, err
 	}
 	return s.client.Do(markOperation(req, "Properties.PatchNetworkOverrides"), nil)
+}
+
+// SetNetwork sets one network's override of a network property and returns the value as Forward parsed it (PUT
+// /api/networks/{networkId}/config/{property}?value=; ConfigController.setNetworkConfigOverride, EDIT_NETWORK_SETTINGS, or Forward support).
+// value is the text form (for example AdvancedReachabilityAsync). An org admin's key can set the properties Forward defines per network
+// (NetworkProperty); one defined only for orgs, such as LOCATION_CONNECTIVITY_DIFFS, is a 400 (ErrUnknownNetworkProperty) and only an org
+// property write by Forward support can set it. A value the property's type rejects is a 400 that changes nothing; to set one property on
+// many networks in a single call use PatchNetworkOverrides. Seen live on 26.10.6 by the AutoCon6 workshop (advanced_reachability_analysis
+// to ASYNC on 67 networks). Preview: ConfigController, not in the published spec.
+func (s *PropertiesService) SetNetwork(ctx context.Context, networkID string, property NetworkProperty, value string) (map[string]json.RawMessage, *Response, error) {
+	path, err := networkConfigPath(s, networkID, property)
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodPut, path+"?"+url.Values{"value": []string{value}}.Encode(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := map[string]json.RawMessage{}
+	resp, err := s.client.Do(markOperation(req, "Properties.SetNetwork"), &out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
+}
+
+// ClearNetwork removes one network's override of a network property, so the network takes the org's value again (DELETE
+// /api/networks/{networkId}/config/{property}, 204; ConfigController.deleteNetworkConfigOverride). Preview, like SetNetwork.
+func (s *PropertiesService) ClearNetwork(ctx context.Context, networkID string, property NetworkProperty) (*Response, error) {
+	path, err := networkConfigPath(s, networkID, property)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Do(markOperation(req, "Properties.ClearNetwork"), nil)
+}
+
+func networkConfigPath(s *PropertiesService, networkID string, property NetworkProperty) (string, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return "", err
+	}
+	name, err := propertyName(string(property))
+	if err != nil {
+		return "", err
+	}
+	return "/api/networks/" + url.PathEscape(networkID) + "/config/" + name, nil
 }
