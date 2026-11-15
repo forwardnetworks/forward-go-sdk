@@ -328,6 +328,11 @@ func (s *TraceService) Trace(ctx context.Context, networkID, snapshotID string, 
 	if err := q.validate(); err != nil {
 		return nil, nil, err
 	}
+	return s.trace(ctx, networkID, snapshotID, q.filters(), sel, "Trace.Trace")
+}
+
+// trace sends a trace request for an already built PathQuery and one selected path. Trace and TraceFor share it.
+func (s *TraceService) trace(ctx context.Context, networkID, snapshotID string, filters map[string]any, sel TraceSelection, operation string) (*TraceResult, *Response, error) {
 	if len(sel.Path) == 0 || strings.TrimSpace(sel.TraceType) == "" {
 		return nil, nil, errors.New("forward: a trace needs the path and trace type from a facets response")
 	}
@@ -336,11 +341,11 @@ func (s *TraceService) Trace(ctx context.Context, networkID, snapshotID string, 
 		picked["behavior"] = sel.Behavior
 	}
 	body := map[string]any{
-		"filters":        q.filters(),
+		"filters":        filters,
 		"selectedFacets": map[string]any{"paths": []any{picked}},
 		"limit":          100,
 	}
-	req, err := s.request(ctx, "/trace", "Trace.Trace", networkID, snapshotID, url.Values{}, body)
+	req, err := s.request(ctx, "/trace", operation, networkID, snapshotID, url.Values{}, body)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -404,6 +409,13 @@ func (s *TraceService) Explain(ctx context.Context, networkID, snapshotID string
 	if err != nil {
 		return nil, resp, err
 	}
+	return s.explain(ctx, facets, resp, func(sel TraceSelection) (*TraceResult, *Response, error) {
+		return s.Trace(ctx, networkID, snapshotID, q, sel)
+	})
+}
+
+// explain traces every path of a facets answer through traceOne, up to ExplainLimit. Explain and ExplainQuery share it.
+func (s *TraceService) explain(ctx context.Context, facets *TraceFacets, resp *Response, traceOne func(TraceSelection) (*TraceResult, *Response, error)) (*TraceExplanation, *Response, error) {
 	out := &TraceExplanation{FacetsTimedOut: facets.TimedOut}
 	if len(facets.TotalResults) > 0 {
 		var total struct {
@@ -423,7 +435,7 @@ func (s *TraceService) Explain(ctx context.Context, networkID, snapshotID string
 			}
 			sel, _ := g.Selection(pi)
 			tp := TracedPath{ID: fmt.Sprintf("g%d.p%d", gi, pi), Group: gi, Index: pi, TraceType: g.TraceType, Path: sel.Path}
-			trace, _, terr := s.Trace(ctx, networkID, snapshotID, q, sel)
+			trace, _, terr := traceOne(sel)
 			if terr != nil {
 				if ctx.Err() != nil {
 					return out, resp, ctx.Err()

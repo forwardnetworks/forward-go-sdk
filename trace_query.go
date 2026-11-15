@@ -364,3 +364,28 @@ func (f *TraceFacets) PossibleLocations() (TracePossibleLocations, bool, error) 
 	}
 	return out, true, nil
 }
+
+// TraceFor is Trace for a TracePathQuery: the per-hop detail of ONE path chosen from FacetsQuery's PathGroups, with the same query, so a
+// query with a Chain (through, ingress or egress hops), a To location or headers, or the PERMIT_ALL mode can be traced as well as counted
+// (POST /api/networks/{id}/trace, the body the GUI Search page sends). An empty snapshotID uses the network's latest. Select the path with
+// TracePathGroup.Selection. Source-only for every shape FacetsQuery marks source-only; the /trace route itself is the one Trace uses.
+func (s *TraceService) TraceFor(ctx context.Context, networkID, snapshotID string, q TracePathQuery, sel TraceSelection) (*TraceResult, *Response, error) {
+	filters, err := q.filters()
+	if err != nil {
+		return nil, nil, err
+	}
+	return s.trace(ctx, networkID, snapshotID, filters, sel, "Trace.TraceFor")
+}
+
+// ExplainQuery is Explain for a TracePathQuery: FacetsQuery and then TraceFor for every path it lists, up to ExplainLimit, with the same
+// rules as Explain for what fails one path and what fails the call. The paths of a query with a Chain or a To location, which Trace and
+// Explain cannot express, are listed this way. Source-only like FacetsQuery.
+func (s *TraceService) ExplainQuery(ctx context.Context, networkID, snapshotID string, q TracePathQuery) (*TraceExplanation, *Response, error) {
+	facets, resp, err := s.FacetsQuery(ctx, networkID, snapshotID, q, TraceFacetsOptions{})
+	if err != nil {
+		return nil, resp, err
+	}
+	return s.explain(ctx, facets, resp, func(sel TraceSelection) (*TraceResult, *Response, error) {
+		return s.TraceFor(ctx, networkID, snapshotID, q, sel)
+	})
+}

@@ -2,9 +2,11 @@ package forward
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -145,5 +147,51 @@ func TestTraceFacetsQueryRefusesWhatForwardRefuses(t *testing.T) {
 	// From-only header fields are fine in From.
 	if _, _, err := trace.FacetsQuery(context.Background(), "net1", "s1", TracePathQuery{From: &TraceEndpoint{Location: TraceDevice("d1"), Headers: []TraceHeaders{{"app_id": {"x"}}}}}, TraceFacetsOptions{}); err != nil {
 		t.Fatalf("a From header with app_id was refused: %v", err)
+	}
+}
+
+// A path query with a chain hop and a To location is listed and traced with the SAME filters body on both routes, so the path chosen from
+// the facets is the one traced; the trace route gets the selected path and behavior sample back unchanged.
+func TestTraceForAndExplainQuery(t *testing.T) {
+	var facetsFilters, traceFilters string
+	var picked string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Filters        json.RawMessage `json:"filters"`
+			SelectedFacets json.RawMessage `json:"selectedFacets"`
+		}
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		switch r.URL.Path {
+		case "/api/networks/n1/trace-facets":
+			facetsFilters = string(body.Filters)
+			_, _ = w.Write([]byte(`{"facets":{"pathGroups":[{"traceType":"VALID","paths":[{"path":["a","b"],"behaviorSample":{"k":1}}]}]},"totalResults":{"value":1,"type":"EXACT"}}`))
+		case "/api/networks/n1/trace":
+			traceFilters, picked = string(body.Filters), string(body.SelectedFacets)
+			_, _ = w.Write([]byte(`{"traceType":"VALID","deviceHops":[{"deviceName":"a"},{"deviceName":"b"}],"pathDescriptor":"a>b"}`))
+		default:
+			t.Errorf("unexpected %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+
+	q := TracePathQuery{
+		From:  &TraceEndpoint{Location: TraceDevice("a")},
+		Chain: []TraceChainHop{{Transit: TraceTransitThrough, Location: TraceDevice("b")}},
+		To:    &TraceEndpoint{Location: TraceSubnet("10.0.0.0/24")},
+	}
+	explained, _, err := client.Trace.ExplainQuery(context.Background(), "n1", "9", q)
+	if err != nil || len(explained.Paths) != 1 || explained.Paths[0].Trace == nil || explained.Paths[0].Descriptor != "a>b" {
+		t.Fatalf("explained=%+v err=%v", explained, err)
+	}
+	if facetsFilters == "" || facetsFilters != traceFilters {
+		t.Fatalf("both routes must carry the same filters:\nfacets=%s\ntrace=%s", facetsFilters, traceFilters)
+	}
+	if !strings.Contains(traceFilters, `"chain"`) || !strings.Contains(picked, `"behavior":{"k":1}`) || !strings.Contains(picked, `"traceType":"VALID"`) {
+		t.Fatalf("filters=%s picked=%s", traceFilters, picked)
+	}
+	if _, _, err = client.Trace.TraceFor(context.Background(), "n1", "9", q, TraceSelection{}); err == nil {
+		t.Fatal("a trace without a selected path must be refused")
 	}
 }

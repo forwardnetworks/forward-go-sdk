@@ -2177,6 +2177,10 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "POST", Route: "/api/networks/{networkId}/trace"},
 		{Method: "POST", Route: "/api/networks/{networkId}/trace-facets"},
 	},
+	"Trace.ExplainQuery": {
+		{Method: "POST", Route: "/api/networks/{networkId}/trace"},
+		{Method: "POST", Route: "/api/networks/{networkId}/trace-facets"},
+	},
 	"Trace.Facets": {
 		{Method: "POST", Route: "/api/networks/{networkId}/trace-facets"},
 	},
@@ -2184,6 +2188,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "POST", Route: "/api/networks/{networkId}/trace-facets"},
 	},
 	"Trace.Trace": {
+		{Method: "POST", Route: "/api/networks/{networkId}/trace"},
+	},
+	"Trace.TraceFor": {
 		{Method: "POST", Route: "/api/networks/{networkId}/trace"},
 	},
 	"TrustedCertificates.Add": {
