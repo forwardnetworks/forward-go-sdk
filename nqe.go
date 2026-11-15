@@ -73,6 +73,10 @@ type NQEResult struct {
 	TotalNumItems int64       `json:"totalNumItems"`
 }
 
+// Truncated reports that the page holds fewer rows than Forward says the query matched (TotalNumItems), so a caller that reads one page
+// must not treat it as the whole answer. False when Forward sent no total (a bare array), which says nothing either way.
+func (r *NQEResult) Truncated() bool { return r != nil && r.TotalNumItems > int64(len(r.Items)) }
+
 // UnmarshalJSON accepts the bare-array and items/rows/results/data envelopes
 // used by different appserver builds.
 func (r *NQEResult) UnmarshalJSON(data []byte) error {

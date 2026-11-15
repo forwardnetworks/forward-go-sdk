@@ -728,6 +728,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DeviceTags.UpdateTag": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/device-tags/{tagName}"},
 	},
+	"Devices.BGPAdvertisements": {
+		{Method: "GET", Route: "/api/networks/{networkId}/devices/{deviceName}/bgp-advertisements"},
+	},
 	"Devices.Diff": {
 		{Method: "GET", Route: "/api/networks/{networkId}/device-diffs/{before}/{after}"},
 	},
@@ -1715,6 +1718,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.ValidateCommands": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{device}/commands"},
+	},
+	"Predict.VerifyBGPStaging": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
 	},
 	"Predict.VerifyPredictModeling": {
 		{Method: "POST", Route: "/api/internal/snapshots/{snapshotId}/verify-predict-modeling"},

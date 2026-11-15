@@ -56,7 +56,12 @@ const (
 	// ErrorKindNetworkNotFound, a route that exists and found no such network.
 	ErrorKindEndpointNotServed ErrorKind = "endpoint-not-served"
 	ErrorKindNetworkNotFound   ErrorKind = "network-not-found"
-	ErrorKindAuthentication    ErrorKind = "authentication-failure"
+	// ErrorKindActionNotSupported is a 400 for a ?action= (or other query-parameter condition) this deployment does not map on the
+	// route: Spring's UnsatisfiedServletRequestParameterException, `Parameter conditions "action=bulkAdd" not met for actual request
+	// parameters: ...`. The route exists but not that variant, which is what an older build looks like for a newer action, so a caller
+	// can fall back to the older call (StageBGPAdvertisements to StageBGPAdvertisement) without matching Forward's text itself.
+	ErrorKindActionNotSupported ErrorKind = "action-not-supported"
+	ErrorKindAuthentication     ErrorKind = "authentication-failure"
 	// ErrorKindAccountLocked is a 401 because the login or access key is locked out after repeated failed attempts, not because
 	// this request's credentials were wrong (UserAuthService / ApiTokenAuthenticationProvider: "User account is locked: <name>",
 	// "Account is locked"). Forward counts failed attempts and locks whatever the deployment flags (after every third failure: 1, 5, 15
@@ -87,6 +92,7 @@ var (
 	ErrRateLimited                       = errors.New("forward: API rate limit exceeded, the user is locked out for a while")
 	ErrUnlicensedOperation               = errors.New("forward: operation not included in the organization's license")
 	ErrEndpointNotServed                 = errors.New("forward: route is not served by this deployment")
+	ErrActionNotSupported                = errors.New("forward: this deployment does not map that action on the route")
 	ErrNetworkNotFound                   = errors.New("forward: network not found")
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
@@ -179,6 +185,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindUnlicensedOperation
 	case ErrEndpointNotServed:
 		return e.Kind == ErrorKindEndpointNotServed
+	case ErrActionNotSupported:
+		return e.Kind == ErrorKindActionNotSupported
 	case ErrNetworkNotFound:
 		return e.Kind == ErrorKindNetworkNotFound
 	case ErrAuthentication:
@@ -340,6 +348,9 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	// RateDetectionFilter / SessionRateLimitFilter: 429 "Rate limit exceeded, please try again later".
 	if status == http.StatusTooManyRequests && strings.HasPrefix(strings.TrimSpace(apiErr.Message), "Rate limit exceeded") {
 		return ErrorKindRateLimited
+	}
+	if status == http.StatusBadRequest && strings.Contains(detail, "parameter conditions") && strings.Contains(detail, "not met") {
+		return ErrorKindActionNotSupported
 	}
 	if status == http.StatusForbidden &&
 		(containsWords(detail, "auth", "fail") || containsWords(detail, "credential") || containsWords(detail, "token")) {
