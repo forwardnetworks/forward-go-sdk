@@ -319,6 +319,12 @@ func SnapshotNotProcessed() Reply {
 	return errorReply(http.StatusConflict, "", "", "The snapshot is not available yet", map[string]any{"reason": "SNAPSHOT_UNAVAILABLE"})
 }
 
+// ServiceNowAsleep is the 409 Forward answers when the ServiceNow instance is hibernating (seen live on 26.10.6). The client reads it as
+// forward.ErrServiceNowInstanceAsleep.
+func ServiceNowAsleep() Reply {
+	return errorReply(http.StatusConflict, "", "", "ServiceNow instance is hibernating", nil)
+}
+
 // BadRequest is a plain 400 with a message.
 func BadRequest(message string) Reply { return errorReply(http.StatusBadRequest, "", "", message, nil) }
 

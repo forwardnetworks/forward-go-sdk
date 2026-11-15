@@ -26,6 +26,7 @@ func TestErrorRepliesClassifyLikeTheRealAppserver(t *testing.T) {
 		{"unauthorized", forwardtest.Unauthorized(), forward.ErrAuthentication},
 		{"action not supported", forwardtest.ActionNotSupported("bulkAdd"), forward.ErrActionNotSupported},
 		{"snapshot not processed", forwardtest.SnapshotNotProcessed(), forward.ErrSnapshotNotProcessed},
+		{"servicenow asleep", forwardtest.ServiceNowAsleep(), forward.ErrServiceNowInstanceAsleep},
 	}
 	for _, tc := range cases {
 		srv := forwardtest.New(t)

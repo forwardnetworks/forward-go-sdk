@@ -56,6 +56,11 @@ const (
 	// ErrorKindNetworkNotFound, a route that exists and found no such network.
 	ErrorKindEndpointNotServed ErrorKind = "endpoint-not-served"
 	ErrorKindNetworkNotFound   ErrorKind = "network-not-found"
+	// ErrorKindServiceNowInstanceAsleep is a 409 whose message is "ServiceNow instance is hibernating" or "ServiceNow instance is suspended":
+	// the customer's ServiceNow developer or trial instance is not running (Forward's ServiceNowApiUtils.classifyOkBody reads ServiceNow's
+	// 200 wake-up page and refuses the call). Nothing was created. Retrying later, once the instance is woken, can work; the 409 "Unknown
+	// Error" a woken instance answered live is NOT this kind (its cause is unconfirmed).
+	ErrorKindServiceNowInstanceAsleep ErrorKind = "servicenow-instance-asleep"
 	// ErrorKindActionNotSupported is a 400 for a ?action= (or other query-parameter condition) this deployment does not map on the
 	// route: Spring's UnsatisfiedServletRequestParameterException, `Parameter conditions "action=bulkAdd" not met for actual request
 	// parameters: ...`. The route exists but not that variant, which is what an older build looks like for a newer action, so a caller
@@ -93,6 +98,7 @@ var (
 	ErrUnlicensedOperation               = errors.New("forward: operation not included in the organization's license")
 	ErrEndpointNotServed                 = errors.New("forward: route is not served by this deployment")
 	ErrActionNotSupported                = errors.New("forward: this deployment does not map that action on the route")
+	ErrServiceNowInstanceAsleep          = errors.New("forward: the ServiceNow instance is hibernating or suspended")
 	ErrNetworkNotFound                   = errors.New("forward: network not found")
 	ErrAuthentication                    = errors.New("forward: authentication failed")
 	ErrTrustedCertificateApplyInProgress = errors.New("forward: trusted certificate apply already in progress for every supported collector")
@@ -187,6 +193,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindEndpointNotServed
 	case ErrActionNotSupported:
 		return e.Kind == ErrorKindActionNotSupported
+	case ErrServiceNowInstanceAsleep:
+		return e.Kind == ErrorKindServiceNowInstanceAsleep
 	case ErrNetworkNotFound:
 		return e.Kind == ErrorKindNetworkNotFound
 	case ErrAuthentication:
@@ -349,6 +357,9 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	if status == http.StatusTooManyRequests && strings.HasPrefix(strings.TrimSpace(apiErr.Message), "Rate limit exceeded") {
 		return ErrorKindRateLimited
 	}
+	if status == http.StatusConflict && serviceNowAsleepMessage.MatchString(strings.TrimSpace(apiErr.Message)) {
+		return ErrorKindServiceNowInstanceAsleep
+	}
 	if status == http.StatusBadRequest && strings.Contains(detail, "parameter conditions") && strings.Contains(detail, "not met") {
 		return ErrorKindActionNotSupported
 	}
@@ -451,6 +462,10 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 // "... for your deployment") -- a 403 with no reason code, so this fixed
 // template is the only stable signal. It is anchored so only that exact
 // sentence classifies, never a message that merely contains it.
+// serviceNowAsleepMessage is the whole message of Forward's refusal for a ServiceNow instance that answered its wake-up page. Anchored, so a
+// message that merely contains the words does not classify.
+var serviceNowAsleepMessage = regexp.MustCompile(`(?i)^ServiceNow instance is (hibernating|suspended)\.?$`)
+
 // permissionMessage is the whole message of Forward's three operation denials. Anchored, so only those sentences classify.
 var permissionMessage = regexp.MustCompile(`^(Missing permission|Unlicensed operation|No permission for network operation):? ((?:[A-Za-z]+Operation\.)?[A-Z][A-Z0-9_]*)$`)
 
