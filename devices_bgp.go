@@ -19,7 +19,9 @@ import (
 // snapshotID lets Forward use the latest processed snapshot. A VRF or prefix with no advertisements is an empty list, not an error.
 // Seen live (26.11.0-03, cEOS): a host route comes back with a BARE prefix ("10.0.0.2", no /32), the query accepts the bare or the /32 form,
 // unset localPref and med are absent and communities is null, and a snapshot with no BGP routes answers 200 with an empty list. Compare
-// returned prefixes after normalising a bare address to its host route. // A predicted snapshot works too, which is how the post-stage state is read.
+// returned prefixes after normalising a bare address to its host route. // It reads the snapshot's parsed received-route tables (EBGP_RECV_ROUTES, IBGP_RECV_ROUTES) via Predict's BgpAdvertisementUtils; whether a
+// predicted snapshot shows staged advertisements here is NOT confirmed, so read predicted routes with Routing.RPDevicePrefixInfo and
+// Routing.RPPrefixDetails.
 func (s *DevicesService) BGPAdvertisements(ctx context.Context, networkID, deviceName, snapshotID, vrf, prefix string) ([]BGPAdvertisement, *Response, error) {
 	path, err := modeledDevicePath(networkID, deviceName)
 	if err != nil {

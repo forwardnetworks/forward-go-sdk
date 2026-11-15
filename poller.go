@@ -18,8 +18,26 @@ type PollUpdate[T any] struct {
 
 // PollOptions controls asynchronous operation waiting.
 type PollOptions[T any] struct {
+	// Interval is the wait before the first refresh (default 2s). With MaxInterval zero it stays fixed, which is the behaviour before
+	// MaxInterval existed.
 	Interval time.Duration
+	// MaxInterval, when above Interval, doubles the wait after every refresh until it reaches this ceiling: a geometric backoff for
+	// operations that take minutes, so a long wait does not poll at the short interval throughout.
+	MaxInterval time.Duration
+	// Budget, when above zero, bounds the whole wait. Running out returns an error that satisfies errors.Is(err, ErrPollBudget) and
+	// context.DeadlineExceeded, with the last state seen; a canceled or expired caller context still returns its own error.
+	Budget   time.Duration
 	OnUpdate func(PollUpdate[T])
+}
+
+// ErrPollBudget is returned by Poller.Wait when PollOptions.Budget ran out before the operation finished.
+var ErrPollBudget = errors.New("forward: poll budget exhausted before the operation finished")
+
+type pollBudgetError struct{}
+
+func (pollBudgetError) Error() string { return ErrPollBudget.Error() }
+func (pollBudgetError) Is(target error) bool {
+	return target == ErrPollBudget || target == context.DeadlineExceeded
 }
 
 // Poller retains the latest state of an asynchronous Forward operation. It is
@@ -82,6 +100,19 @@ func (p *Poller[T]) Wait(ctx context.Context, options PollOptions[T]) (*T, *Resp
 		interval = 2 * time.Second
 	}
 	started := time.Now()
+	parent := ctx
+	if options.Budget > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, options.Budget)
+		defer cancel()
+	}
+	// budgetOr turns a deadline that is the budget's, not the caller's, into ErrPollBudget.
+	budgetOr := func(err error) error {
+		if err != nil && parent.Err() == nil && ctx.Err() != nil && errors.Is(err, ctx.Err()) {
+			return pollBudgetError{}
+		}
+		return err
+	}
 	current := p.Current()
 	complete, err := p.done(current)
 	if err != nil || complete {
@@ -93,13 +124,13 @@ func (p *Poller[T]) Wait(ctx context.Context, options PollOptions[T]) (*T, *Resp
 	for attempt := 1; ; attempt++ {
 		select {
 		case <-ctx.Done():
-			return p.Current(), nil, ctx.Err()
+			return p.Current(), nil, budgetOr(ctx.Err())
 		case <-timer.C:
 		}
 		previous := current
 		value, response, err := p.Refresh(ctx)
 		if err != nil {
-			return p.Current(), response, err
+			return p.Current(), response, budgetOr(err)
 		}
 		if options.OnUpdate != nil {
 			options.OnUpdate(PollUpdate[T]{Previous: previous, Value: value, Response: response, Attempt: attempt, Elapsed: time.Since(started)})
@@ -109,6 +140,11 @@ func (p *Poller[T]) Wait(ctx context.Context, options PollOptions[T]) (*T, *Resp
 			return value, response, err
 		}
 		current = value
+		if options.MaxInterval > interval {
+			if interval *= 2; interval > options.MaxInterval {
+				interval = options.MaxInterval
+			}
+		}
 		timer.Reset(interval)
 	}
 }

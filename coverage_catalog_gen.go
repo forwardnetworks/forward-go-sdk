@@ -282,6 +282,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Checks.ListPredefined": {
 		{Method: "GET", Route: "/api/predefinedChecks"},
 	},
+	"Checks.Update": {
+		{Method: "PATCH", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
+	},
 	"ClassicDevices.ConnTypes": {
 		{Method: "GET", Route: "/api/deviceConnTypes"},
 	},
@@ -851,6 +854,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Diffs.VulnerabilitiesCounts": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/vulnerabilities/counts"},
+	},
+	"Diffs.WaitChecks": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/checks"},
 	},
 	"Diffs.WaitForSubnetConnectivity": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
@@ -1499,6 +1505,14 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Predict.BGPAdvertisementDiffs": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/draft/devices/{device}/bgp-advertisements"},
+	},
+	"Predict.BGPAdvertisementReadiness": {
+		{Method: "GET", Route: "/api/config"},
+		{Method: "GET", Route: "/api/networks/{networkId}/bgp-collection-requirements"},
+		{Method: "GET", Route: "/api/networks/{networkId}/classic-devices"},
+	},
+	"Predict.BGPCollectionRequirements": {
+		{Method: "GET", Route: "/api/networks/{networkId}/bgp-collection-requirements"},
 	},
 	"Predict.BGPNode": {
 		{Method: "GET", Route: "/api/internal/snapshots/{snapshotId}/devices/{deviceName}/vrfs/{vrfName}/bgp-node"},
