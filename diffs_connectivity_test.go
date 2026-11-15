@@ -181,3 +181,35 @@ func TestDiffsChecksListsOneCheckType(t *testing.T) {
 		t.Fatal("positive control: an empty check type must be refused (the route without type= is the counts route)")
 	}
 }
+
+// The location-pair counts take a diff type (ALL is a 400 on Forward), answer an EMPTY list while the comparison is still computing, and
+// must therefore be read after the wait: the wait variant polls the summary first and only then reads the counts.
+func TestConnectivityDiffLocationPairs(t *testing.T) {
+	summaryCalls := 0
+	var pairQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("view") == "locationPairs" {
+			pairQuery = r.URL.RawQuery
+			if summaryCalls < 2 {
+				t.Errorf("the counts were read before the comparison finished")
+			}
+			_, _ = w.Write([]byte(`{"counts":[{"src":"a","dst":"b","count":3}]}`))
+			return
+		}
+		summaryCalls++
+		_, _ = w.Write([]byte(`{"isPartialResult":` + map[bool]string{true: "true", false: "false"}[summaryCalls < 2] + `}`))
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+
+	counts, _, err := client.Diffs.WaitConnectivityDiffLocationPairs(context.Background(), "1", "2", ConnectivityDiffDeleted, "a", ConnectivityWaitOptions{PollInterval: time.Millisecond})
+	if err != nil || len(counts) != 1 || counts[0].Count != 3 || counts[0].Dst != "b" {
+		t.Fatalf("counts=%+v err=%v", counts, err)
+	}
+	if pairQuery != "loc=a&type=DELETED&view=locationPairs" {
+		t.Fatalf("query = %q", pairQuery)
+	}
+	if _, _, err = client.Diffs.ConnectivityDiffLocationPairs(context.Background(), "1", "2", "ALL", ""); err == nil {
+		t.Fatal("ALL must be refused before any request")
+	}
+}

@@ -89,6 +89,11 @@ const (
 	// take ("'name' not allowed for non-parameterized NQE checks", "'note' not allowed for NQE checks", "'tags' not allowed for NQE
 	// checks"; seen live on 26.10.6 by the AutoCon6 workshop). NewCheck's Name, Note and Tags must stay empty for an NQE check.
 	ErrorKindCheckFieldNotAllowed ErrorKind = "check-field-not-allowed"
+	// ErrorKindUnrecognizedDevices is the 400 "Unrecognized devices cannot be moved: [r1, r2]" Locations.Assign gets, for the WHOLE patch,
+	// when any device in it is not one the network's classic-device list (or atlas) knows, even a device present in every snapshot (a network
+	// fed only by snapshot uploads). Seen live on 26.10.6 by the AutoCon6 workshop; what worked there was creating each device with
+	// ClassicDevices.Create (collect=false, no credentials) and assigning again. ErrorResponse.UnrecognizedDevices lists them.
+	ErrorKindUnrecognizedDevices ErrorKind = "unrecognized-devices"
 	// ErrorKindOrgNotAccessible is the 403 "Org <id> is not accessible to user <id>" a support or cross-org key gets for an organization that
 	// has not granted it access (seen live on 26.10.6 with a support-org key on /api/orgs/{id}/config).
 	ErrorKindOrgNotAccessible ErrorKind = "org-not-accessible"
@@ -117,6 +122,7 @@ var (
 	ErrUnknownNetworkProperty            = errors.New("forward: network property not defined by this appserver")
 	ErrOrgNotAccessible                  = errors.New("forward: the organization is not accessible to this user")
 	ErrCheckFieldNotAllowed              = errors.New("forward: the check type does not take that field")
+	ErrUnrecognizedDevices               = errors.New("forward: the network does not know some of the devices named")
 	ErrGlobalDefaultNotAllowed           = errors.New("forward: the property can only be set per organization, not as a global default")
 )
 
@@ -174,9 +180,11 @@ type ErrorResponse struct {
 	Operation string `json:"-"`
 
 	GateProperty string `json:"-"`
-	GateEnabled  bool   `json:"-"`
-	GateScope    string `json:"-"`
-	Body         []byte `json:"-"`
+	// UnrecognizedDevices names the devices of an ErrorKindUnrecognizedDevices refusal, in the order Forward listed them.
+	UnrecognizedDevices []string `json:"-"`
+	GateEnabled         bool     `json:"-"`
+	GateScope           string   `json:"-"`
+	Body                []byte   `json:"-"`
 }
 
 // Is lets callers use errors.Is with the stable classification sentinels.
@@ -225,6 +233,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindOrgNotAccessible
 	case ErrCheckFieldNotAllowed:
 		return e.Kind == ErrorKindCheckFieldNotAllowed
+	case ErrUnrecognizedDevices:
+		return e.Kind == ErrorKindUnrecognizedDevices
 	case ErrGlobalDefaultNotAllowed:
 		return e.Kind == ErrorKindGlobalDefaultNotAllowed
 	default:
@@ -373,6 +383,17 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 			return ErrorKindFeatureGated
 		}
 	}
+	if status == http.StatusBadRequest {
+		if match := unrecognizedDevicesMessage.FindStringSubmatch(strings.TrimSpace(apiErr.Message)); match != nil {
+			apiErr.UnrecognizedDevices = nil
+			for _, name := range strings.Split(match[1], ",") {
+				if name = strings.TrimSpace(name); name != "" {
+					apiErr.UnrecognizedDevices = append(apiErr.UnrecognizedDevices, name)
+				}
+			}
+			return ErrorKindUnrecognizedDevices
+		}
+	}
 	if status == http.StatusBadRequest && checkFieldNotAllowedMessage.MatchString(strings.TrimSpace(apiErr.Message)) {
 		return ErrorKindCheckFieldNotAllowed
 	}
@@ -493,6 +514,9 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 // "... for your deployment") -- a 403 with no reason code, so this fixed
 // template is the only stable signal. It is anchored so only that exact
 // sentence classifies, never a message that merely contains it.
+// unrecognizedDevicesMessage is LayoutService's Requests.validate message with the device list Java prints, "[r1, r2]".
+var unrecognizedDevicesMessage = regexp.MustCompile(`^Unrecognized devices cannot be moved: \[(.*)\]$`)
+
 // checkFieldNotAllowedMessage is the whole message of Forward's refusal of a name, note or tags on a check type that does not take them.
 var checkFieldNotAllowedMessage = regexp.MustCompile(`^'(name|note|tags)' not allowed for (non-parameterized )?(NQE|predefined) checks$`)
 

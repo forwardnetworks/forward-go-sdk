@@ -59,3 +59,18 @@ func TestServiceNowAsleepKind(t *testing.T) {
 		}
 	}
 }
+
+// Locations.Assign's whole-patch refusal names the devices Forward does not know; they come out of the message in order.
+func TestUnrecognizedDevicesKind(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"message":"Unrecognized devices cannot be moved: [r1, r2]"}`))
+	}))
+	defer server.Close()
+	_, err := newTestClient(t, server.URL).Locations.Assign(context.Background(), "n1", AtlasPatch{"r1": "L1", "r2": "L1"})
+	var apiErr *ErrorResponse
+	if !errors.Is(err, ErrUnrecognizedDevices) || !errors.As(err, &apiErr) || len(apiErr.UnrecognizedDevices) != 2 || apiErr.UnrecognizedDevices[1] != "r2" {
+		t.Fatalf("err = %v, devices = %v", err, apiErr)
+	}
+}

@@ -88,6 +88,11 @@ func (s *LocationsService) Create(ctx context.Context, networkID string, input L
 	return out, response, err
 }
 
+// Assign moves devices to locations in one atlas patch (PATCH .../atlas; the map is device name to location id). Forward refuses the WHOLE
+// patch with a 400 "Unrecognized devices cannot be moved: [r1, ...]" (ErrUnrecognizedDevices, ErrorResponse.UnrecognizedDevices) when
+// any device is not in the network's classic-device list or atlas, even if it is in every snapshot, as for a network fed only by snapshot
+// uploads. Seen live on 26.10.6 (the AutoCon6 workshop): create each such device with ClassicDevices.Create (collect false, no
+// credentials) and assign again.
 func (s *LocationsService) Assign(ctx context.Context, networkID string, patch AtlasPatch) (*Response, error) {
 	base, err := s.base(networkID)
 	if err != nil {

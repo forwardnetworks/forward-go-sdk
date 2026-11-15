@@ -228,3 +228,65 @@ func (s *DiffsService) ConnectivityDiffLocationPair(
 	}
 	return out.Stats, resp, nil
 }
+
+// Diff types the location-pair counts take (Forward's DiffType, restricted by DiffController to these three; ALL is a 400 "No enum constant
+// ...DiffType.ALL", seen live by the AutoCon6 workshop).
+const (
+	ConnectivityDiffAdded    = "ADDED"
+	ConnectivityDiffDeleted  = "DELETED"
+	ConnectivityDiffModified = "MODIFIED"
+)
+
+// LocationPairChangeCount is the number of connectivity changes of one kind from location Src to location Dst
+// (LocationConnChangeCount).
+type LocationPairChangeCount struct {
+	Src   string `json:"src"`
+	Dst   string `json:"dst"`
+	Count int    `json:"count"`
+}
+
+// ConnectivityDiffLocationPairs returns, for one diff type (ConnectivityDiffAdded, Deleted or Modified), how many connectivity changes each
+// pair of locations has (GET .../subnet-connectivity?view=locationPairs&type=[&loc=]; VIEW_CONNECTIVITY_DIFFS and the org property
+// LOCATION_CONNECTIVITY_DIFFS, which only Forward support can set: an org admin gets the 403 ErrFeatureGated; advanced reachability must
+// be on for the network). loc narrows it to pairs involving one location; empty reads all. While Forward is still computing the
+// comparison the answer is an EMPTY list, which is not "no change" (seen live: the first ask answers {"counts":[]}, a later one the real
+// answer), so use WaitConnectivityDiffLocationPairs unless you already waited with WaitForSubnetConnectivity. Preview: the shape is from
+// Forward's source (LocationConnChangeCounts), the empty-while-computing behaviour was seen live.
+func (s *DiffsService) ConnectivityDiffLocationPairs(ctx context.Context, beforeSnapshotID, afterSnapshotID, diffType, locationID string) ([]LocationPairChangeCount, *Response, error) {
+	if diffType != ConnectivityDiffAdded && diffType != ConnectivityDiffDeleted && diffType != ConnectivityDiffModified {
+		return nil, nil, fmt.Errorf("forward: diff type %q must be %s, %s or %s", diffType, ConnectivityDiffAdded, ConnectivityDiffDeleted, ConnectivityDiffModified)
+	}
+	path, err := diffsPath(beforeSnapshotID, afterSnapshotID, "subnet-connectivity")
+	if err != nil {
+		return nil, nil, err
+	}
+	query := url.Values{"view": []string{"locationPairs"}, "type": []string{diffType}}
+	if locationID = strings.TrimSpace(locationID); locationID != "" {
+		query.Set("loc", locationID)
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path+"?"+query.Encode(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	req = markOperation(req, "Diffs.ConnectivityDiffLocationPairs")
+	var out struct {
+		Counts []LocationPairChangeCount `json:"counts"`
+	}
+	resp, err := s.client.doRequired(req, &out)
+	if err != nil {
+		return nil, resp, err
+	}
+	if out.Counts == nil {
+		out.Counts = []LocationPairChangeCount{}
+	}
+	return out.Counts, resp, nil
+}
+
+// WaitConnectivityDiffLocationPairs waits for the connectivity comparison to finish (WaitForSubnetConnectivity, with the same options and
+// the same ErrConnectivityDiffPartial on timeout) and then reads ConnectivityDiffLocationPairs, so an empty answer means no change.
+func (s *DiffsService) WaitConnectivityDiffLocationPairs(ctx context.Context, beforeSnapshotID, afterSnapshotID, diffType, locationID string, options ConnectivityWaitOptions) ([]LocationPairChangeCount, *Response, error) {
+	if _, resp, err := s.WaitForSubnetConnectivity(ctx, beforeSnapshotID, afterSnapshotID, options); err != nil {
+		return nil, resp, err
+	}
+	return s.ConnectivityDiffLocationPairs(ctx, beforeSnapshotID, afterSnapshotID, diffType, locationID)
+}

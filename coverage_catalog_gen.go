@@ -776,6 +776,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Diffs.ConnectivityDiffLocationPair": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
 	},
+	"Diffs.ConnectivityDiffLocationPairs": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
+	},
 	"Diffs.ConnectivityDiffLocations": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
 	},
@@ -857,6 +860,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Diffs.WaitChecks": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/checks"},
+	},
+	"Diffs.WaitConnectivityDiffLocationPairs": {
+		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
 	},
 	"Diffs.WaitForSubnetConnectivity": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
