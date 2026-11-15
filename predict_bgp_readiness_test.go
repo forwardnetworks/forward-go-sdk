@@ -93,9 +93,12 @@ func TestBGPAdvertisementReadiness(t *testing.T) {
 	if counts.Load() != 3 {
 		t.Fatalf("the org-wide reads must be made once for all devices: %d requests", counts.Load())
 	}
+	if reports[2].UnknownReasons["collection-source:ctl1"] == "" || len(reports[2].UnknownReasons) != len(reports[2].Unknown) {
+		t.Fatalf("every Unknown entry must carry its reason: %+v", reports[2])
+	}
 	classicStatus.Store(http.StatusForbidden)
 	r, _, err = client.Predict.BGPAdvertisementReadiness(ctx, "n1", "edge1")
-	if err != nil || r.Ready() || len(r.Unknown) != 1 || r.Unknown[0] != "classic-devices" {
+	if err != nil || r.Ready() || len(r.Unknown) != 1 || r.Unknown[0] != "classic-devices" || r.UnknownReasons["classic-devices"] == "" {
 		t.Fatalf("refused classic-devices: %+v, %v", r, err)
 	}
 }

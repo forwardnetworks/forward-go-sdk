@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 )
@@ -79,7 +80,9 @@ type BGPReadiness struct {
 	// switches is true, but this does not assume it.
 	Problems []string
 	Unknown  []string
-	Notes    []string
+	// UnknownReasons says why each Unknown entry could not be checked, keyed by that entry's exact text.
+	UnknownReasons map[string]string
+	Notes          []string
 }
 
 // Ready reports that every check ran and found no problem. A value that could not be read (see Unknown) is not a pass, so on a
@@ -124,11 +127,12 @@ func (s *PredictService) BGPAdvertisementReadinessFor(ctx context.Context, netwo
 	}
 	var last *Response
 	// shared holds what every device's report shares: what could not be read (Unknown, Notes) and the org-wide findings.
-	shared := &BGPReadiness{}
+	shared := &BGPReadiness{UnknownReasons: map[string]string{}}
 	refused := func(err error, unknown, what string) (hard error) {
 		if IsErrorKind(err, ErrorKindPermissionDenied) || IsErrorKind(err, ErrorKindEndpointNotServed) || IsStatus(err, http.StatusForbidden) {
 			shared.Unknown = append(shared.Unknown, unknown)
-			shared.Notes = append(shared.Notes, fmt.Sprintf("%s could not be read: %v", what, err))
+			shared.UnknownReasons[unknown] = fmt.Sprintf("%s could not be read: %v", what, err)
+			shared.Notes = append(shared.Notes, shared.UnknownReasons[unknown])
 			return nil
 		}
 		return err
@@ -155,6 +159,9 @@ func (s *PredictService) BGPAdvertisementReadinessFor(ctx context.Context, netwo
 		}
 		if len(missing) != 0 {
 			shared.Unknown = append(shared.Unknown, missing...)
+			for _, name := range missing {
+				shared.UnknownReasons[name] = "not returned by the organization properties API (default true in Forward's source)"
+			}
 			shared.Notes = append(shared.Notes, "not returned by the organization properties API (default true in Forward's source): "+strings.Join(missing, ", "))
 		}
 	}
@@ -198,6 +205,7 @@ func (s *PredictService) BGPAdvertisementReadinessFor(ctx context.Context, netwo
 			PredictModelBGP:    shared.PredictModelBGP,
 			Problems:           append([]string(nil), shared.Problems...),
 			Unknown:            append([]string(nil), shared.Unknown...),
+			UnknownReasons:     maps.Clone(shared.UnknownReasons),
 			Notes:              append([]string(nil), shared.Notes...),
 		}
 		if devicesRead {
@@ -214,8 +222,10 @@ func (s *PredictService) BGPAdvertisementReadinessFor(ctx context.Context, netwo
 			case !report.DeviceFound:
 				// Not a problem found: a controller-managed device has no classic collection source and takes its BGP setting elsewhere,
 				// so this cannot tell "absent" from "configured another way".
-				report.Unknown = append(report.Unknown, "collection-source:"+name)
-				report.Notes = append(report.Notes, "the network has no classic collection source named "+name+" (a controller-managed device is configured elsewhere, and this read cannot check it)")
+				key := "collection-source:" + name
+				report.Unknown = append(report.Unknown, key)
+				report.UnknownReasons[key] = "the network has no classic collection source named " + name + " (a controller-managed device is configured elsewhere, and this read cannot check it)"
+				report.Notes = append(report.Notes, report.UnknownReasons[key])
 			case report.CollectBGPAdvertisements == nil || !*report.CollectBGPAdvertisements:
 				report.Problems = append(report.Problems, "collectBgpAdvertisements is not on for the device, so there are no received routes to override or withdraw")
 			default:
