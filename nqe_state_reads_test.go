@@ -81,3 +81,37 @@ func TestRunAllCompositeKey(t *testing.T) {
 		t.Fatal("an identical key tuple must be reported")
 	}
 }
+
+// Interface admin text is Forward's enum text, never "UP"; ACL rows repeat their (Device, AclName) by design and must neither fail the
+// read nor lose the count.
+func TestInterfaceAdminAndACLReads(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Query string `json:"query"`
+		}
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		if strings.Contains(body.Query, "adminStatus") {
+			_, _ = w.Write([]byte(`{"snapshotId":"9","totalNumItems":2,"items":[
+			 {"Device":"a","Interface":"Et1","AdminStatus":"AdminStatus.UP"},
+			 {"Device":"a","Interface":"Et2","AdminStatus":"AdminStatus.DOWN"}]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"snapshotId":"9","totalNumItems":3,"items":[
+		 {"Device":"a","AclName":"edge-in","Action":"AclAction.PERMIT"},
+		 {"Device":"a","AclName":"edge-in","Action":"AclAction.DENY"},
+		 {"Device":"b","AclName":"edge-in","Action":"AclAction.PERMIT"}]}`))
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := context.Background()
+
+	ifaces, _, err := client.NQE.InterfaceAdmin(ctx, "n1", "9", StateReadOptions{})
+	if err != nil || len(ifaces) != 2 || !ifaces[0].Up() || ifaces[1].Up() || ifaces[0].Key() != [2]string{"a", "Et1"} {
+		t.Fatalf("ifaces = %+v err = %v", ifaces, err)
+	}
+	counts, _, err := client.NQE.ACLCounts(ctx, "n1", "9", StateReadOptions{})
+	if err != nil || counts[ACLKey{"a", "edge-in"}] != 2 || counts[ACLKey{"b", "edge-in"}] != 1 || len(counts) != 2 {
+		t.Fatalf("counts = %v err = %v", counts, err)
+	}
+}

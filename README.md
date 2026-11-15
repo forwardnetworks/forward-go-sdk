@@ -275,6 +275,21 @@ and `Predict.RestoreBGPAdvertisement(s)` drops what is staged for a key. A CLI
 `shutdown` of a neighbor outside the snapshot removes the session but not the
 routes learned from it, so model a peer loss with a withdrawal.
 
+## Testing code that uses the client
+
+`forwardtest` is a fake Forward appserver for your own tests (`import "github.com/forwardnetworks/forward-go-sdk/forwardtest"`). It answers
+an unmapped route with Forward's own "No endpoint" 404, and its canned errors (`RateLimited`, `FeatureGated`, `MissingPermission`,
+`Unauthorized`, `ActionNotSupported`, `SnapshotNotProcessed`) carry the bodies the appserver writes, so they classify as the same
+`forward.ErrorKind` as the real thing. It also scripts Predict BGP staging and diffs, NQE paging, check diffs that are still
+PROCESSING, and received BGP advertisements. Replies are served in order (the last repeats), which scripts a flaky call and its recovery
+against `RetryPolicy`.
+
+```go
+srv := forwardtest.New(t)
+srv.Handle(http.MethodGet, "/api/networks", forwardtest.RateLimited(1), forwardtest.JSON(http.StatusOK, networks))
+client := srv.Client(func(c *forward.Config) { c.Retry = forward.DefaultRetryPolicy() })
+```
+
 ## Design direction
 
 The published OpenAPI descriptions under the Forward application source tree

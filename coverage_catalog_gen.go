@@ -1215,6 +1215,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Locations.PatchCluster": {
 		{Method: "PATCH", Route: "/api/networks/{networkId}/locations/{locationId}/clusters/{clusterName}"},
 	},
+	"NQE.ACLCounts": {
+		{Method: "POST", Route: "/api/nqe"},
+	},
+	"NQE.ACLEntries": {
+		{Method: "POST", Route: "/api/nqe"},
+	},
 	"NQE.BGPSessions": {
 		{Method: "POST", Route: "/api/nqe"},
 	},
@@ -1232,6 +1238,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"NQE.ExplainQuery": {
 		{Method: "POST", Route: "/api/internal/nqe/queries/{queryId}/explain"},
+	},
+	"NQE.InterfaceAdmin": {
+		{Method: "POST", Route: "/api/nqe"},
 	},
 	"NQE.LLDPAdjacencies": {
 		{Method: "POST", Route: "/api/nqe"},

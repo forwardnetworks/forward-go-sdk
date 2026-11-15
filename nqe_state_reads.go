@@ -35,6 +35,24 @@ select {
 }`
 )
 
+// nqeInterfaceAdminQuery tracks each interface's ADMIN state. toString() on Forward's enum yields "AdminStatus.UP" or
+// "AdminStatus.DOWN", not "UP" (measured by Skyforge on a real network, 2026-10-10): a gate that guessed "UP" matched nothing and
+// let every shutdown through while still reporting a healthy-looking row count.
+const nqeInterfaceAdminQuery = `foreach device in network.devices
+foreach interface in device.interfaces
+select {
+  Device: device.name, Interface: interface.name,
+  AdminStatus: toString(interface.adminStatus)
+}`
+
+// nqeACLQuery is one row per ACL entry.
+const nqeACLQuery = `foreach device in network.devices
+foreach acl in device.aclEntries
+select { Device: device.name, AclName: acl.name, Action: toString(acl.action) }`
+
+// InterfaceAdminUp is the AdminStatus text of an administratively up interface as the NQE read returns it (the enum's toString, not "UP").
+const InterfaceAdminUp = "AdminStatus.UP"
+
 // BGPSessionEstablished is the SessionState of an established BGP session.
 const BGPSessionEstablished = "ESTABLISHED"
 
@@ -165,4 +183,70 @@ func normalizeASColumn(rows []NQERecord) []NQERecord {
 		}
 	}
 	return rows
+}
+
+// InterfaceAdmin is one interface's administrative state. The identity is Device and Interface. AdminStatus is Forward's enum text
+// ("AdminStatus.UP", "AdminStatus.DOWN"); use Up() rather than comparing text.
+type InterfaceAdmin struct {
+	Device      string `json:"Device"`
+	Interface   string `json:"Interface"`
+	AdminStatus string `json:"AdminStatus"`
+}
+
+// Key is the interface's identity, the tuple a diff matches on.
+func (i InterfaceAdmin) Key() [2]string { return [2]string{i.Device, i.Interface} }
+
+// Up reports an administratively up interface.
+func (i InterfaceAdmin) Up() bool { return i.AdminStatus == InterfaceAdminUp }
+
+// ACLEntry is one entry of an ACL: the NQE read has one row per entry, so Device and AclName repeat and only count the entries of
+// each ACL. Action is Forward's enum text (for example "AclAction.PERMIT").
+type ACLEntry struct {
+	Device  string `json:"Device"`
+	AclName string `json:"AclName"`
+	Action  string `json:"Action"`
+}
+
+// ACLKey identifies one ACL.
+type ACLKey struct{ Device, AclName string }
+
+// InterfaceAdmin reads every interface's administrative state from one snapshot, as typed rows.
+func (s *NQEService) InterfaceAdmin(ctx context.Context, networkID, snapshotID string, options StateReadOptions) ([]InterfaceAdmin, *Response, error) {
+	rows, resp, err := s.RunAll(ctx, networkID, snapshotID, NQEQueryRequest{Query: nqeInterfaceAdminQuery}, NQEPagedOptions{
+		PageSize: options.PageSize, MaxRows: options.MaxRows, Attempts: options.Attempts,
+		KeyColumns: []string{"Device", "Interface"},
+	})
+	if err != nil {
+		return nil, resp, err
+	}
+	out, err := DecodeNQE[InterfaceAdmin](rows)
+	return out, resp, err
+}
+
+// ACLEntries reads every ACL entry from one snapshot, as typed rows (one per entry). The rows have no unique column, so the read keeps
+// RunAll's stable-total and row-count checks but cannot catch a repeated row that hides a missing one (see NQEPagedOptions.NonUniqueKey);
+// ACLCounts is the usual consumer, a per-ACL entry count.
+func (s *NQEService) ACLEntries(ctx context.Context, networkID, snapshotID string, options StateReadOptions) ([]ACLEntry, *Response, error) {
+	rows, resp, err := s.RunAll(ctx, networkID, snapshotID, NQEQueryRequest{Query: nqeACLQuery}, NQEPagedOptions{
+		PageSize: options.PageSize, MaxRows: options.MaxRows, Attempts: options.Attempts,
+		KeyColumns: []string{"Device", "AclName"}, NonUniqueKey: true,
+	})
+	if err != nil {
+		return nil, resp, err
+	}
+	out, err := DecodeNQE[ACLEntry](rows)
+	return out, resp, err
+}
+
+// ACLCounts is the number of entries of each ACL, from ACLEntries: the "count" the change gate compares before and after.
+func (s *NQEService) ACLCounts(ctx context.Context, networkID, snapshotID string, options StateReadOptions) (map[ACLKey]int, *Response, error) {
+	entries, resp, err := s.ACLEntries(ctx, networkID, snapshotID, options)
+	if err != nil {
+		return nil, resp, err
+	}
+	counts := make(map[ACLKey]int, len(entries))
+	for _, entry := range entries {
+		counts[ACLKey{entry.Device, entry.AclName}]++
+	}
+	return counts, resp, nil
 }
