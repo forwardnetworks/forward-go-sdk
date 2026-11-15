@@ -85,6 +85,10 @@ const (
 	// com.forwardnetworks.cv.config.NetworkProperty.X"): Forward defines far fewer network properties than org properties, so an org-only
 	// property such as LOCATION_CONNECTIVITY_DIFFS written per network answers this (seen live on 26.10.6).
 	ErrorKindUnknownNetworkProperty ErrorKind = "unknown-network-property"
+	// ErrorKindCheckFieldNotAllowed is the 400 Forward answers when a check create carries a name, note or tags the check type does not
+	// take ("'name' not allowed for non-parameterized NQE checks", "'note' not allowed for NQE checks", "'tags' not allowed for NQE
+	// checks"; seen live on 26.10.6 by the AutoCon6 workshop). NewCheck's Name, Note and Tags must stay empty for an NQE check.
+	ErrorKindCheckFieldNotAllowed ErrorKind = "check-field-not-allowed"
 	// ErrorKindOrgNotAccessible is the 403 "Org <id> is not accessible to user <id>" a support or cross-org key gets for an organization that
 	// has not granted it access (seen live on 26.10.6 with a support-org key on /api/orgs/{id}/config).
 	ErrorKindOrgNotAccessible ErrorKind = "org-not-accessible"
@@ -112,6 +116,7 @@ var (
 	ErrUnknownOrgProperty                = errors.New("forward: organization property not defined by this appserver")
 	ErrUnknownNetworkProperty            = errors.New("forward: network property not defined by this appserver")
 	ErrOrgNotAccessible                  = errors.New("forward: the organization is not accessible to this user")
+	ErrCheckFieldNotAllowed              = errors.New("forward: the check type does not take that field")
 	ErrGlobalDefaultNotAllowed           = errors.New("forward: the property can only be set per organization, not as a global default")
 )
 
@@ -218,6 +223,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindUnknownNetworkProperty
 	case ErrOrgNotAccessible:
 		return e.Kind == ErrorKindOrgNotAccessible
+	case ErrCheckFieldNotAllowed:
+		return e.Kind == ErrorKindCheckFieldNotAllowed
 	case ErrGlobalDefaultNotAllowed:
 		return e.Kind == ErrorKindGlobalDefaultNotAllowed
 	default:
@@ -366,6 +373,9 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 			return ErrorKindFeatureGated
 		}
 	}
+	if status == http.StatusBadRequest && checkFieldNotAllowedMessage.MatchString(strings.TrimSpace(apiErr.Message)) {
+		return ErrorKindCheckFieldNotAllowed
+	}
 	// TaskPermissionsService: AccessDeniedException("Org %s is not accessible to user %s").
 	if status == http.StatusForbidden && orgNotAccessibleMessage.MatchString(strings.TrimSpace(apiErr.Message)) {
 		return ErrorKindOrgNotAccessible
@@ -483,6 +493,9 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 // "... for your deployment") -- a 403 with no reason code, so this fixed
 // template is the only stable signal. It is anchored so only that exact
 // sentence classifies, never a message that merely contains it.
+// checkFieldNotAllowedMessage is the whole message of Forward's refusal of a name, note or tags on a check type that does not take them.
+var checkFieldNotAllowedMessage = regexp.MustCompile(`^'(name|note|tags)' not allowed for (non-parameterized )?(NQE|predefined) checks$`)
+
 // orgNotAccessibleMessage is the whole message of Forward's refusal for an organization the user may not access. Anchored.
 var orgNotAccessibleMessage = regexp.MustCompile(`^Org \S+ is not accessible to user \S+$`)
 
