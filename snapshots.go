@@ -236,6 +236,11 @@ func (s *SnapshotsService) findInListing(ctx context.Context, networkID, snapsho
 // take the first row of List with State "PROCESSED" and IncludePredicted set. LatestCollected is the
 // same call.
 //
+// The rule was read from SnapshotService.getLatestProcessedSnapshot (app/.../cv/snapshot/service/SnapshotService.java) and is the same
+// at the primary pin 5f7e4ec1841, the stable pin b1feb6fe1c34 and Forward master 54dac810c156: the snapshot metas newest first, without
+// drafts and forks (!isDraft && !isFork), the first whose state is PROCESSED. SnapshotController marks GET .../snapshots/latestProcessed
+// @Deprecated "TODO: Remove this endpoint (FWD-58051)" at master. Read from source, not run live.
+//
 // ErrNoSnapshots means the network has no processed, non-predicted snapshot.
 func (s *SnapshotsService) LatestProcessed(ctx context.Context, networkID string) (*Snapshot, *Response, error) {
 	snapshots, resp, err := s.List(ctx, networkID, SnapshotListOptions{State: "PROCESSED"})

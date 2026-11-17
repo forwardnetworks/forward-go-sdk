@@ -1662,6 +1662,18 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.GetHeadCommit": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits/head"},
 	},
+	"Predict.ListAddressGroups": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/address-groups"},
+	},
+	"Predict.ListAddressObjects": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/address-objects"},
+	},
+	"Predict.ListApplicationGroups": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/application-groups"},
+	},
+	"Predict.ListApplicationObjects": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/application-objects"},
+	},
 	"Predict.ListChangeSetChecks": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/checks"},
 	},
@@ -1674,8 +1686,23 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Predict.ListCommits": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/commits"},
 	},
+	"Predict.ListFirewallZones": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/zones"},
+	},
 	"Predict.ListPredictedSnapshots": {
 		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/predicted-snapshots"},
+	},
+	"Predict.ListServiceGroups": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/service-groups"},
+	},
+	"Predict.ListServiceObjects": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/service-objects"},
+	},
+	"Predict.ListURLObjects": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/url-objects"},
+	},
+	"Predict.ListUserObjects": {
+		{Method: "GET", Route: "/api/networks/{networkId}/change-sets/{changeSetId}/devices/{deviceName}/user-objects"},
 	},
 	"Predict.MoveChangeSetDirectory": {
 		{Method: "POST", Route: "/api/networks/{networkId}/change-set-directories/{dirPath}"},
