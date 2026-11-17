@@ -1318,6 +1318,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"NQERepository.EditQuery": {
 		{Method: "POST", Route: "/api/users/current/nqe/changes"},
 	},
+	"NQERepository.ExportForwardSources": {
+		{Method: "POST", Route: "/api/nqe/repos/fwd/commits/head/queries"},
+	},
+	"NQERepository.ExportOrgSources": {
+		{Method: "POST", Route: "/api/users/current/nqe/changes"},
+	},
 	"NQERepository.GetDraft": {
 		{Method: "GET", Route: "/api/users/current/nqe/changes"},
 	},

@@ -34,7 +34,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 734
+	const minExercised = 736
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -91,6 +91,8 @@ var wireArgOverrides = map[string]map[int]any{
 	"Integrations.AddCheckIncident":                         {3: ServiceNowIncidentInput{Summary: "s", Impact: ServiceNowIncidentLevelHigh, Urgency: ServiceNowIncidentLevelLow}},
 	"Integrations.AddCheckIncidents":                        {2: map[string]ServiceNowIncidentInput{"c1": {Summary: "s", Impact: ServiceNowIncidentLevelHigh, Urgency: ServiceNowIncidentLevelLow}}},
 	"Integrations.UpdateServiceNow":                         {1: ServiceNowSettingsUpdate{Enabled: new(bool)}},
+	"NQERepository.ExportOrgSources":                        {1: []string{"/"}},
+	"NQERepository.ExportForwardSources":                    {1: []string{"/"}},
 	"Trace.Facets":                                          {3: TraceQuery{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}},
 	"Trace.Trace":                                           {3: TraceQuery{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}, 4: TraceSelection{Path: []string{"r1"}, TraceType: "VALID"}},
 	"Trace.Explain":                                         {3: TraceQuery{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}},

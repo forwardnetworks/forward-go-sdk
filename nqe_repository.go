@@ -326,9 +326,10 @@ func (s *NQERepositoryService) DiscardChanges(ctx context.Context, paths []strin
 }
 
 // NQEDraftChange is one draft in the caller's workspace (ChangeInfo). Type is QUERY_ADD, QUERY_EDIT, QUERY_DELETE, DIR_ADD,
-// PERMISSION_SET or PERMISSION_RESET. Path is set for an add (the query or directory path) and an edit; an edit also sets Directory or
-// Name when it moves or renames the query, and SourceCodeSha when it changes the source. Basis is the committed version an edit or a
-// deletion started from; Directory alone names a permission change.
+// PERMISSION_SET or PERMISSION_RESET. Path is set for an ADD (the query or directory path) and NOT for an edit or a delete: Forward's
+// ChangeInfo.QueryEdit and QueryDelete carry no path field, only Basis (the committed query with its path at that commit), so Path is
+// empty for a QUERY_EDIT draft and QueryPath is the way to name it. An edit also sets Directory when it moves the query or Name when it
+// renames it, and SourceCodeSha when it changes the source; Directory alone names a permission change.
 type NQEDraftChange struct {
 	Type          string          `json:"type"`
 	Path          string          `json:"path,omitempty"`
@@ -336,6 +337,33 @@ type NQEDraftChange struct {
 	Name          string          `json:"name,omitempty"`
 	SourceCodeSha string          `json:"sourceCodeSha,omitempty"`
 	Basis         *NQEChangeBasis `json:"basis,omitempty"`
+}
+
+// QueryPath is the path this draft's query is known by: Path for an add; for an edit, where the edit leaves the query (the committed
+// path with Directory and Name applied when it moves or renames it); for a delete, the committed path. Empty for a directory or
+// permission draft, whose Path or Directory is the thing named. Source-derived: ChangeInfo.QueryEdit has directory (when moved), name
+// (when renamed) and basis; it has not been read from a live response.
+func (d NQEDraftChange) QueryPath() string {
+	if d.Path != "" {
+		return d.Path
+	}
+	if d.Basis == nil || d.Basis.Path == "" {
+		return ""
+	}
+	if d.Type != "QUERY_EDIT" || (d.Directory == "" && d.Name == "") {
+		return d.Basis.Path
+	}
+	dir, name := d.Basis.Path[:strings.LastIndexByte(d.Basis.Path, '/')+1], d.Basis.Path[strings.LastIndexByte(d.Basis.Path, '/')+1:]
+	if d.Directory != "" {
+		dir = d.Directory
+		if !strings.HasSuffix(dir, "/") {
+			dir += "/"
+		}
+	}
+	if d.Name != "" {
+		name = d.Name
+	}
+	return dir + name
 }
 
 // NQEChangeBasis is the committed query a draft started from: its stable ID, the commit, and its path in that commit.
