@@ -154,7 +154,7 @@ func TestChangeReportInputErrors(t *testing.T) {
 	counts := `{"blackhole":0,"dropped":0,"loop":0,"other":0,"unreachable":0,"valid":1}`
 	cases := map[string]string{
 		"duplicate check id":      replace(base("collected", ""), "checks", `{"status":"ok","items":[`+check("C-1", "PASS", "PASS")+`,`+check("C-1", "PASS", "FAIL")+`]}`),
-		"non-terminal status":     replace(base("collected", ""), "checks", `{"status":"ok","items":[`+check("C-1", "PASS", "PROCESSING")+`]}`),
+		"still-computing status":  replace(base("collected", ""), "checks", `{"status":"ok","items":[`+check("C-1", "PASS", "PROCESSING")+`]}`),
 		"duplicate routing row":   replace(base("collected", ""), "routing", `{"status":"ok","items":[{"device":"a","added":1,"removed":0,"modified":0},{"device":"a","added":0,"removed":1,"modified":0}]}`),
 		"duplicate device name":   replace(base("collected", ""), "devices", `{"status":"ok","added":["a","a"],"removed":[],"modified":[]}`),
 		"missing expectation":     base("collected", `,"flows":{"status":"ok","items":[`+flow(`,"base":`+counts+`,"after":`+counts)+`]}`),

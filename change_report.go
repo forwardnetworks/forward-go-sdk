@@ -486,7 +486,18 @@ func lessKey(x, y []string) bool {
 	return len(x) < len(y)
 }
 
-var checkTerminal = map[string]bool{"PASS": true, "FAIL": true, "ERROR": true, "TIMEOUT": true, "UNLICENSED": true, "SKIPPED": true}
+// checkInputStatuses are the check statuses assemble accepts. Only PROCESSING is still computing and is an input error: the reader waits for it
+// or marks the section unavailable. NONE and REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING are judged per check (RULES.md, "Checks"): the second needs
+// advanced reachability that may never run (on-demand mode), so waiting does not clear it.
+var checkInputStatuses = map[string]bool{
+	"PASS": true, "FAIL": true, "ERROR": true, "TIMEOUT": true, "UNLICENSED": true, "SKIPPED": true,
+	"NONE": true, "REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING": true,
+}
+
+// checkNotEvaluated reports an after status that means the check could not be evaluated.
+func checkNotEvaluated(status string) bool {
+	return status == "TIMEOUT" || status == "REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING" || status == "NONE"
+}
 
 func (a *assembler) checks(in map[string]any) (map[string]any, error) {
 	counts := map[string]int{"regressed": 0, "fixed": 0, "added": 0, "removed": 0, "unchanged": 0, "other": 0, "not_evaluated": 0, "skipped": 0, "unlicensed": 0}
@@ -495,8 +506,8 @@ func (a *assembler) checks(in map[string]any) (map[string]any, error) {
 		row := asMap(raw)
 		base, after := row["base_status"], row["after_status"]
 		for _, s := range []any{base, after} {
-			if s != nil && !checkTerminal[asString(s)] {
-				return nil, fmt.Errorf("check %s has the non-terminal or unknown status %q: the reader must wait or mark the section unavailable", asString(row["check_id"]), asString(s))
+			if s != nil && !checkInputStatuses[asString(s)] {
+				return nil, fmt.Errorf("check %s has the status %q, which assemble does not accept (PROCESSING is still computing: the reader waits or marks the section unavailable)", asString(row["check_id"]), asString(s))
 			}
 		}
 		if base == nil && after == nil {
@@ -518,9 +529,10 @@ func (a *assembler) checks(in map[string]any) (map[string]any, error) {
 			change = "fixed"
 		}
 		counts[change]++
-		switch as {
-		case "TIMEOUT":
+		if checkNotEvaluated(as) {
 			counts["not_evaluated"]++
+		}
+		switch as {
 		case "SKIPPED":
 			counts["skipped"]++
 		case "UNLICENSED":
@@ -530,7 +542,7 @@ func (a *assembler) checks(in map[string]any) (map[string]any, error) {
 		if change == "regressed" {
 			a.reasons = append(a.reasons, reasonRow("check_regressed", "checks", id))
 		}
-		if bs == "PASS" && as == "TIMEOUT" {
+		if bs == "PASS" && checkNotEvaluated(as) {
 			a.reasons = append(a.reasons, reasonRow("check_not_evaluated", "checks", id))
 		}
 		items = append(items, map[string]any{"check_id": id, "name": row["name"], "type": row["type"], "base_status": base, "after_status": after, "change": change})

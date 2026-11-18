@@ -222,7 +222,6 @@ func changeReportReasonKind(err error) string {
 func (r *changeReader) checks(ctx context.Context) (map[string]any, error) {
 	types := []string{CheckTypeExists, CheckTypeIsolation, CheckTypeReachability, CheckTypeQueryString, CheckTypePredefined, CheckTypeNetworkQuery}
 	items := make([]any, 0)
-	terminal := map[string]bool{"PASS": true, "FAIL": true, "ERROR": true, "TIMEOUT": true, "UNLICENSED": true, "SKIPPED": true}
 	for _, checkType := range types {
 		rows, _, err := r.service.client.Diffs.WaitChecks(ctx, r.base, r.after, checkType, PollOptions[[]CheckDiffEntry]{Interval: 2 * time.Second, MaxInterval: 10 * time.Second})
 		if errors.Is(err, ErrEndpointNotServed) {
@@ -241,9 +240,11 @@ func (r *changeReader) checks(ctx context.Context) (map[string]any, error) {
 			if row.B != nil {
 				id, name, after = row.B.ID, row.B.Name, strings.ToUpper(row.B.Status)
 			}
+			// Only PROCESSING is still computing (WaitChecks waited for it; one that is left over means the diff had not settled). NONE and
+			// REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING are passed on as they are and judged per check.
 			for _, status := range []any{base, after} {
-				if status != nil && !terminal[status.(string)] {
-					return nil, &notReadyError{fmt.Sprintf("check %s is still %s", id, status)}
+				if status == "PROCESSING" {
+					return nil, fmt.Errorf("%w: check %s is still PROCESSING", ErrPollBudget, id)
 				}
 			}
 			items = append(items, map[string]any{"check_id": string(id), "name": name, "type": checkType, "base_status": base, "after_status": after})

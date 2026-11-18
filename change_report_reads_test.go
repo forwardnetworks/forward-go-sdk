@@ -396,8 +396,10 @@ func TestChangeReportsCompareState(t *testing.T) {
 	}
 }
 
-// A check still not evaluated when the reads are done makes the checks section unavailable, never "unchanged": NONE and
-// REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING are not_ready, a diff that keeps answering PROCESSING past the section budget is a timeout.
+// Only PROCESSING is still computing: a diff that keeps answering it past the section budget makes the checks section unavailable (timeout).
+// NONE and REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING do not clear by waiting (the second needs advanced reachability that may never run), so they
+// are judged per check: the row is `other`, counted as not evaluated, a PASS base gives the reason check_not_evaluated and the verdict is
+// incomplete, while the section and every other check stay readable.
 func TestChangeReportsCompareNotFinishedChecks(t *testing.T) {
 	status := "NONE"
 	server := changeReportServer(t, func(path, _ string) (int, string, bool) {
@@ -405,21 +407,38 @@ func TestChangeReportsCompareNotFinishedChecks(t *testing.T) {
 			if status == "PROCESSING" {
 				return http.StatusOK, `[{"diffType":"PROCESSING","a":{"id":"C-1","name":"n","status":"PROCESSING"}}]`, true
 			}
-			return http.StatusOK, `[{"diffType":"MODIFIED","a":{"id":"C-1","name":"n","status":"PASS"},"b":{"id":"C-1","name":"n","status":"` + status + `"}}]`, true
+			return http.StatusOK, `[{"diffType":"MODIFIED","a":{"id":"C-1","name":"n","status":"PASS"},"b":{"id":"C-1","name":"n","status":"` + status + `"}},
+			  {"diffType":"MODIFIED","a":{"id":"C-2","name":"m","status":"PASS"},"b":{"id":"C-2","name":"m","status":"FAIL"}}]`, true
 		}
 		return 0, "", false
 	})
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	for _, tc := range []struct{ status, kind string }{{"NONE", "not_ready"}, {"REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING", "not_ready"}, {"PROCESSING", "timeout"}} {
-		status = tc.status
+	for _, st := range []string{"NONE", "REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING"} {
+		status = st
 		report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{AfterKind: "collected", SectionTimeout: 300 * time.Millisecond})
 		if err != nil {
 			t.Fatal(err)
 		}
 		section := sectionOf(t, report, "checks")
-		if section["status"] != "unavailable" || asString(asMap(section["reason"])["kind"]) != tc.kind || report.Verdict() != ChangeReportIncomplete {
-			t.Errorf("%s: checks = %+v, verdict %s", tc.status, section, report.Verdict())
+		counts := asMap(section["counts"])
+		if section["status"] != "ok" || asInt(counts["not_evaluated"]) != 1 || asInt(counts["other"]) != 1 || asInt(counts["regressed"]) != 1 || report.Verdict() != ChangeReportIncomplete {
+			t.Errorf("%s: checks = %+v, verdict %s", st, section, report.Verdict())
 		}
+		codes := map[string]string{}
+		for _, r := range report.Reasons() {
+			codes[r.Code] = r.Detail
+		}
+		if codes["check_not_evaluated"] != "C-1" || codes["check_regressed"] != "C-2" {
+			t.Errorf("%s: the unevaluable check and the regression must both be listed: %+v", st, report.Reasons())
+		}
+	}
+	status = "PROCESSING"
+	report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{AfterKind: "collected", SectionTimeout: 300 * time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if section := sectionOf(t, report, "checks"); section["status"] != "unavailable" || asString(asMap(section["reason"])["kind"]) != "timeout" || report.Verdict() != ChangeReportIncomplete {
+		t.Errorf("PROCESSING past the budget: checks = %+v, verdict %s", section, report.Verdict())
 	}
 }

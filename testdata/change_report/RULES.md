@@ -63,8 +63,9 @@ Every report section has a `status`:
    - a verdict-driving section that applies is `unavailable` (checks always;
      state and flows when requested): `{code: "section_unavailable", section,
      detail: <reason.kind>}`;
-   - a check goes `PASS` → `TIMEOUT` (it could not be evaluated):
-     `check_not_evaluated`, detail = check id;
+   - a check goes from `PASS` to `TIMEOUT`, `REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING`
+     or `NONE` (it could not be evaluated on after): `check_not_evaluated`,
+     detail = check id;
    - a requested flow's read is unavailable (`flow_unavailable`, detail = flow name).
    A refused or unfinished read never yields `no_regression`.
 2. `regression` if any of:
@@ -130,12 +131,15 @@ predicted-only section (`predict`, `security_rules`) present for a collected
 
 Forward's `CheckStatus` has nine values: `NONE`, `PASS`, `FAIL`, `ERROR`,
 `TIMEOUT`, `UNLICENSED`, `SKIPPED`, `PROCESSING`,
-`REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING`. The last two and `NONE` are not
-terminal. The reading SDK waits (the NQE check diff answers early with
-`PROCESSING` rows); a non-terminal status on either side at the deadline makes
-the whole section `unavailable`, `timeout` for `PROCESSING` and `not_ready` for
-`NONE` or `REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING`. `assemble` treats a
-non-terminal status in its input as an input error.
+`REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING`. Only `PROCESSING` is still being
+computed: the reading SDK re-reads while a row is `PROCESSING`, and one still
+`PROCESSING` at the deadline makes the whole section `unavailable` (`timeout`).
+`assemble` treats `PROCESSING` in its input as an input error.
+`REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING` does not clear by waiting (Forward
+evaluates such a check only after advanced reachability runs, which by default
+it does only when a user triggers it, and a predicted snapshot skips it), and
+`NONE` is Forward's "not computed" placeholder: both are judged per check, not
+per section.
 
 Joined by check id, never by name. Persistent checks keep their id across
 snapshots; a non-persistent check gets a new id per snapshot and so appears as
@@ -143,12 +147,14 @@ a `removed` and `added` pair. The reader uses the per-type check diff, whose
 rows carry both statuses. `change` is `regressed` (PASS → FAIL or ERROR),
 `fixed` (FAIL or ERROR → PASS), `added` (after only), `removed` (base only),
 `unchanged`, or `other` (any other pair). `counts` adds `not_evaluated`
-(after status `TIMEOUT`), `skipped` (`SKIPPED`: a config-only predicted
+(after status `TIMEOUT`, `REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING` or `NONE`), `skipped` (`SKIPPED`: a config-only predicted
 snapshot skips checks that read data copied from its base, by design) and
 `unlicensed` (`UNLICENSED`); the last two never drive the verdict, and the
 Markdown shows their counts. `counts.not_evaluated` counts every row whose
-AFTER status is `TIMEOUT`, whatever its base; the verdict reason
-`check_not_evaluated` fires only for `PASS` → `TIMEOUT`. Do not derive one from
+AFTER status is `TIMEOUT`, `REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING` or `NONE`,
+whatever its base; the verdict reason `check_not_evaluated` fires only when the
+base was `PASS`. A row with the same not-evaluated status on both sides is
+`unchanged`, counted, and gives no reason. Do not derive one from
 the other. `counts` covers every row, including rows past the cap.
 
 Only a `PASS` can regress, a deliberate limit of schema_version 1: a check whose
@@ -288,9 +294,10 @@ where a section says otherwise.
   its `a` or `b` side), `name`, `type` (the type asked for), `base_status` (`a`'s
   status, null without `a`) and `after_status` (`b`'s). `UNCHANGED` rows are
   included. A type answering 404 "No endpoint" contributes no rows; any other
-  failure on any type makes the section unavailable. A non-terminal status
-  after the wait makes it unavailable (`timeout` for `PROCESSING`, `not_ready`
-  otherwise).
+  failure on any type makes the section unavailable. Only `PROCESSING` rows are
+  waited for; one still `PROCESSING` at the deadline makes the section
+  unavailable (`timeout`). `REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING` and `NONE`
+  rows are passed on as they are.
 - **connectivity**: wait for the subnet-connectivity summary to settle
   (`isPartialResult` false; overrun = `timeout`), then read the location pairs
   with `?view=locationPairs&type=` for `ADDED`, `DELETED` and `MODIFIED`.
