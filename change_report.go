@@ -395,7 +395,24 @@ func (a *assembler) build(name string, in map[string]any) (map[string]any, error
 	case "routing":
 		return a.sortedItems(in, func(m map[string]any) []string { return []string{asString(m["device"])} })
 	case "config":
-		return a.sortedItems(in, func(m map[string]any) []string { return []string{asString(m["device"])} })
+		out, err := a.sortedItems(in, func(m map[string]any) []string { return []string{asString(m["device"])} })
+		if err != nil {
+			return nil, err
+		}
+		for _, raw := range asList(out["items"]) {
+			row := asMap(raw)
+			files := make([]string, 0)
+			for _, f := range asList(row["files_changed"]) {
+				files = append(files, asString(f))
+			}
+			sort.Strings(files)
+			list := make([]any, len(files))
+			for i, f := range files {
+				list[i] = f
+			}
+			row["files_changed"] = list
+		}
+		return out, nil
 	case "security_rules":
 		return a.sortedItems(in, func(m map[string]any) []string { return []string{asString(m["device"]), asString(m["rule"])} })
 	case "devices":
@@ -595,36 +612,27 @@ func (a *assembler) state(in map[string]any) (map[string]any, error) {
 		b, hadBase := base[key]
 		af, hasAfter := after[key]
 		item := map[string]any{"base": nil, "after": nil, "expected": a.expectedRemoved[key]}
-		var kind string
-		var identity []any
+		kind, identity := b.kind, b.identity
+		if !hadBase {
+			kind, identity = af.kind, af.identity
+		}
+		if hadBase {
+			item["base"] = b.value
+		}
+		if hasAfter {
+			item["after"] = af.value
+		}
+		// Classification order (RULES.md): lost by the kind's own rule, then gained (absent on base), then changed (any other difference).
 		var change string
 		switch {
-		case hadBase && !hasAfter:
-			kind, identity = b.kind, b.identity
-			item["base"] = b.value
+		case hadBase && lostByKind(kind, b.value, hasAfter, af.value):
 			change = "lost"
-		case !hadBase && hasAfter:
-			kind, identity = af.kind, af.identity
-			item["after"] = af.value
+		case !hadBase:
 			change = "gained"
+		case hasAfter && sameValue(b.value, af.value):
+			continue
 		default:
-			kind, identity = b.kind, b.identity
-			item["base"], item["after"] = b.value, af.value
-			if sameValue(b.value, af.value) {
-				continue
-			}
 			change = "changed"
-		}
-		switch kind {
-		case "bgp_session":
-			if hadBase && asString(b.value) == "ESTABLISHED" && (!hasAfter || asString(af.value) != "ESTABLISHED") {
-				change = "lost"
-			}
-		case "interface_admin":
-			if hadBase && asString(b.value) == "AdminStatus.UP" && (!hasAfter || asString(af.value) != "AdminStatus.UP") {
-				change = "lost"
-			}
-		case "lldp_adjacency":
 		}
 		item["change"], item["kind"], item["identity"] = change, kind, identity
 		if change == "lost" && !a.expectedRemoved[key] {
@@ -642,6 +650,20 @@ func (a *assembler) state(in map[string]any) (map[string]any, error) {
 	total := len(items)
 	kept, truncated := a.cap(items)
 	return map[string]any{"status": "ok", "items": kept, "total": total, "truncated": truncated}, nil
+}
+
+// lostByKind is the per-kind "lost" rule: a BGP session that was ESTABLISHED and is absent or not ESTABLISHED, an LLDP adjacency present on
+// the base and absent on the after, an interface that was AdminStatus.UP and is absent or anything else. An ACL entry count is never lost.
+func lostByKind(kind string, baseValue any, hasAfter bool, afterValue any) bool {
+	switch kind {
+	case "bgp_session":
+		return asString(baseValue) == "ESTABLISHED" && (!hasAfter || asString(afterValue) != "ESTABLISHED")
+	case "interface_admin":
+		return asString(baseValue) == "AdminStatus.UP" && (!hasAfter || asString(afterValue) != "AdminStatus.UP")
+	case "lldp_adjacency":
+		return !hasAfter
+	}
+	return false
 }
 
 func sameValue(x, y any) bool {

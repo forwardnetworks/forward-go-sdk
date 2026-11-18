@@ -87,7 +87,11 @@ A section that does not drive the verdict never changes it, even when
 expectation reads `bgp_session:core-1|default|192.0.2.9`. A state item is
 `gained` when present only on after. Its `expected` flag is true when its
 `<kind>:<identity>` is in `state_expected_removed`. Unchanged state items
-are not listed.
+are not listed. Classification is in this order: `lost` (the per-kind rule
+above), else `gained` (absent on base), else `changed` (any other difference,
+for any kind: a value change that is not lost, such as a `bgp_session` going
+`IDLE` → `ESTABLISHED` or an interface `DOWN` → `UP`, or an item absent on after
+that the lost rule does not cover, such as an `acl_entries` row).
 
 Rules 1 and 2 both add reasons when both apply; the result is `incomplete`.
 Reasons are sorted by (section, code, detail).
@@ -104,7 +108,9 @@ and `after` lists of `{kind, identity, value}`; `flows.items` as
 `{name, expectation, base, after}` without `change`. No list section has
 `truncated` or `total` in the input. A section absent from the input is
 `not_requested` when opt-in and `not_applicable` when predicted-only on a
-collected `after`; any other absent section is an input error.
+collected `after`; any other absent section is an input error. So is a
+predicted-only section (`predict`, `security_rules`) present for a collected
+`after`, or missing for a predicted one.
 
 ## Checks
 
@@ -161,7 +167,9 @@ Lists are always present (never null). Items are sorted by their identity:
 checks by `check_id`; routing and config by `device`; device names in
 `devices` alphabetically; location pairs by (`src`, `dst`); state items by
 (`kind`, identity); flows by `name`; security rules by (`device`, `rule`).
-Sorting is bytewise on the strings.
+Sorting is bytewise on the strings (UTF-8 bytes). `config.items[].files_changed`
+is sorted and never capped. The `predict` lists (`failures`,
+`modeling_problems`) keep input order and are never capped.
 
 Every list is capped at `options.max_items` (default 100), keeping the first
 items in sort order. A section's `total` is the number of items before capping
@@ -204,7 +212,8 @@ column, then the rows):
   `other`, `removed`, `added`, `fixed`) and then `check_id`; when there are none,
   the line `No changes.` Then always the line
   `Regressed <n>, fixed <n>, added <n>, removed <n>, unchanged <n>, other <n>; not evaluated <n>, skipped <n>, unlicensed <n>.`
-- **Flows**: `| Flow | Expectation | Base valid | After valid | Change |`, every
+- **Flows**: no items: `No changes.` Otherwise
+  `| Flow | Expectation | Base valid | After valid | Change |`, every
   flow, ordered by change (`lost_valid`, `unavailable`, `gained_valid`,
   `counts_changed`, `unchanged`) and then name. Valid counts are
   `base.valid`/`after.valid`, `-` when null.
@@ -242,6 +251,14 @@ column, then the rows):
   `cloud_acl`, `routing_loop`. Route changes are in `routing`, not here.
 - `vulnerabilities`: `introduced` (new CVEs, the bidirectional warnings),
   `resolved` (improvements), and `exposed_devices`, null where not licensed.
+
+## JSON
+
+`report.json` is UTF-8 with keys sorted, two-space indentation, `": "` between
+key and value, no trailing spaces and one final newline. Strings use only the
+escapes JSON requires (`\"`, `\\`, `\b`, `\f`, `\n`, `\r`, `\t`, and other control
+characters as lowercase `\u00xx`); non-ASCII text is written as is, never as
+`\u` escapes, and nothing is HTML-escaped.
 
 ## MANIFEST.sha256
 

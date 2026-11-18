@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "after_kind": "predicted",
+    "after_snapshot_id": "1002",
+    "base_snapshot_id": "1001",
+    "change_set_id": "CS-11",
+    "network_id": "42"
+  },
+  "options": {
+    "created_at": "2026-01-01T00:00:00Z",
+    "expectations": {
+      "state_expected_removed": []
+    },
+    "max_items": 100,
+    "sdk": {
+      "name": "forward-sdk",
+      "version": "0.0.0-fixture"
+    }
+  },
+  "sections": {
+    "ai_summary": {
+      "status": "ok",
+      "text": "One device changed — nothing regressed."
+    },
+    "checks": {
+      "items": [
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "check_id": "C-20",
+          "name": "café reachability",
+          "type": "Existential"
+        }
+      ],
+      "status": "ok"
+    },
+    "config": {
+      "items": [
+        {
+          "device": "edge-1",
+          "files_changed": [
+            "z_routes.txt",
+            "a_config.txt"
+          ]
+        }
+      ],
+      "status": "ok"
+    },
+    "connectivity": {
+      "evaluated_subnet_pairs": 0,
+      "location_pairs": {
+        "ADDED": [],
+        "DELETED": [],
+        "MODIFIED": []
+      },
+      "status": "ok",
+      "total_subnet_pairs": 0
+    },
+    "devices": {
+      "added": [],
+      "modified": [
+        "edge-1"
+      ],
+      "removed": [],
+      "status": "ok"
+    },
+    "diff_counts": {
+      "families": {
+        "acl": {
+          "complete": true,
+          "count": 0
+        }
+      },
+      "status": "ok"
+    },
+    "flows": {
+      "items": [],
+      "status": "ok"
+    },
+    "predict": {
+      "failures": [
+        {
+          "device": "edge-1",
+          "message": "zeta step — skipped"
+        },
+        {
+          "device": "edge-0",
+          "message": "alpha\tstep failed"
+        }
+      ],
+      "modeling_problems": [],
+      "processing_state": "PROCESSED",
+      "status": "ok"
+    },
+    "routing": {
+      "items": [],
+      "status": "ok"
+    },
+    "security_rules": {
+      "items": [],
+      "status": "ok"
+    },
+    "state": {
+      "after": [],
+      "base": [],
+      "status": "ok"
+    },
+    "vulnerabilities": {
+      "exposed_devices": 3,
+      "introduced": 1,
+      "resolved": 2,
+      "status": "ok"
+    }
+  }
+}

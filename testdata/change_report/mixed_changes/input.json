@@ -1,0 +1,298 @@
+{
+  "meta": {
+    "after_kind": "collected",
+    "after_snapshot_id": "1002",
+    "base_snapshot_id": "1001",
+    "change_set_id": null,
+    "network_id": "42"
+  },
+  "options": {
+    "created_at": "2026-01-01T00:00:00Z",
+    "expectations": {
+      "state_expected_removed": []
+    },
+    "max_items": 100,
+    "sdk": {
+      "name": "forward-sdk",
+      "version": "0.0.0-fixture"
+    }
+  },
+  "sections": {
+    "checks": {
+      "items": [
+        {
+          "after_status": "FAIL",
+          "base_status": "SKIPPED",
+          "check_id": "C-15",
+          "name": "was skipped",
+          "type": "Existential"
+        },
+        {
+          "after_status": "ERROR",
+          "base_status": "FAIL",
+          "check_id": "C-14",
+          "name": "fail to error",
+          "type": "NQE"
+        },
+        {
+          "after_status": "FAIL",
+          "base_status": null,
+          "check_id": "C-13",
+          "name": "new failing check",
+          "type": "Isolation"
+        },
+        {
+          "after_status": null,
+          "base_status": "PASS",
+          "check_id": "C-12",
+          "name": "dropped check",
+          "type": "Existential"
+        },
+        {
+          "after_status": "PASS",
+          "base_status": "ERROR",
+          "check_id": "C-11",
+          "name": "error recovered",
+          "type": "Reachability"
+        },
+        {
+          "after_status": "ERROR",
+          "base_status": "PASS",
+          "check_id": "C-10",
+          "name": "pass to error",
+          "type": "Existential"
+        }
+      ],
+      "status": "ok"
+    },
+    "config": {
+      "items": [],
+      "status": "ok"
+    },
+    "connectivity": {
+      "evaluated_subnet_pairs": 168,
+      "location_pairs": {
+        "ADDED": [
+          {
+            "count": 2,
+            "dst": "site-a",
+            "src": "site-c"
+          }
+        ],
+        "DELETED": [
+          {
+            "count": 1,
+            "dst": "site-c",
+            "src": "site-a"
+          }
+        ],
+        "MODIFIED": [
+          {
+            "count": 4,
+            "dst": "site-c",
+            "src": "site-b"
+          }
+        ]
+      },
+      "status": "ok",
+      "total_subnet_pairs": 168
+    },
+    "devices": {
+      "added": [
+        "core-9"
+      ],
+      "modified": [
+        "edge-2",
+        "edge-1"
+      ],
+      "removed": [
+        "edge-7"
+      ],
+      "status": "ok"
+    },
+    "diff_counts": {
+      "families": {},
+      "status": "ok"
+    },
+    "flows": {
+      "items": [
+        {
+          "after": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 2
+          },
+          "base": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 2
+          },
+          "expectation": "valid",
+          "name": "f-same"
+        },
+        {
+          "after": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 3
+          },
+          "base": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 2
+          },
+          "expectation": "valid",
+          "name": "f-count"
+        },
+        {
+          "after": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 3
+          },
+          "base": {
+            "blackhole": 0,
+            "dropped": 1,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 0
+          },
+          "expectation": "any",
+          "name": "f-gain"
+        },
+        {
+          "expectation": "valid",
+          "name": "f-unav",
+          "unavailable": {
+            "kind": "timeout",
+            "message": "facets read timed out"
+          }
+        },
+        {
+          "after": {
+            "blackhole": 2,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 0
+          },
+          "base": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 2
+          },
+          "expectation": "valid",
+          "name": "f-lost"
+        }
+      ],
+      "status": "ok"
+    },
+    "routing": {
+      "items": [],
+      "status": "ok"
+    },
+    "state": {
+      "after": [
+        {
+          "identity": [
+            "core-2",
+            "default",
+            "198.51.100.1"
+          ],
+          "kind": "bgp_session",
+          "value": "IDLE"
+        },
+        {
+          "identity": [
+            "core-2",
+            "default",
+            "198.51.100.2"
+          ],
+          "kind": "bgp_session",
+          "value": "ESTABLISHED"
+        },
+        {
+          "identity": [
+            "edge-4",
+            "et1"
+          ],
+          "kind": "interface_admin",
+          "value": "AdminStatus.UP"
+        },
+        {
+          "identity": [
+            "core-2",
+            "et2",
+            "edge-4",
+            "et50"
+          ],
+          "kind": "lldp_adjacency",
+          "value": "present"
+        }
+      ],
+      "base": [
+        {
+          "identity": [
+            "core-2",
+            "default",
+            "198.51.100.1"
+          ],
+          "kind": "bgp_session",
+          "value": "ESTABLISHED"
+        },
+        {
+          "identity": [
+            "core-2",
+            "default",
+            "198.51.100.2"
+          ],
+          "kind": "bgp_session",
+          "value": "IDLE"
+        },
+        {
+          "identity": [
+            "edge-4",
+            "et1"
+          ],
+          "kind": "interface_admin",
+          "value": "AdminStatus.DOWN"
+        },
+        {
+          "identity": [
+            "edge-4",
+            "old-acl"
+          ],
+          "kind": "acl_entries",
+          "value": 3
+        }
+      ],
+      "status": "ok"
+    },
+    "vulnerabilities": {
+      "exposed_devices": null,
+      "introduced": 0,
+      "resolved": 0,
+      "status": "ok"
+    }
+  }
+}

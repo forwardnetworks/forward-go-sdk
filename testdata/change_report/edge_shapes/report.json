@@ -1,0 +1,142 @@
+{
+  "meta": {
+    "after_kind": "predicted",
+    "after_snapshot_id": "1002",
+    "base_snapshot_id": "1001",
+    "change_set_id": "CS-11",
+    "created_at": "2026-01-01T00:00:00Z",
+    "network_id": "42",
+    "schema_version": "1",
+    "sdk": {
+      "name": "forward-sdk",
+      "version": "0.0.0-fixture"
+    }
+  },
+  "sections": {
+    "ai_summary": {
+      "status": "ok",
+      "text": "One device changed — nothing regressed."
+    },
+    "checks": {
+      "counts": {
+        "added": 0,
+        "fixed": 0,
+        "not_evaluated": 0,
+        "other": 0,
+        "regressed": 0,
+        "removed": 0,
+        "skipped": 0,
+        "unchanged": 1,
+        "unlicensed": 0
+      },
+      "items": [
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "change": "unchanged",
+          "check_id": "C-20",
+          "name": "café reachability",
+          "type": "Existential"
+        }
+      ],
+      "status": "ok",
+      "total": 1,
+      "truncated": false
+    },
+    "config": {
+      "items": [
+        {
+          "device": "edge-1",
+          "files_changed": [
+            "a_config.txt",
+            "z_routes.txt"
+          ]
+        }
+      ],
+      "status": "ok",
+      "total": 1,
+      "truncated": false
+    },
+    "connectivity": {
+      "evaluated_subnet_pairs": 0,
+      "location_pairs": {
+        "ADDED": [],
+        "DELETED": [],
+        "MODIFIED": []
+      },
+      "no_forwarding_change": true,
+      "status": "ok",
+      "total": 0,
+      "total_subnet_pairs": 0,
+      "truncated": false
+    },
+    "devices": {
+      "added": [],
+      "modified": [
+        "edge-1"
+      ],
+      "removed": [],
+      "status": "ok",
+      "total": 1,
+      "truncated": false
+    },
+    "diff_counts": {
+      "families": {
+        "acl": {
+          "complete": true,
+          "count": 0
+        }
+      },
+      "status": "ok"
+    },
+    "flows": {
+      "items": [],
+      "status": "ok",
+      "total": 0,
+      "truncated": false
+    },
+    "predict": {
+      "failures": [
+        {
+          "device": "edge-1",
+          "message": "zeta step — skipped"
+        },
+        {
+          "device": "edge-0",
+          "message": "alpha\tstep failed"
+        }
+      ],
+      "modeling_problems": [],
+      "processing_state": "PROCESSED",
+      "status": "ok"
+    },
+    "routing": {
+      "items": [],
+      "status": "ok",
+      "total": 0,
+      "truncated": false
+    },
+    "security_rules": {
+      "items": [],
+      "status": "ok",
+      "total": 0,
+      "truncated": false
+    },
+    "state": {
+      "items": [],
+      "status": "ok",
+      "total": 0,
+      "truncated": false
+    },
+    "vulnerabilities": {
+      "exposed_devices": 3,
+      "introduced": 1,
+      "resolved": 2,
+      "status": "ok"
+    }
+  },
+  "verdict": {
+    "reasons": [],
+    "result": "no_regression"
+  }
+}
