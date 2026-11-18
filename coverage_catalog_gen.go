@@ -2380,6 +2380,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Version.Reachable": {
 		{Method: "GET", Route: "/api/version"},
 	},
+	"Vulnerabilities.DetectionLogic": {
+		{Method: "GET", Route: "/api/cves/{cveId}/detection-logic"},
+	},
 	"Vulnerabilities.Get": {
 		{Method: "GET", Route: "/api/networks/{networkId}/vulnerabilities/{cveId}"},
 	},

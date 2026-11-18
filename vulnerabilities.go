@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -425,4 +426,51 @@ func (s *VulnerabilitiesService) ListDevices(ctx context.Context, networkID stri
 	out := new(DeviceVulnerabilities)
 	resp, err := s.client.doRequired(req, out)
 	return out, resp, err
+}
+
+// CVE detection logic source types (Forward's CveConfigDetectionSourceType).
+const (
+	CVEDetectionConfigBlockPattern = "CONFIG_BLOCK_PATTERN"
+	CVEDetectionNQEQuery           = "NQE_QUERY"
+)
+
+// CVEDetectionLogic is how Forward decides whether a device configuration is exposed to a CVE whose impact depends on configuration
+// (CveConfigDetectionLogic). SourceType and Source are both empty when the CVE is in the index but its impact is not
+// configuration-dependent; Source is raw text with newlines, a config block pattern or an NQE query depending on SourceType.
+type CVEDetectionLogic struct {
+	CVEID      string `json:"cveId"`
+	SourceType string `json:"sourceType,omitempty"`
+	Source     string `json:"source,omitempty"`
+}
+
+// HasLogic reports that the CVE has detection logic (a source type and a source).
+func (l *CVEDetectionLogic) HasLogic() bool { return l != nil && l.SourceType != "" && l.Source != "" }
+
+var cveIDPattern = regexp.MustCompile(`^(?i:cve)-[0-9]{4}-[0-9]{4,}$`)
+
+// DetectionLogic reads a CVE's configuration detection logic (GET /api/cves/{cveId}/detection-logic;
+// VulnerabilityAnalysisController.getCveConfigDetectionLogic at release/26.11.0-10 and master). The route is ORG-scoped: it takes no network
+// and no snapshot and is not under /api/networks, so a guard keyed on the network sees only the path.
+//
+// It needs the organization property CVE_DETECTION_LOGIC_EXPOSED (a GUI property, off by default, on-premises configurable, "enabled for
+// select strategic customers"); with it off Forward answers a 403 whose message is "CVE_DETECTION_LOGIC_EXPOSED is off for your
+// organization", which classifies as ErrFeatureGated (ErrorResponse.GateProperty names it). A CVE the index has never heard of is a 404; a
+// CVE the index has whose impact is not configuration-dependent answers 200 with an empty SourceType and Source. cveID must look like
+// CVE-YYYY-NNNN (a four-digit year and at least four digits, as Forward's CveId requires); lower case is accepted and sent upper-cased.
+// Preview, from Forward's source and controller test, not a live call.
+func (s *VulnerabilitiesService) DetectionLogic(ctx context.Context, cveID string) (*CVEDetectionLogic, *Response, error) {
+	cveID = strings.TrimSpace(cveID)
+	if !cveIDPattern.MatchString(cveID) {
+		return nil, nil, fmt.Errorf("forward: %q is not a CVE id (CVE-YYYY-NNNN)", cveID)
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/cves/"+url.PathEscape(strings.ToUpper(cveID))+"/detection-logic", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := new(CVEDetectionLogic)
+	resp, err := s.client.Do(markOperation(req, "Vulnerabilities.DetectionLogic"), out)
+	if err != nil {
+		return nil, resp, err
+	}
+	return out, resp, nil
 }
