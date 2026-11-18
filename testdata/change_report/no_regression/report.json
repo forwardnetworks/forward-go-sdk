@@ -30,12 +30,12 @@
       },
       "items": [
         {
-          "after_status": "PASS",
+          "after_status": "SKIPPED",
           "base_status": "PASS",
-          "change": "unchanged",
-          "check_id": "C-1",
-          "name": "mgmt isolated",
-          "type": "Isolation"
+          "change": "other",
+          "check_id": "C-5",
+          "name": "bgp state copied from base",
+          "type": "NQE"
         },
         {
           "after_status": "PASS",
@@ -46,12 +46,12 @@
           "type": "NQE"
         },
         {
-          "after_status": "SKIPPED",
+          "after_status": "PASS",
           "base_status": "PASS",
-          "change": "other",
-          "check_id": "C-5",
-          "name": "bgp state copied from base",
-          "type": "NQE"
+          "change": "unchanged",
+          "check_id": "C-1",
+          "name": "mgmt isolated",
+          "type": "Isolation"
         }
       ],
       "status": "ok",

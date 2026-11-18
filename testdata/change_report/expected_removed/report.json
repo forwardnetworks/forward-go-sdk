@@ -78,28 +78,6 @@
         {
           "after": {
             "blackhole": 0,
-            "dropped": 2,
-            "loop": 0,
-            "other": 0,
-            "unreachable": 0,
-            "valid": 2
-          },
-          "base": {
-            "blackhole": 0,
-            "dropped": 0,
-            "loop": 0,
-            "other": 0,
-            "unreachable": 0,
-            "valid": 4
-          },
-          "change": "counts_changed",
-          "expectation": "valid",
-          "name": "app to db",
-          "unavailable": null
-        },
-        {
-          "after": {
-            "blackhole": 0,
             "dropped": 1,
             "loop": 0,
             "other": 0,
@@ -117,6 +95,28 @@
           "change": "lost_valid",
           "expectation": "none",
           "name": "guest to mgmt",
+          "unavailable": null
+        },
+        {
+          "after": {
+            "blackhole": 0,
+            "dropped": 2,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 2
+          },
+          "base": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 4
+          },
+          "change": "counts_changed",
+          "expectation": "valid",
+          "name": "app to db",
           "unavailable": null
         }
       ],
@@ -138,17 +138,6 @@
     },
     "state": {
       "items": [
-        {
-          "after": 13,
-          "base": 12,
-          "change": "changed",
-          "expected": false,
-          "identity": [
-            "edge-1",
-            "edge-in"
-          ],
-          "kind": "acl_entries"
-        },
         {
           "after": null,
           "base": "ESTABLISHED",
@@ -184,6 +173,17 @@
             "et49"
           ],
           "kind": "lldp_adjacency"
+        },
+        {
+          "after": 13,
+          "base": 12,
+          "change": "changed",
+          "expected": false,
+          "identity": [
+            "edge-1",
+            "edge-in"
+          ],
+          "kind": "acl_entries"
         }
       ],
       "status": "ok",

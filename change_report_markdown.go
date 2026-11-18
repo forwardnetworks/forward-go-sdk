@@ -120,34 +120,16 @@ func table(header []string, rows [][]string) string {
 	return b.String()
 }
 
-func rankIndex(order []string, v string) int {
-	for i, o := range order {
-		if o == v {
-			return i
-		}
-	}
-	return len(order)
-}
-
 func renderSectionBody(name string, section map[string]any) []string {
 	items := asList(section["items"])
 	switch name {
 	case "checks":
-		order := []string{"regressed", "other", "removed", "added", "fixed"}
 		var rows []map[string]any
 		for _, raw := range items {
-			m := asMap(raw)
-			if asString(m["change"]) != "unchanged" {
-				rows = append(rows, m)
+			if r := asMap(raw); asString(r["change"]) != "unchanged" {
+				rows = append(rows, r)
 			}
 		}
-		sort.SliceStable(rows, func(i, j int) bool {
-			ri, rj := rankIndex(order, asString(rows[i]["change"])), rankIndex(order, asString(rows[j]["change"]))
-			if ri != rj {
-				return ri < rj
-			}
-			return asString(rows[i]["check_id"]) < asString(rows[j]["check_id"])
-		})
 		var body []string
 		if len(rows) == 0 {
 			body = append(body, "No changes.")
@@ -164,18 +146,10 @@ func renderSectionBody(name string, section map[string]any) []string {
 			asInt(c["not_evaluated"]), asInt(c["skipped"]), asInt(c["unlicensed"])))
 		return body
 	case "flows":
-		order := []string{"lost_valid", "unavailable", "gained_valid", "counts_changed", "unchanged"}
 		rows := make([]map[string]any, 0, len(items))
 		for _, raw := range items {
 			rows = append(rows, asMap(raw))
 		}
-		sort.SliceStable(rows, func(i, j int) bool {
-			ri, rj := rankIndex(order, asString(rows[i]["change"])), rankIndex(order, asString(rows[j]["change"]))
-			if ri != rj {
-				return ri < rj
-			}
-			return asString(rows[i]["name"]) < asString(rows[j]["name"])
-		})
 		if len(rows) == 0 {
 			return []string{"No changes."}
 		}
@@ -188,21 +162,10 @@ func renderSectionBody(name string, section map[string]any) []string {
 		if len(items) == 0 {
 			return []string{"No changes."}
 		}
-		order := []string{"lost", "changed", "gained"}
 		rows := make([]map[string]any, 0, len(items))
 		for _, raw := range items {
 			rows = append(rows, asMap(raw))
 		}
-		sort.SliceStable(rows, func(i, j int) bool {
-			ri, rj := rankIndex(order, asString(rows[i]["change"])), rankIndex(order, asString(rows[j]["change"]))
-			if ri != rj {
-				return ri < rj
-			}
-			if ki, kj := asString(rows[i]["kind"]), asString(rows[j]["kind"]); ki != kj {
-				return ki < kj
-			}
-			return lessKey(identityKey(rows[i]["identity"]), identityKey(rows[j]["identity"]))
-		})
 		var out [][]string
 		for _, m := range rows {
 			expected := "no"

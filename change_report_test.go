@@ -116,3 +116,72 @@ func firstDifference(want, got string) string {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// RULES.md "Input errors": a duplicate identity anywhere, a missing or unknown flow expectation, a bad ai_summary.text, a predicted-only section
+// on a collected after (or missing on a predicted one), and a non-terminal check status are errors, never a report.
+func TestChangeReportInputErrors(t *testing.T) {
+	base := func(after string, sections string) string {
+		return `{"meta":{"base_snapshot_id":"1","after_snapshot_id":"2","after_kind":"` + after + `","change_set_id":null,"network_id":"n"},
+		"options":{"created_at":"2026-01-01T00:00:00Z","sdk":{"name":"x","version":"1"}},
+		"sections":{"checks":{"status":"ok","items":[]},"connectivity":{"status":"ok","evaluated_subnet_pairs":0,"total_subnet_pairs":0,"location_pairs":{"ADDED":[],"DELETED":[],"MODIFIED":[]}},
+		"routing":{"status":"ok","items":[]},"config":{"status":"ok","items":[]},"devices":{"status":"ok","added":[],"removed":[],"modified":[]},
+		"diff_counts":{"status":"ok","families":{}},"vulnerabilities":{"status":"ok","introduced":0,"resolved":0,"exposed_devices":null}` + sections + `}}`
+	}
+	replace := func(doc, section, with string) string {
+		start := strings.Index(doc, `"`+section+`":`)
+		if start < 0 {
+			t.Fatalf("no %s section in the template", section)
+		}
+		depth, end := 0, start
+		for i := start; i < len(doc); i++ {
+			switch doc[i] {
+			case '{', '[':
+				depth++
+			case '}', ']':
+				depth--
+				if depth == 0 {
+					end = i + 1
+					i = len(doc)
+				}
+			}
+		}
+		return doc[:start] + `"` + section + `":` + with + doc[end:]
+	}
+	check := func(id, before, after string) string {
+		return `{"check_id":"` + id + `","name":"n","type":"Existential","base_status":"` + before + `","after_status":"` + after + `"}`
+	}
+	flow := func(extra string) string { return `{"name":"f"` + extra + `}` }
+	counts := `{"blackhole":0,"dropped":0,"loop":0,"other":0,"unreachable":0,"valid":1}`
+	cases := map[string]string{
+		"duplicate check id":      replace(base("collected", ""), "checks", `{"status":"ok","items":[`+check("C-1", "PASS", "PASS")+`,`+check("C-1", "PASS", "FAIL")+`]}`),
+		"non-terminal status":     replace(base("collected", ""), "checks", `{"status":"ok","items":[`+check("C-1", "PASS", "PROCESSING")+`]}`),
+		"duplicate routing row":   replace(base("collected", ""), "routing", `{"status":"ok","items":[{"device":"a","added":1,"removed":0,"modified":0},{"device":"a","added":0,"removed":1,"modified":0}]}`),
+		"duplicate device name":   replace(base("collected", ""), "devices", `{"status":"ok","added":["a","a"],"removed":[],"modified":[]}`),
+		"missing expectation":     base("collected", `,"flows":{"status":"ok","items":[`+flow(`,"base":`+counts+`,"after":`+counts)+`]}`),
+		"unknown expectation":     base("collected", `,"flows":{"status":"ok","items":[`+flow(`,"expectation":"sometimes","base":`+counts+`,"after":`+counts)+`]}`),
+		"duplicate flow":          base("collected", `,"flows":{"status":"ok","items":[`+flow(`,"expectation":"any","base":`+counts+`,"after":`+counts)+`,`+flow(`,"expectation":"any","base":`+counts+`,"after":`+counts)+`]}`),
+		"empty ai summary":        base("collected", `,"ai_summary":{"status":"ok","text":""}`),
+		"newline ai summary":      base("collected", `,"ai_summary":{"status":"ok","text":"x\n"}`),
+		"predict on collected":    base("collected", `,"predict":{"status":"ok","processing_state":"PROCESSED","failures":[],"modeling_problems":[]}`),
+		"predicted missing":       base("predicted", ""),
+		"duplicate state item":    base("collected", `,"state":{"status":"ok","base":[{"kind":"bgp_session","identity":["a","b","c"],"value":"ESTABLISHED"},{"kind":"bgp_session","identity":["a","b","c"],"value":"IDLE"}],"after":[]}`),
+		"duplicate location pair": strings.Replace(base("collected", ""), `"DELETED":[]`, `"DELETED":[{"src":"a","dst":"b","count":1},{"src":"a","dst":"b","count":2}]`, 1),
+		"unknown section status":  replace(base("collected", ""), "routing", `{"status":"maybe"}`),
+	}
+	for name, input := range cases {
+		if _, err := AssembleChangeReport([]byte(input)); err == nil {
+			t.Errorf("%s: expected an input error", name)
+		}
+	}
+	// The same shapes without the defect assemble: an `any` flow that loses its path never drives the verdict.
+	lost := `{"blackhole":0,"dropped":1,"loop":0,"other":0,"unreachable":0,"valid":0}`
+	ok := base("collected", `,"flows":{"status":"ok","items":[`+flow(`,"expectation":"any","base":`+counts+`,"after":`+lost)+`]}`)
+	report, err := AssembleChangeReport([]byte(ok))
+	if err != nil || report.Verdict() != ChangeReportNoRegression {
+		t.Fatalf("an `any` flow must not drive the verdict: %v %v", err, report.Verdict())
+	}
+	valid := base("collected", `,"flows":{"status":"ok","items":[`+flow(`,"expectation":"valid","base":`+counts+`,"after":`+lost)+`]}`)
+	if report, err := AssembleChangeReport([]byte(valid)); err != nil || report.Verdict() != ChangeReportRegression {
+		t.Fatalf("a `valid` flow that loses its path regresses: %v", err)
+	}
+}

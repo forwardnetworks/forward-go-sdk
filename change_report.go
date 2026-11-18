@@ -125,8 +125,6 @@ func asInt(v any) int {
 	return 0
 }
 
-func isNull(v any) bool { return v == nil }
-
 // ---- the serializer: sorted keys, indent 2, JSON-required escapes only -----------------------------------------------------------
 
 func writeSortedJSON(buf *bytes.Buffer, v any, depth int) {
@@ -424,6 +422,10 @@ func (a *assembler) build(name string, in map[string]any) (map[string]any, error
 	case "predict":
 		return map[string]any{"status": "ok", "processing_state": in["processing_state"], "failures": nonNilList(in["failures"]), "modeling_problems": nonNilList(in["modeling_problems"])}, nil
 	case "ai_summary":
+		text := asString(in["text"])
+		if text == "" || strings.HasSuffix(text, "\n") {
+			return nil, errors.New("text must be non-empty and must not end with a newline")
+		}
 		return map[string]any{"status": "ok", "text": in["text"]}, nil
 	}
 	return nil, errors.New("unknown section")
@@ -447,9 +449,32 @@ func nonNilList(v any) []any {
 func (a *assembler) sortedItems(in map[string]any, key func(map[string]any) []string) (map[string]any, error) {
 	items := append([]any(nil), asList(in["items"])...)
 	sort.SliceStable(items, func(i, j int) bool { return lessKey(key(asMap(items[i])), key(asMap(items[j]))) })
+	if err := rejectDuplicates(items, key); err != nil {
+		return nil, err
+	}
 	total := len(items)
 	kept, truncated := a.cap(items)
 	return map[string]any{"status": "ok", "items": kept, "total": total, "truncated": truncated}, nil
+}
+
+// rejectDuplicates makes two items with one identity an input error: the order of ties would otherwise depend on the sort.
+func rejectDuplicates(sorted []any, key func(map[string]any) []string) error {
+	for i := 1; i < len(sorted); i++ {
+		a, b := key(asMap(sorted[i-1])), key(asMap(sorted[i]))
+		if !lessKey(a, b) && !lessKey(b, a) {
+			return fmt.Errorf("duplicate identity %s", strings.Join(b, "|"))
+		}
+	}
+	return nil
+}
+
+func rankOf(order []string, v string) int {
+	for i, o := range order {
+		if o == v {
+			return i
+		}
+	}
+	return len(order)
 }
 
 func lessKey(x, y []string) bool {
@@ -510,8 +535,14 @@ func (a *assembler) checks(in map[string]any) (map[string]any, error) {
 		}
 		items = append(items, map[string]any{"check_id": id, "name": row["name"], "type": row["type"], "base_status": base, "after_status": after, "change": change})
 	}
+	checkID := func(m map[string]any) []string { return []string{asString(m["check_id"])} }
+	sort.SliceStable(items, func(i, j int) bool { return lessKey(checkID(asMap(items[i])), checkID(asMap(items[j]))) })
+	if err := rejectDuplicates(items, checkID); err != nil {
+		return nil, err
+	}
+	checkRank := []string{"regressed", "other", "removed", "added", "fixed", "unchanged"}
 	sort.SliceStable(items, func(i, j int) bool {
-		return asString(asMap(items[i])["check_id"]) < asString(asMap(items[j])["check_id"])
+		return rankOf(checkRank, asString(asMap(items[i])["change"])) < rankOf(checkRank, asString(asMap(items[j])["change"]))
 	})
 	total := len(items)
 	kept, truncated := a.cap(items)
@@ -527,6 +558,11 @@ func (a *assembler) flows(in map[string]any) (map[string]any, error) {
 	for _, raw := range asList(in["items"]) {
 		row := asMap(raw)
 		name := asString(row["name"])
+		switch asString(row["expectation"]) {
+		case "valid", "none", "any":
+		default:
+			return nil, fmt.Errorf("flow %s: expectation %q must be valid, none or any", name, asString(row["expectation"]))
+		}
 		out := map[string]any{"name": name, "expectation": row["expectation"], "base": nil, "after": nil, "unavailable": nil, "change": "unchanged"}
 		if un := asMap(row["unavailable"]); un != nil {
 			out["unavailable"] = map[string]any{"kind": asString(un["kind"]), "message": asString(un["message"])}
@@ -544,7 +580,7 @@ func (a *assembler) flows(in map[string]any) (map[string]any, error) {
 		switch {
 		case bv > 0 && av == 0:
 			out["change"] = "lost_valid"
-			if asString(row["expectation"]) != "none" {
+			if asString(row["expectation"]) == "valid" {
 				a.reasons = append(a.reasons, reasonRow("flow_lost_valid_path", "flows", name))
 			}
 		case bv == 0 && av > 0:
@@ -559,7 +595,15 @@ func (a *assembler) flows(in map[string]any) (map[string]any, error) {
 		}
 		items = append(items, out)
 	}
-	sort.SliceStable(items, func(i, j int) bool { return asString(asMap(items[i])["name"]) < asString(asMap(items[j])["name"]) })
+	flowName := func(m map[string]any) []string { return []string{asString(m["name"])} }
+	sort.SliceStable(items, func(i, j int) bool { return lessKey(flowName(asMap(items[i])), flowName(asMap(items[j]))) })
+	if err := rejectDuplicates(items, flowName); err != nil {
+		return nil, err
+	}
+	flowRank := []string{"lost_valid", "unavailable", "gained_valid", "counts_changed", "unchanged"}
+	sort.SliceStable(items, func(i, j int) bool {
+		return rankOf(flowRank, asString(asMap(items[i])["change"])) < rankOf(flowRank, asString(asMap(items[j])["change"]))
+	})
 	total := len(items)
 	kept, truncated := a.cap(items)
 	return map[string]any{"status": "ok", "items": kept, "total": total, "truncated": truncated}, nil
@@ -640,8 +684,12 @@ func (a *assembler) state(in map[string]any) (map[string]any, error) {
 		}
 		items = append(items, item)
 	}
+	stateRank := []string{"lost", "changed", "gained"}
 	sort.SliceStable(items, func(i, j int) bool {
 		x, y := asMap(items[i]), asMap(items[j])
+		if rx, ry := rankOf(stateRank, asString(x["change"])), rankOf(stateRank, asString(y["change"])); rx != ry {
+			return rx < ry
+		}
 		if kx, ky := asString(x["kind"]), asString(y["kind"]); kx != ky {
 			return kx < ky
 		}
@@ -683,6 +731,10 @@ func (a *assembler) connectivity(in map[string]any) (map[string]any, error) {
 			x, y := asMap(list[i]), asMap(list[j])
 			return lessKey([]string{asString(x["src"]), asString(x["dst"])}, []string{asString(y["src"]), asString(y["dst"])})
 		})
+		pairKey := func(m map[string]any) []string { return []string{asString(m["src"]), asString(m["dst"])} }
+		if err := rejectDuplicates(list, pairKey); err != nil {
+			return nil, fmt.Errorf("%s location pairs: %w", kind, err)
+		}
 		total += len(list)
 		kept, dropped := a.cap(list)
 		truncated = truncated || dropped
@@ -704,6 +756,11 @@ func (a *assembler) devices(in map[string]any) (map[string]any, error) {
 			names = append(names, asString(v))
 		}
 		sort.Strings(names)
+		for i := 1; i < len(names); i++ {
+			if names[i] == names[i-1] {
+				return nil, fmt.Errorf("device %s appears twice in %s", names[i], kind)
+			}
+		}
 		list := make([]any, len(names))
 		for i, n := range names {
 			list[i] = n

@@ -30,22 +30,6 @@
       },
       "items": [
         {
-          "after_status": "PASS",
-          "base_status": "PASS",
-          "change": "unchanged",
-          "check_id": "C-1",
-          "name": "mgmt isolated",
-          "type": "Isolation"
-        },
-        {
-          "after_status": "PASS",
-          "base_status": "FAIL",
-          "change": "fixed",
-          "check_id": "C-2",
-          "name": "stale BGP adverts",
-          "type": "NQE"
-        },
-        {
           "after_status": "FAIL",
           "base_status": "PASS",
           "change": "regressed",
@@ -60,6 +44,22 @@
           "check_id": "C-4",
           "name": "new path check",
           "type": "Existential"
+        },
+        {
+          "after_status": "PASS",
+          "base_status": "FAIL",
+          "change": "fixed",
+          "check_id": "C-2",
+          "name": "stale BGP adverts",
+          "type": "NQE"
+        },
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "change": "unchanged",
+          "check_id": "C-1",
+          "name": "mgmt isolated",
+          "type": "Isolation"
         }
       ],
       "status": "ok",

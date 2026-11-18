@@ -1,0 +1,121 @@
+{
+  "meta": {
+    "after_kind": "collected",
+    "after_snapshot_id": "1002",
+    "base_snapshot_id": "1001",
+    "change_set_id": null,
+    "network_id": "42"
+  },
+  "options": {
+    "created_at": "2026-01-01T00:00:00Z",
+    "expectations": {
+      "state_expected_removed": []
+    },
+    "max_items": 2,
+    "sdk": {
+      "name": "forward-sdk",
+      "version": "0.0.0-fixture"
+    }
+  },
+  "sections": {
+    "checks": {
+      "items": [
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "check_id": "C-1",
+          "name": "first",
+          "type": "Existential"
+        },
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "check_id": "C-2",
+          "name": "second",
+          "type": "Existential"
+        },
+        {
+          "after_status": "FAIL",
+          "base_status": "PASS",
+          "check_id": "C-9",
+          "name": "last id, regressed",
+          "type": "Existential"
+        }
+      ],
+      "status": "ok"
+    },
+    "config": {
+      "items": [],
+      "status": "ok"
+    },
+    "connectivity": {
+      "evaluated_subnet_pairs": 0,
+      "location_pairs": {
+        "ADDED": [],
+        "DELETED": [],
+        "MODIFIED": []
+      },
+      "status": "ok",
+      "total_subnet_pairs": 0
+    },
+    "devices": {
+      "added": [],
+      "modified": [],
+      "removed": [],
+      "status": "ok"
+    },
+    "diff_counts": {
+      "families": {},
+      "status": "ok"
+    },
+    "routing": {
+      "items": [],
+      "status": "ok"
+    },
+    "state": {
+      "after": [
+        {
+          "identity": [
+            "ab",
+            "c"
+          ],
+          "kind": "acl_entries",
+          "value": 2
+        },
+        {
+          "identity": [
+            "a",
+            "zz"
+          ],
+          "kind": "acl_entries",
+          "value": 2
+        }
+      ],
+      "base": [
+        {
+          "identity": [
+            "ab",
+            "c"
+          ],
+          "kind": "acl_entries",
+          "value": 1
+        },
+        {
+          "identity": [
+            "a",
+            "zz"
+          ],
+          "kind": "acl_entries",
+          "value": 1
+        }
+      ],
+      "status": "ok"
+    },
+    "vulnerabilities": {
+      "exposed_devices": null,
+      "introduced": 0,
+      "resolved": 0,
+      "status": "ok"
+    }
+  }
+}

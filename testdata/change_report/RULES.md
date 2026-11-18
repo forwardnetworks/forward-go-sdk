@@ -71,7 +71,10 @@ Every report section has a `status`:
    - a check goes `PASS` → `FAIL` or `PASS` → `ERROR` (Forward's own failure
      set, `DiffHelper.FAILURE_CHECK_STATUSES`; `check_regressed`, detail = check id);
    - a requested flow had at least one `VALID` path on base and none on after,
-     unless its expectation is `"none"` (`flow_lost_valid_path`, detail = flow name);
+     when its expectation is `"valid"` (`flow_lost_valid_path`, detail = flow name).
+     A flow's `expectation` is `"valid"` (it must keep a path), `"none"` (it is
+     meant to lose its paths, as for an isolation intent) or `"any"` (report it,
+     never let it drive the verdict); only `"valid"` can regress;
    - a requested state identity is lost, unless listed in
      `options.expectations.state_expected_removed`
      (`state_lost`, detail = `<kind>:<identity>`). Lost means: a
@@ -105,7 +108,18 @@ with `complete: false` is a lower bound and is reported as such.
 Each section's input is its report form without the derived fields:
 `checks.items` without `change` and without the `counts`; `state` as `base`
 and `after` lists of `{kind, identity, value}`; `flows.items` as
-`{name, expectation, base, after}` without `change`. No list section has
+`{name, expectation, base, after}` without `change`, or, for a flow whose read
+was unavailable, `{name, expectation, unavailable: {kind, message}}` with no
+`base` or `after`. `expectation` is required and is one of `valid`, `none`,
+`any`. `ai_summary.text` must be non-empty and must not end with a newline.
+
+Input errors, in addition to those below: a duplicate identity anywhere
+(two checks with one `check_id`, two flows with one name, two state rows with
+one (`kind`, identity) on the same side, two security rules with one (`device`,
+`rule`), two location pairs with one (`src`, `dst`) in the same list, a device
+twice in one `devices` list, two routing or config rows for one device); a
+missing or unknown `expectation`; an empty `ai_summary.text` or one ending in a
+newline. No list section has
 `truncated` or `total` in the input. A section absent from the input is
 `not_requested` when opt-in and `not_applicable` when predicted-only on a
 collected `after`; any other absent section is an input error. So is a
@@ -163,20 +177,29 @@ type (`ADDED`, `DELETED`, `MODIFIED`).
 
 ## Ordering and caps
 
-Lists are always present (never null). Items are sorted by their identity:
-checks by `check_id`; routing and config by `device`; device names in
-`devices` alphabetically; location pairs by (`src`, `dst`); state items by
-(`kind`, identity); flows by `name`; security rules by (`device`, `rule`).
-Sorting is bytewise on the strings (UTF-8 bytes). `config.items[].files_changed`
-is sorted and never capped. The `predict` lists (`failures`,
-`modeling_problems`) keep input order and are never capped.
+Lists are always present (never null). `checks`, `flows` and `state` are
+ordered by severity first, so that a cap can only ever drop their least severe
+rows: checks by change (`regressed`, `other`, `removed`, `added`, `fixed`,
+`unchanged`) then `check_id`; flows by change (`lost_valid`, `unavailable`,
+`gained_valid`, `counts_changed`, `unchanged`) then name; state by change
+(`lost`, `changed`, `gained`) then `kind`, then identity. Every other list is
+ordered by identity: routing and config by `device`; device names in `devices`
+alphabetically; location pairs by (`src`, `dst`); security rules by
+(`device`, `rule`).
+
+Sorting is bytewise on the strings (UTF-8 bytes), and an identity sorts as a
+tuple, element by element, never as its joined string: (`a`, `zz`) comes
+before (`ab`, `c`). `config.items[].files_changed` is sorted and never capped.
+The `predict` lists (`failures`, `modeling_problems`) keep input order and are
+never capped.
 
 Every list is capped at `options.max_items` (default 100), keeping the first
-items in sort order. A section's `total` is the number of items before capping
+items in that order. A section's `total` is the number of items before capping
 and `truncated` is whether anything was dropped. Where a section holds several
 lists (`devices`: added, removed, modified; `connectivity`: the three location
 pair lists), each list is capped separately and `total` is their combined
-length before capping. Counts (`checks.counts`) are computed over every item.
+length before capping. Counts (`checks.counts`) and the verdict are computed
+over every item, whether or not it survives the cap.
 
 ## Markdown
 
@@ -208,17 +231,15 @@ Section bodies (a table is a header row, a `| --- |` row with one cell per
 column, then the rows):
 
 - **Checks**: a table `| Check | Name | Type | Base | After | Change |` of the
-  rows whose `change` is not `unchanged`, ordered by change (`regressed`,
-  `other`, `removed`, `added`, `fixed`) and then `check_id`; when there are none,
+  rows whose `change` is not `unchanged`, in report order; when there are none,
   the line `No changes.` Then always the line
   `Regressed <n>, fixed <n>, added <n>, removed <n>, unchanged <n>, other <n>; not evaluated <n>, skipped <n>, unlicensed <n>.`
 - **Flows**: no items: `No changes.` Otherwise
   `| Flow | Expectation | Base valid | After valid | Change |`, every
-  flow, ordered by change (`lost_valid`, `unavailable`, `gained_valid`,
-  `counts_changed`, `unchanged`) and then name. Valid counts are
+  flow in report order. Valid counts are
   `base.valid`/`after.valid`, `-` when null.
-- **State**: `| Kind | Identity | Base | After | Change | Expected |`, ordered by
-  change (`lost`, `changed`, `gained`), then kind, then identity. Identity is
+- **State**: `| Kind | Identity | Base | After | Change | Expected |`, in report
+  order. Identity is
   the tuple joined with `, `; Expected is `yes` or `no`. No items: `No changes.`
 - **Connectivity**: `No forwarding change.` when `no_forwarding_change`, else
   `Subnet pairs evaluated: <evaluated> of <total>.` Then a table
@@ -251,6 +272,74 @@ column, then the rows):
   `cloud_acl`, `routing_loop`. Route changes are in `routing`, not here.
 - `vulnerabilities`: `introduced` (new CVEs, the bidirectional warnings),
   `resolved` (improvements), and `exposed_devices`, null where not licensed.
+
+## Reads
+
+How each SDK fills the input from Forward, so both feed `assemble` the same
+data. Each section has its own time budget (default five minutes, settable); a
+read that overruns it makes the section `unavailable` (`timeout`), never
+partial. A 403 for a gating property is `feature_gated`, another 403
+`forbidden`, a 404 "No endpoint" `not_served`, anything else `error`, except
+where a section says otherwise.
+
+- **checks**: for each check type (`Existential`, `Isolation`, `Reachability`,
+  `QueryStringBased`, `Predefined`, `NQE`), `GET /diffs/{base}/{after}/checks?type=`,
+  re-read while any row is `PROCESSING`. Each row gives `check_id` (the id of
+  its `a` or `b` side), `name`, `type` (the type asked for), `base_status` (`a`'s
+  status, null without `a`) and `after_status` (`b`'s). `UNCHANGED` rows are
+  included. A type answering 404 "No endpoint" contributes no rows; any other
+  failure on any type makes the section unavailable. A non-terminal status
+  after the wait makes it unavailable (`timeout` for `PROCESSING`, `not_ready`
+  otherwise).
+- **connectivity**: wait for the subnet-connectivity summary to settle
+  (`isPartialResult` false; overrun = `timeout`), then read the location pairs
+  with `?view=locationPairs&type=` for `ADDED`, `DELETED` and `MODIFIED`.
+  `total_subnet_pairs` and `evaluated_subnet_pairs` come from the summary.
+- **routing**: the l3 diff per device (`ADDED`/`DELETED`/`MODIFIED` stats);
+  only devices with a nonzero count.
+- **config**: the files diff for `CONFIG` files; `files_changed` holds the file
+  name without its `<device>,` prefix.
+- **devices**: the devices diff; `ADDED` → added, `DELETED` → removed,
+  `MODIFIED` → modified, `UNCHANGED` dropped.
+- **diff_counts**: each family's count read (`devices`, `interfaces`,
+  `topology`, `l2`, `acl`, `cloud-objects`, `cloud-acl`, `routing-loop`) as
+  `{count, complete}`. A family answering 404 "No endpoint" is omitted; any
+  other failure makes the section unavailable.
+- **vulnerabilities**: `introduced` = the bidirectional read's warnings CVE
+  count, `resolved` = its improvements CVE count, `exposed_devices` = the
+  warnings' exposed vulnerable device count, null when absent.
+- **state** (opt-in): the four NQE state reads (BGP sessions, LLDP adjacencies,
+  interface admin state, ACL entries; the same queries in both SDKs) on both
+  snapshots. Identities: `bgp_session` (Device, VRF, NeighborIP) with the
+  session state; `lldp_adjacency` (Device, LocalIntf, RemoteSys, RemotePort)
+  with value `present`; `interface_admin` (Device, Interface) with the admin
+  status text; `acl_entries` (Device, AclName) with the entry count. Any read
+  failing makes the section unavailable.
+- **flows** (opt-in): for each caller-supplied flow (name, expectation, path
+  query), the trace facets on both snapshots. A bucket's count is the number of
+  distinct paths in that `FlowType` group (`pathGroups[].paths`), not
+  `totalResults`. A facets answer with `timedOut` true or `totalResults` of type
+  `LOWER_BOUND` on either side makes that flow `unavailable` (`timeout`).
+- **predict** (predicted only): `processing_state` is the predicted snapshot's
+  state. `failures` is one row `{device: "-", message: "snapshot processing
+  ended <STATE>"}` when that state is `FAILED`, `CANCELED`, `TIMED_OUT` or
+  `RESTORE_FAILED`, else empty. `modeling_problems` is always empty in
+  schema_version 1: no read gives modeling diagnostics cleanly.
+- **security_rules** (predicted only): the change set's devices come from its
+  draft, else its latest commit (both carry the per-device changes; failing to
+  read them makes the section unavailable). For each device,
+  `GET /networks/{n}/change-sets/{cs}/devices/{device}/security-rules-diff`,
+  which Forward computes for the calling user's draft or latest commit. Entries
+  `ADDED`/`DELETED`/`MODIFIED` give `{device, rule, change}` (`DELETED` →
+  removed); `UNCHANGED` entries are dropped. `rule` is
+  `<scopeId>/<rulebaseId>/<name>` from the entry's `b`, else its `a`. A 400
+  "Device is not supported for firewall predict" means no rows for that device;
+  a 404 "No endpoint" makes the section `not_served`; a 403 on
+  `FIREWALL_PREDICT` `feature_gated`; anything else unavailable with its kind.
+  Without a change set id for a predicted `after` the section is unavailable
+  (`error`, "change set not given").
+- **meta**: `after_kind` is `predicted` for a predicted snapshot, else
+  `collected`, unless the caller says otherwise.
 
 ## JSON
 

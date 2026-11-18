@@ -30,14 +30,6 @@
       },
       "items": [
         {
-          "after_status": "PASS",
-          "base_status": "PASS",
-          "change": "unchanged",
-          "check_id": "C-1",
-          "name": "mgmt isolated",
-          "type": "Isolation"
-        },
-        {
           "after_status": "TIMEOUT",
           "base_status": "PASS",
           "change": "other",
@@ -52,6 +44,14 @@
           "check_id": "C-7",
           "name": "licensed check",
           "type": "Predefined"
+        },
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "change": "unchanged",
+          "check_id": "C-1",
+          "name": "mgmt isolated",
+          "type": "Isolation"
         }
       ],
       "status": "ok",
@@ -92,6 +92,17 @@
     "flows": {
       "items": [
         {
+          "after": null,
+          "base": null,
+          "change": "unavailable",
+          "expectation": "valid",
+          "name": "bulk search",
+          "unavailable": {
+            "kind": "timeout",
+            "message": "facets read hit maxResults (LOWER_BOUND)"
+          }
+        },
+        {
           "after": {
             "blackhole": 0,
             "dropped": 0,
@@ -112,17 +123,6 @@
           "expectation": "valid",
           "name": "app to db",
           "unavailable": null
-        },
-        {
-          "after": null,
-          "base": null,
-          "change": "unavailable",
-          "expectation": "valid",
-          "name": "bulk search",
-          "unavailable": {
-            "kind": "timeout",
-            "message": "facets read hit maxResults (LOWER_BOUND)"
-          }
         }
       ],
       "status": "ok",

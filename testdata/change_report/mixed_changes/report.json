@@ -38,12 +38,20 @@
           "type": "Existential"
         },
         {
-          "after_status": "PASS",
-          "base_status": "ERROR",
-          "change": "fixed",
-          "check_id": "C-11",
-          "name": "error recovered",
-          "type": "Reachability"
+          "after_status": "ERROR",
+          "base_status": "FAIL",
+          "change": "other",
+          "check_id": "C-14",
+          "name": "fail to error",
+          "type": "NQE"
+        },
+        {
+          "after_status": "FAIL",
+          "base_status": "SKIPPED",
+          "change": "other",
+          "check_id": "C-15",
+          "name": "was skipped",
+          "type": "Existential"
         },
         {
           "after_status": null,
@@ -62,20 +70,12 @@
           "type": "Isolation"
         },
         {
-          "after_status": "ERROR",
-          "base_status": "FAIL",
-          "change": "other",
-          "check_id": "C-14",
-          "name": "fail to error",
-          "type": "NQE"
-        },
-        {
-          "after_status": "FAIL",
-          "base_status": "SKIPPED",
-          "change": "other",
-          "check_id": "C-15",
-          "name": "was skipped",
-          "type": "Existential"
+          "after_status": "PASS",
+          "base_status": "ERROR",
+          "change": "fixed",
+          "check_id": "C-11",
+          "name": "error recovered",
+          "type": "Reachability"
         }
       ],
       "status": "ok",
@@ -142,6 +142,61 @@
       "items": [
         {
           "after": {
+            "blackhole": 2,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 0
+          },
+          "base": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 2
+          },
+          "change": "lost_valid",
+          "expectation": "valid",
+          "name": "f-lost",
+          "unavailable": null
+        },
+        {
+          "after": null,
+          "base": null,
+          "change": "unavailable",
+          "expectation": "valid",
+          "name": "f-unav",
+          "unavailable": {
+            "kind": "timeout",
+            "message": "facets read timed out"
+          }
+        },
+        {
+          "after": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 3
+          },
+          "base": {
+            "blackhole": 0,
+            "dropped": 1,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 0
+          },
+          "change": "gained_valid",
+          "expectation": "any",
+          "name": "f-gain",
+          "unavailable": null
+        },
+        {
+          "after": {
             "blackhole": 0,
             "dropped": 0,
             "loop": 0,
@@ -169,50 +224,6 @@
             "loop": 0,
             "other": 0,
             "unreachable": 0,
-            "valid": 3
-          },
-          "base": {
-            "blackhole": 0,
-            "dropped": 1,
-            "loop": 0,
-            "other": 0,
-            "unreachable": 0,
-            "valid": 0
-          },
-          "change": "gained_valid",
-          "expectation": "any",
-          "name": "f-gain",
-          "unavailable": null
-        },
-        {
-          "after": {
-            "blackhole": 2,
-            "dropped": 0,
-            "loop": 0,
-            "other": 0,
-            "unreachable": 0,
-            "valid": 0
-          },
-          "base": {
-            "blackhole": 0,
-            "dropped": 0,
-            "loop": 0,
-            "other": 0,
-            "unreachable": 0,
-            "valid": 2
-          },
-          "change": "lost_valid",
-          "expectation": "valid",
-          "name": "f-lost",
-          "unavailable": null
-        },
-        {
-          "after": {
-            "blackhole": 0,
-            "dropped": 0,
-            "loop": 0,
-            "other": 0,
-            "unreachable": 0,
             "valid": 2
           },
           "base": {
@@ -227,17 +238,6 @@
           "expectation": "valid",
           "name": "f-same",
           "unavailable": null
-        },
-        {
-          "after": null,
-          "base": null,
-          "change": "unavailable",
-          "expectation": "valid",
-          "name": "f-unav",
-          "unavailable": {
-            "kind": "timeout",
-            "message": "facets read timed out"
-          }
         }
       ],
       "status": "ok",
@@ -259,17 +259,6 @@
     "state": {
       "items": [
         {
-          "after": null,
-          "base": 3,
-          "change": "changed",
-          "expected": false,
-          "identity": [
-            "edge-4",
-            "old-acl"
-          ],
-          "kind": "acl_entries"
-        },
-        {
           "after": "IDLE",
           "base": "ESTABLISHED",
           "change": "lost",
@@ -280,6 +269,17 @@
             "198.51.100.1"
           ],
           "kind": "bgp_session"
+        },
+        {
+          "after": null,
+          "base": 3,
+          "change": "changed",
+          "expected": false,
+          "identity": [
+            "edge-4",
+            "old-acl"
+          ],
+          "kind": "acl_entries"
         },
         {
           "after": "ESTABLISHED",
