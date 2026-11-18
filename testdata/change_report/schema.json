@@ -1,0 +1,1233 @@
+{
+  "$defs": {
+    "not_applicable": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "not_applicable"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "not_requested": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "not_requested"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "pair": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "dst": {
+          "type": "string"
+        },
+        "src": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "src",
+        "dst",
+        "count"
+      ],
+      "type": "object"
+    },
+    "reason": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "forbidden",
+            "not_served",
+            "feature_gated",
+            "not_ready",
+            "timeout",
+            "error"
+          ],
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "message"
+      ],
+      "type": "object"
+    },
+    "unavailable": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "$ref": "#/$defs/reason"
+        },
+        "status": {
+          "const": "unavailable"
+        }
+      },
+      "required": [
+        "status",
+        "reason"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/forwardnetworks/forward-sdk/change_report/schema_version_1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "DRAFT. A client-side comparison of two Forward snapshots (a predicted one, or a later collection) built from existing API reads. See RULES.md.",
+  "properties": {
+    "meta": {
+      "additionalProperties": false,
+      "properties": {
+        "after_kind": {
+          "enum": [
+            "predicted",
+            "collected"
+          ],
+          "type": "string"
+        },
+        "after_snapshot_id": {
+          "type": "string"
+        },
+        "base_snapshot_id": {
+          "type": "string"
+        },
+        "change_set_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "network_id": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1"
+        },
+        "sdk": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "enum": [
+                "forward-sdk",
+                "forward-go-sdk"
+              ],
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "version"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "schema_version",
+        "base_snapshot_id",
+        "after_snapshot_id",
+        "after_kind",
+        "change_set_id",
+        "network_id",
+        "created_at",
+        "sdk"
+      ],
+      "type": "object"
+    },
+    "sections": {
+      "additionalProperties": false,
+      "properties": {
+        "ai_summary": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "const": "ok"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "status",
+                "text"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            },
+            {
+              "$ref": "#/$defs/not_requested"
+            }
+          ]
+        },
+        "checks": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "counts": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "added": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "fixed": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "not_evaluated": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "other": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "regressed": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "removed": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "unchanged": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "unlicensed": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "regressed",
+                    "fixed",
+                    "added",
+                    "removed",
+                    "unchanged",
+                    "other",
+                    "not_evaluated",
+                    "skipped",
+                    "unlicensed"
+                  ],
+                  "type": "object"
+                },
+                "items": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "after_status": {
+                        "enum": [
+                          "NONE",
+                          "PASS",
+                          "FAIL",
+                          "ERROR",
+                          "TIMEOUT",
+                          "UNLICENSED",
+                          "SKIPPED",
+                          "PROCESSING",
+                          "REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING",
+                          null
+                        ],
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "base_status": {
+                        "enum": [
+                          "NONE",
+                          "PASS",
+                          "FAIL",
+                          "ERROR",
+                          "TIMEOUT",
+                          "UNLICENSED",
+                          "SKIPPED",
+                          "PROCESSING",
+                          "REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING",
+                          null
+                        ],
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "change": {
+                        "enum": [
+                          "regressed",
+                          "fixed",
+                          "added",
+                          "removed",
+                          "unchanged",
+                          "other"
+                        ],
+                        "type": "string"
+                      },
+                      "check_id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "check_id",
+                      "name",
+                      "type",
+                      "base_status",
+                      "after_status",
+                      "change"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "const": "ok"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "status",
+                "items",
+                "truncated",
+                "total",
+                "counts"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            }
+          ]
+        },
+        "config": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "items": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "device": {
+                        "type": "string"
+                      },
+                      "files_changed": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "device",
+                      "files_changed"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "const": "ok"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "status",
+                "items",
+                "truncated",
+                "total"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            }
+          ]
+        },
+        "connectivity": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "evaluated_subnet_pairs": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "location_pairs": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ADDED": {
+                      "items": {
+                        "$ref": "#/$defs/pair"
+                      },
+                      "type": "array"
+                    },
+                    "DELETED": {
+                      "items": {
+                        "$ref": "#/$defs/pair"
+                      },
+                      "type": "array"
+                    },
+                    "MODIFIED": {
+                      "items": {
+                        "$ref": "#/$defs/pair"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "ADDED",
+                    "DELETED",
+                    "MODIFIED"
+                  ],
+                  "type": "object"
+                },
+                "no_forwarding_change": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "const": "ok"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total_subnet_pairs": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "status",
+                "no_forwarding_change",
+                "total_subnet_pairs",
+                "evaluated_subnet_pairs",
+                "location_pairs",
+                "truncated",
+                "total"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            }
+          ]
+        },
+        "devices": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "added": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "modified": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "removed": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "const": "ok"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "status",
+                "added",
+                "removed",
+                "modified",
+                "truncated",
+                "total"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            }
+          ]
+        },
+        "diff_counts": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "families": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "acl": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "complete"
+                      ],
+                      "type": "object"
+                    },
+                    "cloud_acl": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "complete"
+                      ],
+                      "type": "object"
+                    },
+                    "cloud_objects": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "complete"
+                      ],
+                      "type": "object"
+                    },
+                    "devices": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "complete"
+                      ],
+                      "type": "object"
+                    },
+                    "interfaces": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "complete"
+                      ],
+                      "type": "object"
+                    },
+                    "l2": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "complete"
+                      ],
+                      "type": "object"
+                    },
+                    "routing_loop": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "complete"
+                      ],
+                      "type": "object"
+                    },
+                    "topology": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "complete"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "status": {
+                  "const": "ok"
+                }
+              },
+              "required": [
+                "status",
+                "families"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            }
+          ]
+        },
+        "flows": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "items": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "after": {
+                        "oneOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "blackhole": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "dropped": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "loop": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "other": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "unreachable": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "valid": {
+                                "minimum": 0,
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "valid",
+                              "dropped",
+                              "blackhole",
+                              "unreachable",
+                              "loop",
+                              "other"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "base": {
+                        "oneOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "blackhole": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "dropped": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "loop": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "other": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "unreachable": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "valid": {
+                                "minimum": 0,
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "valid",
+                              "dropped",
+                              "blackhole",
+                              "unreachable",
+                              "loop",
+                              "other"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "change": {
+                        "enum": [
+                          "lost_valid",
+                          "gained_valid",
+                          "counts_changed",
+                          "unchanged",
+                          "unavailable"
+                        ],
+                        "type": "string"
+                      },
+                      "expectation": {
+                        "enum": [
+                          "valid",
+                          "none",
+                          "any"
+                        ],
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "unavailable": {
+                        "oneOf": [
+                          {
+                            "$ref": "#/$defs/reason"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "base",
+                      "after",
+                      "expectation",
+                      "change",
+                      "unavailable"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "const": "ok"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "status",
+                "items",
+                "truncated",
+                "total"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            },
+            {
+              "$ref": "#/$defs/not_requested"
+            }
+          ]
+        },
+        "predict": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failures": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "device": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "device",
+                      "message"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "modeling_problems": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "device": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "device",
+                      "message"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "processing_state": {
+                  "type": "string"
+                },
+                "status": {
+                  "const": "ok"
+                }
+              },
+              "required": [
+                "status",
+                "processing_state",
+                "failures",
+                "modeling_problems"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            },
+            {
+              "$ref": "#/$defs/not_applicable"
+            }
+          ]
+        },
+        "routing": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "items": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "added": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "device": {
+                        "type": "string"
+                      },
+                      "modified": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "removed": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "device",
+                      "added",
+                      "removed",
+                      "modified"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "const": "ok"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "status",
+                "items",
+                "truncated",
+                "total"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            }
+          ]
+        },
+        "security_rules": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "items": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "change": {
+                        "enum": [
+                          "added",
+                          "removed",
+                          "modified"
+                        ],
+                        "type": "string"
+                      },
+                      "device": {
+                        "type": "string"
+                      },
+                      "rule": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "device",
+                      "rule",
+                      "change"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "const": "ok"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "status",
+                "items",
+                "truncated",
+                "total"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            },
+            {
+              "$ref": "#/$defs/not_applicable"
+            }
+          ]
+        },
+        "state": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "items": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "after": {
+                        "type": [
+                          "string",
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "base": {
+                        "type": [
+                          "string",
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "change": {
+                        "enum": [
+                          "lost",
+                          "gained",
+                          "changed"
+                        ],
+                        "type": "string"
+                      },
+                      "expected": {
+                        "type": "boolean"
+                      },
+                      "identity": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "kind": {
+                        "enum": [
+                          "bgp_session",
+                          "lldp_adjacency",
+                          "interface_admin",
+                          "acl_entries"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "identity",
+                      "base",
+                      "after",
+                      "change",
+                      "expected"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "const": "ok"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "status",
+                "items",
+                "truncated",
+                "total"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            },
+            {
+              "$ref": "#/$defs/not_requested"
+            }
+          ]
+        },
+        "vulnerabilities": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "exposed_devices": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "introduced": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "resolved": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "ok"
+                }
+              },
+              "required": [
+                "status",
+                "introduced",
+                "resolved",
+                "exposed_devices"
+              ],
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/unavailable"
+            }
+          ]
+        }
+      },
+      "required": [
+        "checks",
+        "connectivity",
+        "routing",
+        "config",
+        "diff_counts",
+        "devices",
+        "vulnerabilities",
+        "state",
+        "flows",
+        "predict",
+        "security_rules",
+        "ai_summary"
+      ],
+      "type": "object"
+    },
+    "verdict": {
+      "additionalProperties": false,
+      "properties": {
+        "reasons": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "enum": [
+                  "section_unavailable",
+                  "check_regressed",
+                  "check_not_evaluated",
+                  "flow_lost_valid_path",
+                  "flow_unavailable",
+                  "state_lost"
+                ],
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "section": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "section",
+              "detail"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "result": {
+          "enum": [
+            "regression",
+            "no_regression",
+            "incomplete"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "result",
+        "reasons"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "meta",
+    "verdict",
+    "sections"
+  ],
+  "title": "ChangeReport, schema_version 1",
+  "type": "object"
+}

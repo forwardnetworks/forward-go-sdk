@@ -1,0 +1,136 @@
+{
+  "meta": {
+    "after_kind": "collected",
+    "after_snapshot_id": "1002",
+    "base_snapshot_id": "1001",
+    "change_set_id": null,
+    "network_id": "42"
+  },
+  "options": {
+    "created_at": "2026-01-01T00:00:00Z",
+    "expectations": {
+      "state_expected_removed": []
+    },
+    "max_items": 100,
+    "sdk": {
+      "name": "forward-sdk",
+      "version": "0.0.0-fixture"
+    }
+  },
+  "sections": {
+    "checks": {
+      "items": [
+        {
+          "after_status": "FAIL",
+          "base_status": "PASS",
+          "check_id": "C-3",
+          "name": "app reaches db",
+          "type": "Existential"
+        },
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "check_id": "C-1",
+          "name": "mgmt isolated",
+          "type": "Isolation"
+        },
+        {
+          "after_status": "PASS",
+          "base_status": "FAIL",
+          "check_id": "C-2",
+          "name": "stale BGP adverts",
+          "type": "NQE"
+        },
+        {
+          "after_status": "PASS",
+          "base_status": null,
+          "check_id": "C-4",
+          "name": "new path check",
+          "type": "Existential"
+        }
+      ],
+      "status": "ok"
+    },
+    "config": {
+      "items": [
+        {
+          "device": "edge-2",
+          "files_changed": [
+            "running_config.txt"
+          ]
+        }
+      ],
+      "status": "ok"
+    },
+    "connectivity": {
+      "evaluated_subnet_pairs": 42,
+      "location_pairs": {
+        "ADDED": [],
+        "DELETED": [
+          {
+            "count": 3,
+            "dst": "site-a",
+            "src": "site-b"
+          },
+          {
+            "count": 5,
+            "dst": "site-b",
+            "src": "site-a"
+          }
+        ],
+        "MODIFIED": []
+      },
+      "status": "ok",
+      "total_subnet_pairs": 42
+    },
+    "devices": {
+      "added": [],
+      "modified": [
+        "edge-2",
+        "edge-1"
+      ],
+      "removed": [],
+      "status": "ok"
+    },
+    "diff_counts": {
+      "families": {
+        "devices": {
+          "complete": true,
+          "count": 0
+        },
+        "interfaces": {
+          "complete": true,
+          "count": 1
+        },
+        "topology": {
+          "complete": false,
+          "count": 2
+        }
+      },
+      "status": "ok"
+    },
+    "routing": {
+      "items": [
+        {
+          "added": 0,
+          "device": "edge-2",
+          "modified": 0,
+          "removed": 6
+        },
+        {
+          "added": 1,
+          "device": "edge-1",
+          "modified": 2,
+          "removed": 0
+        }
+      ],
+      "status": "ok"
+    },
+    "vulnerabilities": {
+      "exposed_devices": 0,
+      "introduced": 0,
+      "resolved": 0,
+      "status": "ok"
+    }
+  }
+}

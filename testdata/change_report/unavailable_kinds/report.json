@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "after_kind": "collected",
+    "after_snapshot_id": "1002",
+    "base_snapshot_id": "1001",
+    "change_set_id": null,
+    "created_at": "2026-01-01T00:00:00Z",
+    "network_id": "42",
+    "schema_version": "1",
+    "sdk": {
+      "name": "forward-sdk",
+      "version": "0.0.0-fixture"
+    }
+  },
+  "sections": {
+    "ai_summary": {
+      "status": "not_requested"
+    },
+    "checks": {
+      "counts": {
+        "added": 0,
+        "fixed": 0,
+        "not_evaluated": 0,
+        "other": 0,
+        "regressed": 0,
+        "removed": 0,
+        "skipped": 0,
+        "unchanged": 1,
+        "unlicensed": 0
+      },
+      "items": [
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "change": "unchanged",
+          "check_id": "C-1",
+          "name": "mgmt isolated",
+          "type": "Isolation"
+        }
+      ],
+      "status": "ok",
+      "total": 1,
+      "truncated": false
+    },
+    "config": {
+      "reason": {
+        "kind": "feature_gated",
+        "message": "synthetic feature_gated for config"
+      },
+      "status": "unavailable"
+    },
+    "connectivity": {
+      "reason": {
+        "kind": "forbidden",
+        "message": "synthetic forbidden for connectivity"
+      },
+      "status": "unavailable"
+    },
+    "devices": {
+      "reason": {
+        "kind": "timeout",
+        "message": "synthetic timeout for devices"
+      },
+      "status": "unavailable"
+    },
+    "diff_counts": {
+      "reason": {
+        "kind": "not_ready",
+        "message": "synthetic not_ready for diff_counts"
+      },
+      "status": "unavailable"
+    },
+    "flows": {
+      "status": "not_requested"
+    },
+    "predict": {
+      "status": "not_applicable"
+    },
+    "routing": {
+      "reason": {
+        "kind": "not_served",
+        "message": "synthetic not_served for routing"
+      },
+      "status": "unavailable"
+    },
+    "security_rules": {
+      "status": "not_applicable"
+    },
+    "state": {
+      "status": "not_requested"
+    },
+    "vulnerabilities": {
+      "reason": {
+        "kind": "error",
+        "message": "synthetic error for vulnerabilities"
+      },
+      "status": "unavailable"
+    }
+  },
+  "verdict": {
+    "reasons": [],
+    "result": "no_regression"
+  }
+}

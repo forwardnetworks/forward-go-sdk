@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "after_kind": "collected",
+    "after_snapshot_id": "1002",
+    "base_snapshot_id": "1001",
+    "change_set_id": null,
+    "created_at": "2026-01-01T00:00:00Z",
+    "network_id": "42",
+    "schema_version": "1",
+    "sdk": {
+      "name": "forward-sdk",
+      "version": "0.0.0-fixture"
+    }
+  },
+  "sections": {
+    "ai_summary": {
+      "status": "not_requested"
+    },
+    "checks": {
+      "counts": {
+        "added": 0,
+        "fixed": 0,
+        "not_evaluated": 0,
+        "other": 0,
+        "regressed": 0,
+        "removed": 0,
+        "skipped": 0,
+        "unchanged": 3,
+        "unlicensed": 0
+      },
+      "items": [
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "change": "unchanged",
+          "check_id": "C-1",
+          "name": "check 1",
+          "type": "Existential"
+        },
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "change": "unchanged",
+          "check_id": "C-2",
+          "name": "check 2",
+          "type": "Existential"
+        }
+      ],
+      "status": "ok",
+      "total": 3,
+      "truncated": true
+    },
+    "config": {
+      "items": [],
+      "status": "ok",
+      "total": 0,
+      "truncated": false
+    },
+    "connectivity": {
+      "evaluated_subnet_pairs": 0,
+      "location_pairs": {
+        "ADDED": [],
+        "DELETED": [],
+        "MODIFIED": []
+      },
+      "no_forwarding_change": true,
+      "status": "ok",
+      "total": 0,
+      "total_subnet_pairs": 0,
+      "truncated": false
+    },
+    "devices": {
+      "added": [],
+      "modified": [],
+      "removed": [],
+      "status": "ok",
+      "total": 0,
+      "truncated": false
+    },
+    "diff_counts": {
+      "families": {},
+      "status": "ok"
+    },
+    "flows": {
+      "status": "not_requested"
+    },
+    "predict": {
+      "status": "not_applicable"
+    },
+    "routing": {
+      "items": [
+        {
+          "added": 1,
+          "device": "edge-1",
+          "modified": 0,
+          "removed": 0
+        },
+        {
+          "added": 2,
+          "device": "edge-2",
+          "modified": 0,
+          "removed": 0
+        }
+      ],
+      "status": "ok",
+      "total": 5,
+      "truncated": true
+    },
+    "security_rules": {
+      "status": "not_applicable"
+    },
+    "state": {
+      "status": "not_requested"
+    },
+    "vulnerabilities": {
+      "exposed_devices": null,
+      "introduced": 0,
+      "resolved": 0,
+      "status": "ok"
+    }
+  },
+  "verdict": {
+    "reasons": [],
+    "result": "no_regression"
+  }
+}

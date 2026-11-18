@@ -1,0 +1,191 @@
+{
+  "meta": {
+    "after_kind": "collected",
+    "after_snapshot_id": "1002",
+    "base_snapshot_id": "1001",
+    "change_set_id": null,
+    "network_id": "42"
+  },
+  "options": {
+    "created_at": "2026-01-01T00:00:00Z",
+    "expectations": {
+      "state_expected_removed": [
+        "bgp_session:core-1|default|192.0.2.9"
+      ]
+    },
+    "max_items": 100,
+    "sdk": {
+      "name": "forward-sdk",
+      "version": "0.0.0-fixture"
+    }
+  },
+  "sections": {
+    "checks": {
+      "items": [
+        {
+          "after_status": "PASS",
+          "base_status": "PASS",
+          "check_id": "C-1",
+          "name": "mgmt isolated",
+          "type": "Isolation"
+        }
+      ],
+      "status": "ok"
+    },
+    "config": {
+      "items": [],
+      "status": "ok"
+    },
+    "connectivity": {
+      "evaluated_subnet_pairs": 0,
+      "location_pairs": {
+        "ADDED": [],
+        "DELETED": [],
+        "MODIFIED": []
+      },
+      "status": "ok",
+      "total_subnet_pairs": 0
+    },
+    "devices": {
+      "added": [],
+      "modified": [],
+      "removed": [],
+      "status": "ok"
+    },
+    "diff_counts": {
+      "families": {},
+      "status": "ok"
+    },
+    "flows": {
+      "items": [
+        {
+          "after": {
+            "blackhole": 0,
+            "dropped": 2,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 2
+          },
+          "base": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 4
+          },
+          "expectation": "valid",
+          "name": "app to db"
+        },
+        {
+          "after": {
+            "blackhole": 0,
+            "dropped": 1,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 0
+          },
+          "base": {
+            "blackhole": 0,
+            "dropped": 0,
+            "loop": 0,
+            "other": 0,
+            "unreachable": 0,
+            "valid": 1
+          },
+          "expectation": "none",
+          "name": "guest to mgmt"
+        }
+      ],
+      "status": "ok"
+    },
+    "routing": {
+      "items": [],
+      "status": "ok"
+    },
+    "state": {
+      "after": [
+        {
+          "identity": [
+            "core-1",
+            "default",
+            "192.0.2.1"
+          ],
+          "kind": "bgp_session",
+          "value": "ESTABLISHED"
+        },
+        {
+          "identity": [
+            "edge-1",
+            "et3"
+          ],
+          "kind": "interface_admin",
+          "value": "AdminStatus.DOWN"
+        },
+        {
+          "identity": [
+            "edge-1",
+            "edge-in"
+          ],
+          "kind": "acl_entries",
+          "value": 13
+        }
+      ],
+      "base": [
+        {
+          "identity": [
+            "core-1",
+            "default",
+            "192.0.2.9"
+          ],
+          "kind": "bgp_session",
+          "value": "ESTABLISHED"
+        },
+        {
+          "identity": [
+            "core-1",
+            "default",
+            "192.0.2.1"
+          ],
+          "kind": "bgp_session",
+          "value": "ESTABLISHED"
+        },
+        {
+          "identity": [
+            "core-1",
+            "et1",
+            "edge-1",
+            "et49"
+          ],
+          "kind": "lldp_adjacency",
+          "value": "present"
+        },
+        {
+          "identity": [
+            "edge-1",
+            "et3"
+          ],
+          "kind": "interface_admin",
+          "value": "AdminStatus.UP"
+        },
+        {
+          "identity": [
+            "edge-1",
+            "edge-in"
+          ],
+          "kind": "acl_entries",
+          "value": 12
+        }
+      ],
+      "status": "ok"
+    },
+    "vulnerabilities": {
+      "exposed_devices": null,
+      "introduced": 0,
+      "resolved": 0,
+      "status": "ok"
+    }
+  }
+}
