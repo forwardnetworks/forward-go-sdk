@@ -19,7 +19,8 @@ import (
 // lands before the computation has started returns every count as zero with
 // IsPartialResult true: those zeros mean "not finished", not "nothing
 // changed". WaitForSubnetConnectivity polls past them, and the per-location
-// views below are empty until it has returned.
+// views below are empty until it has returned. Once it has returned, an empty result is a real answer: Forward compares only the
+// subnet pairs a route, ACL or NAT difference could affect, so no pairs means no forwarding change (see TotalSubnetPairs).
 
 // SubnetConnectivityDiff is Forward's SubnetConnDiffSummary.
 type SubnetConnectivityDiff struct {
@@ -33,9 +34,12 @@ type SubnetConnectivityDiff struct {
 	ModifiedImpactedLocations        int64 `json:"modifiedImpactedLocations"`
 	// EvaluatedSubnetPairs is how many pairs have been compared so far.
 	EvaluatedSubnetPairs int64 `json:"evaluatedSubnetPairs"`
-	// TotalSubnetPairs separates the two readings of a settled zero: zero
-	// pairs means nothing was compared (no locations), not that nothing
-	// changed.
+	// TotalSubnetPairs is how many pairs Forward compares, and a settled zero does NOT mean "nothing was compared because there are no
+	// locations". Forward builds only the pairs a route, ACL or NAT difference between the two snapshots could affect
+	// (LocalDiffComputer.generateDeviceSubnetPairs: no pairs when there are no device subnets or no impacted subnets), so zero pairs once
+	// IsPartialResult is false means the comparison found no forwarding change; it was also zero locations only in the degenerate case of no
+	// device subnets at all. The AutoCon6 workshop saw it live on 26.10.6: an empty route diff gave 0 pairs and six route changes gave 42
+	// (reported by forward-python-sdk). An all-zero summary with IsPartialResult true is still "not finished".
 	TotalSubnetPairs       int64 `json:"totalSubnetPairs"`
 	TotalImpactedLocations int64 `json:"totalImpactedLocations"`
 	IsPartialResult        bool  `json:"isPartialResult"`
