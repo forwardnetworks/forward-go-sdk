@@ -66,9 +66,10 @@ func ReachabilityCheckDefinition(q TracePathQuery, opts IntentCheckOptions) (map
 }
 
 // NQECheckDefinition is the definition of a check that runs a published NQE library query (queryId, such as "Q_..." from the library) with
-// optional parameters. An NQE check takes its name from the query: Forward answers 400 for a name, note or tags on one
-// ("'name' not allowed for non-parameterized NQE checks", "'note' not allowed for NQE checks", "'tags' not allowed for NQE checks";
-// ErrCheckFieldNotAllowed), so leave NewCheck.Name, Note and Tags empty with this definition; ValidateNewCheck says so before a request.
+// optional parameters. The name rule depends on the parameters (NewNetworkCheck.java): a NON-parameterized NQE check takes its name from the
+// query and Forward answers 400 "'name' not allowed for non-parameterized NQE checks" for one, while a PARAMETERIZED check (params given)
+// REQUIRES a name ("'name' required for parameterized NQE checks"). An NQE check never takes a note, and no tags ("'note' not allowed for
+// NQE checks", "'tags' not allowed for NQE checks"; ErrCheckFieldNotAllowed). ValidateNewCheck says so before a request.
 func NQECheckDefinition(queryID string, params map[string]any) (map[string]any, error) {
 	if strings.TrimSpace(queryID) == "" {
 		return nil, errors.New("forward: an NQE check needs a library query ID")
@@ -80,19 +81,41 @@ func NQECheckDefinition(queryID string, params map[string]any) (map[string]any, 
 	return def, nil
 }
 
-// ValidateNewCheck reports, without a request, the combinations Forward refuses with a 400 that CreatePersistent and Create would
-// otherwise only learn from the response: a name, note or tags on an NQE or Predefined check. Create and CreatePersistent do not call it
-// (a build may accept what another refuses); call it where an early, plain message is worth it.
+// ValidateNewCheck reports, without a request, the field combinations Forward refuses with a 400 (NewNetworkCheck's constructor), so a caller can
+// get a plain message early. Create and CreatePersistent do not call it (a build may accept what another refuses). The rules:
+//   - Predefined: no name.
+//   - NQE: no name when the definition has no params, a name REQUIRED when it has params; never a note; never tags.
+//   - tags only for Existential, Isolation and Reachability checks; a note is refused only for NQE; perfMonitoringEnabled only for Existential.
 func ValidateNewCheck(check NewCheck) error {
 	if check.Definition == nil {
 		return errors.New("forward: check definition is required")
 	}
 	checkType, _ := check.Definition["checkType"].(string)
-	if checkType != CheckTypeNetworkQuery && !strings.EqualFold(checkType, CheckTypePredefined) {
-		return nil
+	kind := strings.ToLower(strings.TrimSpace(checkType))
+	switch kind {
+	case "predefined":
+		if check.Name != "" {
+			return fmt.Errorf("forward: a Predefined check takes no name (Forward answers 400)")
+		}
+	case "nqe":
+		params, _ := check.Definition["params"].(map[string]any)
+		parameterized := len(params) != 0
+		switch {
+		case parameterized && check.Name == "":
+			return errors.New("forward: a parameterized NQE check requires a name (Forward answers 400)")
+		case !parameterized && check.Name != "":
+			return errors.New("forward: a non-parameterized NQE check takes no name: it comes from the query (Forward answers 400)")
+		}
+		if check.Note != "" {
+			return errors.New("forward: an NQE check takes no note (Forward answers 400)")
+		}
 	}
-	if check.Name != "" || check.Note != "" || len(check.Tags) != 0 {
-		return fmt.Errorf("forward: a %s check takes no name, note or tags (Forward answers 400): the name comes from the query", checkType)
+	intent := kind == "existential" || kind == "isolation" || kind == "reachability"
+	if len(check.Tags) != 0 && !intent {
+		return fmt.Errorf("forward: tags are only allowed on Existential, Isolation and Reachability checks, not %s (Forward answers 400)", checkType)
+	}
+	if check.PerfMonitoringEnabled != nil && kind != "existential" {
+		return fmt.Errorf("forward: perfMonitoringEnabled is only allowed on Existential checks, not %s (Forward answers 400)", checkType)
 	}
 	return nil
 }

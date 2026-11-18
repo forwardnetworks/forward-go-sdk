@@ -366,6 +366,16 @@ func (d NQEDraftChange) QueryPath() string {
 	return dir + name
 }
 
+// Touches reports whether this draft concerns the query or directory at path: its Path, its QueryPath, or the committed path it was based on
+// (Basis.Path). The last matters for an edit that renames or moves the query away from path, whose draft carries no Path at all; a check for
+// "someone else's draft is on this path" that reads only Path misses the most common clash (edits and deletes).
+func (d NQEDraftChange) Touches(path string) bool {
+	if path == "" {
+		return false
+	}
+	return d.Path == path || d.QueryPath() == path || (d.Basis != nil && d.Basis.Path == path)
+}
+
 // NQEChangeBasis is the committed query a draft started from: its stable ID, the commit, and its path in that commit.
 type NQEChangeBasis struct {
 	QueryID  Identifier `json:"queryId"`

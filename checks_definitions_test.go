@@ -73,15 +73,55 @@ func TestCheckFieldNotAllowedKind(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	nqe, _ := NQECheckDefinition("Q_1", nil)
 	for msg, want := range map[string]bool{
-		"'name' not allowed for non-parameterized NQE checks": true,
-		"'note' not allowed for NQE checks":                   true,
-		"'tags' not allowed for NQE checks":                   true,
-		"'name' is required":                                  false,
+		"'name' not allowed for non-parameterized NQE checks":      true,
+		"'note' not allowed for NQE checks":                        true,
+		"'tags' not allowed for NQE checks":                        true,
+		"'name' required for parameterized NQE checks":             true,
+		"'tags' not allowed for Predefined checks":                 true,
+		"'perfMonitoringEnabled' not allowed for Isolation checks": true,
+		"'name' is required":                                       false,
 	} {
 		message = msg
 		_, _, err := client.Checks.Create(context.Background(), "9", NewCheck{Definition: nqe, Name: "x"}, nil)
 		if got := errors.Is(err, ErrCheckFieldNotAllowed); got != want {
 			t.Errorf("%q: ErrCheckFieldNotAllowed = %v, want %v (%v)", msg, got, want, err)
+		}
+	}
+}
+
+// The field rules of NewNetworkCheck's constructor, written from its source: Predefined takes no name; an NQE check takes no name unless
+// it has params, when it REQUIRES one; a note is refused only for NQE; tags only for the three intent types; perfMonitoringEnabled only
+// for Existential.
+func TestValidateNewCheckRules(t *testing.T) {
+	plain, _ := NQECheckDefinition("Q_1", nil)
+	withParams, _ := NQECheckDefinition("Q_1", map[string]any{"threshold": 3})
+	predefined := map[string]any{"checkType": "Predefined", "predefinedCheckType": "VLAN_CONSISTENCY"}
+	q := TracePathQuery{From: &TraceEndpoint{Location: TraceDevice("a")}}
+	exists, _ := ExistentialCheckDefinition(q, IntentCheckOptions{})
+	isolation, _ := IsolationCheckDefinition(q, IntentCheckOptions{})
+	on := true
+	cases := []struct {
+		name  string
+		check NewCheck
+		ok    bool
+	}{
+		{"plain NQE, no fields", NewCheck{Definition: plain}, true},
+		{"plain NQE with a name", NewCheck{Definition: plain, Name: "x"}, false},
+		{"parameterized NQE without a name", NewCheck{Definition: withParams}, false},
+		{"parameterized NQE with a name", NewCheck{Definition: withParams, Name: "threshold 3"}, true},
+		{"parameterized NQE with a note", NewCheck{Definition: withParams, Name: "n", Note: "x"}, false},
+		{"NQE with tags", NewCheck{Definition: plain, Tags: []string{"a"}}, false},
+		{"predefined with a name", NewCheck{Definition: predefined, Name: "x"}, false},
+		{"predefined with a note", NewCheck{Definition: predefined, Note: "x"}, true},
+		{"predefined with tags", NewCheck{Definition: predefined, Tags: []string{"a"}}, false},
+		{"existential with name, note, tags", NewCheck{Definition: exists, Name: "n", Note: "x", Tags: []string{"a"}}, true},
+		{"existential with perfMonitoring", NewCheck{Definition: exists, PerfMonitoringEnabled: &on}, true},
+		{"isolation with perfMonitoring", NewCheck{Definition: isolation, PerfMonitoringEnabled: &on}, false},
+		{"isolation with tags", NewCheck{Definition: isolation, Tags: []string{"a"}}, true},
+	}
+	for _, tc := range cases {
+		if err := ValidateNewCheck(tc.check); (err == nil) != tc.ok {
+			t.Errorf("%s: err = %v, want ok = %v", tc.name, err, tc.ok)
 		}
 	}
 }

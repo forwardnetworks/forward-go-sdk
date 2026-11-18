@@ -122,3 +122,15 @@ func TestNQEDraftQueryPath(t *testing.T) {
 		}
 	}
 }
+
+// A draft concerns a path when the path is its Path, where it ends up, or the committed path it started from: the last catches an edit that
+// renames the query away from the path, whose draft has no Path.
+func TestNQEDraftTouches(t *testing.T) {
+	renamed := NQEDraftChange{Type: "QUERY_EDIT", Basis: &NQEChangeBasis{Path: "/team/q"}, Name: "q2"}
+	if !renamed.Touches("/team/q") || !renamed.Touches("/team/q2") || renamed.Touches("/team/other") || renamed.Touches("") {
+		t.Fatalf("a rename must touch both the old and the new path: %+v", renamed)
+	}
+	if !(NQEDraftChange{Type: "QUERY_ADD", Path: "/new/q"}).Touches("/new/q") {
+		t.Fatal("an add touches its Path")
+	}
+}

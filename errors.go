@@ -85,9 +85,10 @@ const (
 	// com.forwardnetworks.cv.config.NetworkProperty.X"): Forward defines far fewer network properties than org properties, so an org-only
 	// property such as LOCATION_CONNECTIVITY_DIFFS written per network answers this (seen live on 26.10.6).
 	ErrorKindUnknownNetworkProperty ErrorKind = "unknown-network-property"
-	// ErrorKindCheckFieldNotAllowed is the 400 Forward answers when a check create carries a name, note or tags the check type does not
-	// take ("'name' not allowed for non-parameterized NQE checks", "'note' not allowed for NQE checks", "'tags' not allowed for NQE
-	// checks"; seen live on 26.10.6 by the AutoCon6 workshop). NewCheck's Name, Note and Tags must stay empty for an NQE check.
+	// ErrorKindCheckFieldNotAllowed is the 400 Forward answers when a check create carries a name, note, tags or perfMonitoringEnabled the
+	// check type does not take, or lacks a name it requires ("'name' not allowed for non-parameterized NQE checks", "'name' required for
+	// parameterized NQE checks", "'note' not allowed for NQE checks", "'tags' not allowed for NQE checks"; the not-allowed forms for NQE were
+	// seen live on 26.10.6 by the AutoCon6 workshop, the rest are from NewNetworkCheck.java). See ValidateNewCheck for the rules.
 	ErrorKindCheckFieldNotAllowed ErrorKind = "check-field-not-allowed"
 	// ErrorKindUnrecognizedDevices is the 400 "Unrecognized devices cannot be moved: [r1, r2]" Locations.Assign gets, for the WHOLE patch,
 	// when any device in it is not one the network's classic-device list (or atlas) knows, even a device present in every snapshot (a network
@@ -517,8 +518,11 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 // unrecognizedDevicesMessage is LayoutService's Requests.validate message with the device list Java prints, "[r1, r2]".
 var unrecognizedDevicesMessage = regexp.MustCompile(`^Unrecognized devices cannot be moved: \[(.*)\]$`)
 
-// checkFieldNotAllowedMessage is the whole message of Forward's refusal of a name, note or tags on a check type that does not take them.
-var checkFieldNotAllowedMessage = regexp.MustCompile(`^'(name|note|tags)' not allowed for (non-parameterized )?(NQE|predefined) checks$`)
+// checkFieldNotAllowedMessage is the whole message of Forward's refusal of a name, note, tags or perfMonitoringEnabled a check type does not
+// take, or of a name it requires (NewNetworkCheck's constructor): "'name' not allowed for non-parameterized NQE checks", "'name' required
+// for parameterized NQE checks", "'note' not allowed for NQE checks", "'tags' not allowed for Predefined checks" (the type is
+// CheckType.toString(), its API spelling), "'perfMonitoringEnabled' not allowed for Isolation checks". Anchored.
+var checkFieldNotAllowedMessage = regexp.MustCompile(`^'(name|note|tags|perfMonitoringEnabled)' (not allowed|required) for ((non-)?parameterized NQE|[A-Za-z]+) checks$`)
 
 // orgNotAccessibleMessage is the whole message of Forward's refusal for an organization the user may not access. Anchored.
 var orgNotAccessibleMessage = regexp.MustCompile(`^Org \S+ is not accessible to user \S+$`)
