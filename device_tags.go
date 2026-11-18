@@ -117,6 +117,78 @@ func (s *DeviceTagsService) List(ctx context.Context, networkID, with string) ([
 	return result.Items, response, nil
 }
 
+// batchPath builds the addBatchTo / removeBatchFrom URL, with the snapshotId when the change is to take effect from a snapshot.
+func (s *DeviceTagsService) batchRequest(ctx context.Context, networkID, snapshotID, action, operation string, devices, tags []string) (*Response, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, err
+	}
+	devices = nonEmptyStrings(devices)
+	tags = nonEmptyStrings(tags)
+	if len(devices) == 0 || len(tags) == 0 {
+		return nil, errors.New("forward: device names and tag names are required")
+	}
+	query := url.Values{"action": []string{action}}
+	if snapshotID != "" {
+		query.Set("snapshotId", snapshotID)
+	}
+	path, _ := networkPath(networkID)
+	req, err := s.client.newJSONRequest(ctx, http.MethodPost, path+"/device-tags?"+query.Encode(), map[string][]string{"devices": devices, "tags": tags})
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Do(markOperation(req, operation), nil)
+}
+
+// AddBatchToAt is AddBatchTo with the change taking effect from a snapshot (POST ?action=addBatchTo&snapshotId=; DeviceTagController
+// addDeviceTagsToDevices, MANAGE_COLLECTION_SOURCES). Forward's spec: "the change will take effect starting from the identified network
+// Snapshot", so an NQE read of that snapshot (device.tagNames) shows the tags at once, where AddBatchTo (no snapshot, the staging instant)
+// shows them only from the next snapshot. The devices are validated against the SNAPSHOT's device and endpoint catalogs, not the network's
+// collection sources, so a virtual system or an access point the collection-source form refuses ("Unrecognized device name(s)") is
+// accepted if the snapshot has it; a name the snapshot lacks is refused with that same 400. From the spec and source, not a live test. The
+// SDK never sends validateDevices=false.
+func (s *DeviceTagsService) AddBatchToAt(ctx context.Context, networkID, snapshotID string, devices, tags []string) (*Response, error) {
+	if strings.TrimSpace(snapshotID) == "" {
+		return nil, errors.New("forward: a snapshot ID is required (use AddBatchTo for the next snapshot)")
+	}
+	return s.batchRequest(ctx, networkID, strings.TrimSpace(snapshotID), "addBatchTo", "DeviceTags.AddBatchToAt", devices, tags)
+}
+
+// RemoveBatchFromAt is RemoveBatchFrom taking effect from a snapshot (POST ?action=removeBatchFrom&snapshotId=), validated against the
+// snapshot's devices and endpoints like AddBatchToAt.
+func (s *DeviceTagsService) RemoveBatchFromAt(ctx context.Context, networkID, snapshotID string, devices, tags []string) (*Response, error) {
+	if strings.TrimSpace(snapshotID) == "" {
+		return nil, errors.New("forward: a snapshot ID is required (use RemoveBatchFrom for the next snapshot)")
+	}
+	return s.batchRequest(ctx, networkID, strings.TrimSpace(snapshotID), "removeBatchFrom", "DeviceTags.RemoveBatchFromAt", devices, tags)
+}
+
+// ListAt returns the tags with the devices that carried each as of a snapshot (GET /device-tags?with=devices&snapshotId=;
+// getDeviceTagsWithDevices, VIEW_NETWORK_AND_SNAPSHOTS). Without a snapshot List reads the staging instant instead. Forward uses the
+// snapshot to canonicalize the case of device names. Only the with=devices form takes a snapshot, so it is always sent.
+func (s *DeviceTagsService) ListAt(ctx context.Context, networkID, snapshotID string) ([]DeviceTag, *Response, error) {
+	networkID, err := s.client.resolveNetworkID(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
+		return nil, nil, errors.New("forward: a snapshot ID is required (use List for the staging instant)")
+	}
+	path, _ := networkPath(networkID)
+	path += "/device-tags?" + url.Values{"with": []string{"devices"}, "snapshotId": []string{snapshotID}}.Encode()
+	result := listResponse[DeviceTag]{Keys: []string{"tags", "items"}}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	response, err := s.client.Do(markOperation(req, "DeviceTags.ListAt"), &result)
+	if err != nil {
+		return nil, response, err
+	}
+	sort.Slice(result.Items, func(i, j int) bool { return result.Items[i].Name < result.Items[j].Name })
+	return result.Items, response, nil
+}
+
 // DeviceTagPatch changes a tag definition; nil fields are left alone. Name
 // renames it everywhere (Forward answers 409 if another tag in the network
 // already has the name), and Color is "#rrggbb" in either case.

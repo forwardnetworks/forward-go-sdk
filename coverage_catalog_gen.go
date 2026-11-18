@@ -743,13 +743,22 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"DeviceTags.AddBatchTo": {
 		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
 	},
+	"DeviceTags.AddBatchToAt": {
+		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
+	},
 	"DeviceTags.DeleteTag": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/device-tags/{tagName}"},
 	},
 	"DeviceTags.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/device-tags"},
 	},
+	"DeviceTags.ListAt": {
+		{Method: "GET", Route: "/api/networks/{networkId}/device-tags"},
+	},
 	"DeviceTags.RemoveBatchFrom": {
+		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
+	},
+	"DeviceTags.RemoveBatchFromAt": {
 		{Method: "POST", Route: "/api/networks/{networkId}/device-tags"},
 	},
 	"DeviceTags.UpdateTag": {
