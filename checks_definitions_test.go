@@ -118,6 +118,12 @@ func TestValidateNewCheckRules(t *testing.T) {
 		{"existential with perfMonitoring", NewCheck{Definition: exists, PerfMonitoringEnabled: &on}, true},
 		{"isolation with perfMonitoring", NewCheck{Definition: isolation, PerfMonitoringEnabled: &on}, false},
 		{"isolation with tags", NewCheck{Definition: isolation, Tags: []string{"a"}}, true},
+		// The legacy spellings Forward still accepts are judged by the same rules.
+		{"legacy NetworkQuery with a name", NewCheck{Definition: map[string]any{"checkType": "NetworkQuery", "queryId": "Q_1"}, Name: "x"}, false},
+		{"legacy NetworkQuery with a note", NewCheck{Definition: map[string]any{"checkType": "NetworkQuery", "queryId": "Q_1"}, Note: "x"}, false},
+		{"legacy IsolationCheck with perfMonitoring", NewCheck{Definition: map[string]any{"checkType": "IsolationCheck"}, PerfMonitoringEnabled: &on}, false},
+		{"legacy ExistentialCheck with perfMonitoring", NewCheck{Definition: map[string]any{"checkType": "ExistentialCheck"}, PerfMonitoringEnabled: &on}, true},
+		{"legacy Exists with tags", NewCheck{Definition: map[string]any{"checkType": "Exists"}, Tags: []string{"a"}}, true},
 	}
 	for _, tc := range cases {
 		if err := ValidateNewCheck(tc.check); (err == nil) != tc.ok {

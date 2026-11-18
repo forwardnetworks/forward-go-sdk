@@ -15,8 +15,10 @@ import (
 type IntentCheckOptions struct {
 	// NoiseTypes are the traffic classes to ignore as noise (Forward's NoiseType names); empty sends none.
 	NoiseTypes []string
-	// HeaderFieldsWithDefaults lists header fields Forward assumes a default for when the query gives none. Forward allows only ip_tos,
-	// tp_src, app_id, url and user_id here (a 400 otherwise).
+	// HeaderFieldsWithDefaults lists header fields Forward assumes a default for when the query gives none. Forward allows exactly seven
+	// here (SearchUtils.ALLOWED_HEADER_FIELDS_WITH_DEFAULTS: IP_TOS, IP_FRAG_OFFSET, TP_SRC, TCP_FLAGS, APP_ID, URL, USER_ID), so ip_tos,
+	// ip_frag_offset, tp_src, tcp_flags, app_id, url and user_id; anything else is a 400. (The API schema's allowableValues lists only
+	// five of them; the source's allowed set has all seven.) The SDK does not enforce the list.
 	HeaderFieldsWithDefaults []string
 	// ReturnPath is "ANY" or "SYMMETRIC": for an Existential check, also require a return path (SYMMETRIC: through the same devices in
 	// reverse). Empty means no return-path validation. Refused for the other check types.
@@ -91,7 +93,7 @@ func ValidateNewCheck(check NewCheck) error {
 		return errors.New("forward: check definition is required")
 	}
 	checkType, _ := check.Definition["checkType"].(string)
-	kind := strings.ToLower(strings.TrimSpace(checkType))
+	kind := canonicalCheckKind(checkType)
 	switch kind {
 	case "predefined":
 		if check.Name != "" {
@@ -118,4 +120,22 @@ func ValidateNewCheck(check NewCheck) error {
 		return fmt.Errorf("forward: perfMonitoringEnabled is only allowed on Existential checks, not %s (Forward answers 400)", checkType)
 	}
 	return nil
+}
+
+// canonicalCheckKind lower-cases a checkType and maps the legacy spellings Forward's CheckType.fromJson still accepts (ApiCheckType.Legacy:
+// Exists, ExistentialCheck, IsolationCheck, ReachabilityCheck, NetworkQuery) to the current names, so a body using one is judged by the
+// same rules as one using the current name.
+func canonicalCheckKind(checkType string) string {
+	switch kind := strings.ToLower(strings.TrimSpace(checkType)); kind {
+	case "exists", "existentialcheck":
+		return "existential"
+	case "isolationcheck":
+		return "isolation"
+	case "reachabilitycheck":
+		return "reachability"
+	case "networkquery":
+		return "nqe"
+	default:
+		return kind
+	}
 }
