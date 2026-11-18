@@ -131,6 +131,7 @@ type Client struct {
 	Licensing               *LicensingService
 	SoftwareCentral         *SoftwareCentralService
 	CVEIndex                *CVEIndexService
+	FwdAppConnection        *FwdAppConnectionService
 	AccessControl           *AccessControlService
 	SAML                    *SAMLService
 	Configuration           *ConfigurationService
@@ -319,6 +320,7 @@ func (c *Client) bindServices() {
 	c.Licensing = (*LicensingService)(&service{client: c})
 	c.SoftwareCentral = (*SoftwareCentralService)(&service{client: c})
 	c.CVEIndex = (*CVEIndexService)(&service{client: c})
+	c.FwdAppConnection = (*FwdAppConnectionService)(&service{client: c})
 	c.AccessControl = (*AccessControlService)(&service{client: c})
 	c.SAML = (*SAMLService)(&service{client: c})
 	c.Configuration = (*ConfigurationService)(&service{client: c})

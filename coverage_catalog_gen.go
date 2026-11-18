@@ -249,6 +249,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"CVEIndex.Put": {
 		{Method: "PUT", Route: "/api/cve-index"},
 	},
+	"CVEIndex.UpdateFromSoftwareCentral": {
+		{Method: "POST", Route: "/api/cve-index"},
+	},
 	"Checks.CheckCategoryReport": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/checks-report"},
 	},
@@ -923,6 +926,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	},
 	"Endpoints.UpdateProfile": {
 		{Method: "PATCH", Route: "/api/endpoint-profiles/{profileId}"},
+	},
+	"FwdAppConnection.Proxy": {
+		{Method: "GET", Route: "/api/fwd-app-proxy"},
+	},
+	"FwdAppConnection.Test": {
+		{Method: "POST", Route: "/api/fwd-app-connection"},
 	},
 	"Integrations.AddCheckIncident": {
 		{Method: "POST", Route: "/api/snapshots/{snapshotId}/checks/{checkId}"},
