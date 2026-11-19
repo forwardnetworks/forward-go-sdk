@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -191,4 +192,34 @@ func networkConfigPath(s *PropertiesService, networkID string, property NetworkP
 		return "", err
 	}
 	return "/api/networks/" + url.PathEscape(networkID) + "/config/" + name, nil
+}
+
+var orgPropertyNamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+
+// CurrentValue reads the effective value of ONE organization property for the caller's organization (GET /api/config/{property};
+// ConfigController.getConfigValue, @RequiresUser: any signed-in user). Use it instead of Current when only a few properties are needed:
+// Current returns the whole map, including the organization's ALLOWED_IPS and its password policy, which a restricted session may not read.
+// Forward answers {"<property>": value}, with the key in lower case on a 26.11 build seen live (predict_modeling), so the value is found
+// ignoring case. The name must be an OrgProperty name (letters, digits, underscore); it is sent upper-cased, as the enum spells it. A name
+// Forward does not define is its 400 "No enum constant ...OrgProperty.X", which is ErrUnknownOrgProperty (IsUnknownOrgProperty). Preview:
+// from Forward's source, not a live call to this method.
+func (s *PropertiesService) CurrentValue(ctx context.Context, property OrgProperty) (json.RawMessage, *Response, error) {
+	name := strings.ToUpper(strings.TrimSpace(string(property)))
+	if !orgPropertyNamePattern.MatchString(name) {
+		return nil, nil, fmt.Errorf("forward: %q is not an organization property name (letters, digits and underscore)", property)
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodGet, "/api/config/"+name, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	values := PropertyValues{}
+	resp, err := s.client.Do(markOperation(req, "Properties.CurrentValue"), &values)
+	if err != nil {
+		return nil, resp, err
+	}
+	raw := propertyRaw(values, OrgProperty(name))
+	if raw == nil {
+		return nil, resp, fmt.Errorf("forward: the answer for %s does not carry the property", name)
+	}
+	return raw, resp, nil
 }

@@ -1870,6 +1870,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Properties.Current": {
 		{Method: "GET", Route: "/api/config"},
 	},
+	"Properties.CurrentValue": {
+		{Method: "GET", Route: "/api/config/{property}"},
+	},
 	"Properties.DescribeOrganization": {
 		{Method: "GET", Route: "/api/global-config"},
 		{Method: "GET", Route: "/api/orgs/{orgId}/config"},
