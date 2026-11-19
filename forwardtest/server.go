@@ -111,7 +111,8 @@ func (s *Server) Client(configure ...func(*forward.Config)) *forward.Client {
 
 // Handle answers requests to method and path with the replies in order; the last reply repeats once the list runs out. The path is
 // matched without its query string, and a "*" segment matches any one segment (/api/networks/*/snapshots). A later Handle for the
-// same method and path replaces nothing: the most specific route wins, then the earliest.
+// same method and path replaces nothing: the most specific route wins (a query condition outranks any path; then the route with more
+// literal segments), then the earliest registered.
 func (s *Server) Handle(method, path string, replies ...Reply) {
 	s.add(&route{method: method, pattern: segments(path), replies: replies})
 }
@@ -172,7 +173,14 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		if candidate.method != r.Method || !matchSegments(candidate.pattern, segments(r.URL.Path)) || !hasQuery(r.URL.Query(), candidate.query) {
 			continue
 		}
-		score := len(candidate.query)*10 - strings.Count(strings.Join(candidate.pattern, "/"), "*")
+		// Specificity: every query condition outweighs any path (1000 each), then a literal path segment counts 1 and a "*" segment 0. A
+		// route that fits is always eligible (the score is never negative), the highest score wins and the earliest registered wins a tie.
+		score := len(candidate.query) * 1000
+		for _, segment := range candidate.pattern {
+			if segment != "*" {
+				score++
+			}
+		}
 		if score > bestScore {
 			best, bestScore = candidate, score
 		}

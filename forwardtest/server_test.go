@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,4 +126,61 @@ func TestReceivedBGPScenario(t *testing.T) {
 	if err != nil || none == nil || len(none) != 0 {
 		t.Fatalf("none=%#v err=%v", none, err)
 	}
+}
+
+// A route whose only specificity is a "*" segment must match (Skyforge's report: Handle("GET", "/api/networks/*/snapshots") answered 404),
+// the more literal route wins whatever the registration order, a query condition outranks the path, and a segment count that differs never fits.
+func TestWildcardRoutesMatchAndRankBySpecificity(t *testing.T) {
+	srv := forwardtest.New(t)
+	srv.Handle(http.MethodGet, "/api/networks/*/snapshots", forwardtest.JSON(http.StatusOK, []string{"wild"}))
+	srv.Handle(http.MethodGet, "/api/networks/7/snapshots", forwardtest.JSON(http.StatusOK, []string{"exact"}))
+	srv.Handle(http.MethodGet, "/api/*/*/*", forwardtest.JSON(http.StatusOK, []string{"all-wild"}))
+	srv.HandleQuery(http.MethodGet, "/api/networks/*/devices", url.Values{"with": {"x"}}, forwardtest.JSON(http.StatusOK, []string{"query"}))
+	srv.Handle(http.MethodGet, "/api/networks/7/devices", forwardtest.JSON(http.StatusOK, []string{"exact-devices"}))
+	client := srv.Client()
+	get := func(path string) string {
+		t.Helper()
+		var out []string
+		var resp *forward.Response
+		var err error
+		out, resp, err = rawStrings(client, path)
+		if err != nil {
+			return "ERR " + err.Error() + " " + fmt.Sprint(resp)
+		}
+		return strings.Join(out, ",")
+	}
+	if got := get("/api/networks/123/snapshots"); got != "wild" {
+		t.Errorf("a wildcard-only route must match: %q", got)
+	}
+	if got := get("/api/networks/7/snapshots"); got != "exact" {
+		t.Errorf("the exact route must beat the wildcard one even though it was registered after: %q", got)
+	}
+	if got := get("/api/networks/9/other"); got != "all-wild" {
+		t.Errorf("the least specific wildcard route is still eligible: %q", got)
+	}
+	if got := get("/api/networks/7/devices?with=x"); got != "query" {
+		t.Errorf("a query condition outranks the path: %q", got)
+	}
+	if got := get("/api/networks/7/devices"); got != "exact-devices" {
+		t.Errorf("without the query the exact route answers: %q", got)
+	}
+	// Two routes of equal specificity that both fit: the earliest registered answers.
+	srv.Handle(http.MethodGet, "/api/tie/*/x", forwardtest.JSON(http.StatusOK, []string{"first"}))
+	srv.Handle(http.MethodGet, "/api/tie/y/*", forwardtest.JSON(http.StatusOK, []string{"second"}))
+	if got := get("/api/tie/y/x"); got != "first" {
+		t.Errorf("a tie goes to the earliest registered route: %q", got)
+	}
+	if got := get("/api/networks/7/snapshots/extra"); !strings.HasPrefix(got, "ERR") {
+		t.Errorf("a longer path must not fit a shorter pattern: %q", got)
+	}
+}
+
+func rawStrings(client *forward.Client, path string) ([]string, *forward.Response, error) {
+	req, err := client.NewRequest(context.Background(), http.MethodGet, path, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	var out []string
+	resp, err := client.Do(req, &out)
+	return out, resp, err
 }
