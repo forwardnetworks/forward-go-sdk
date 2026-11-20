@@ -1890,6 +1890,11 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 		{Method: "GET", Route: "/api/global-config"},
 		{Method: "GET", Route: "/api/orgs/{orgId}/config"},
 	},
+	"Properties.EffectiveOrganizationValue": {
+		{Method: "GET", Route: "/api/global-config"},
+		{Method: "GET", Route: "/api/orgs/{orgId}/config"},
+		{Method: "GET", Route: "/api/orgs/{orgId}/config/{property}"},
+	},
 	"Properties.Global": {
 		{Method: "GET", Route: "/api/global-config"},
 	},

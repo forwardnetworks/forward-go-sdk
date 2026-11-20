@@ -50,9 +50,15 @@ func (s *PropertiesService) OrganizationValue(ctx context.Context, orgID string,
 	return s.get(ctx, "Properties.OrganizationValue", "/api/orgs/"+url.PathEscape(orgID)+"/config/"+name)
 }
 
-// OrganizationOverrides reads, for ONE property, the value every org overrides it to, keyed by org id (GET /api/global-config/{property}?
-// view=overrides; Forward support: a support user sees the orgs it supports, a Forward admin all). An org absent from the map has no
-// override and takes the default. This is the efficient read across all orgs: one call per property, not one per org.
+// OrganizationOverrides reads, for ONE property, the stored org-level rows, keyed by org id (GET /api/global-config/{property}?
+// view=overrides; Forward support: a support user sees the orgs it supports, a Forward admin all). It is NOT effective values:
+// ConfigController.getConfigPropertyOverrides returns configService.getOrgOverrides(property), every stored org-level row
+// (ObjType.CONFIG_PROPERTY_ORG), uncached, including rows equal to the default and nothing from the global level. Forward does not
+// remove an org's config rows when the org is deleted, so the map can hold ORPHAN rows of orgs that no longer exist (measured on
+// primary 1.0.0-261118: 332 PROD rows, all for ids whose GET /api/orgs/{id}/config is 404); intersect with the live org list before
+// trusting a count. An org absent from the map has no org-level row and takes the global value (the global override if one is set,
+// else the built-in default); an org with a row reads that row whatever the global value is. For what an org actually gets, use
+// EffectiveOrganizationValue or OrganizationValue. One call per property, not one per org.
 func (s *PropertiesService) OrganizationOverrides(ctx context.Context, property OrgProperty) (map[string]json.RawMessage, *Response, error) {
 	name, err := propertyName(string(property))
 	if err != nil {
@@ -222,4 +228,54 @@ func (s *PropertiesService) CurrentValue(ctx context.Context, property OrgProper
 		return nil, resp, fmt.Errorf("forward: the answer for %s does not carry the property", name)
 	}
 	return raw, resp, nil
+}
+
+// PropertySource says which level an effective property value came from.
+type PropertySource string
+
+const (
+	// PropertySourceOrganization: the org has its own override row.
+	PropertySourceOrganization PropertySource = "organization"
+	// PropertySourceGlobal: no org row, and a global override is set.
+	PropertySourceGlobal PropertySource = "global"
+	// PropertySourceDefault: neither, so the property's built-in default applies.
+	PropertySourceDefault PropertySource = "default"
+)
+
+// EffectiveOrganizationValue is one org's effective value of a property and the level it comes from.
+type EffectiveOrganizationValue struct {
+	// Value is what the org gets (GET /api/orgs/{orgId}/config/{property}), so it is right even if Source were not.
+	Value  json.RawMessage
+	Source PropertySource
+}
+
+// EffectiveOrganizationValue reads an org's effective value of one property and which level it comes from, so a caller cannot
+// mistake the per-property overrides list for effective values. Value is the org's own read; Source comes from two more reads, the
+// org's configured rows (GET /api/orgs/{orgId}/config?filter=CONFIGURED) and the global overrides (GET
+// /api/global-config?filter=CONFIGURED), following Forward's rule that an org row beats a global override, which beats the built-in
+// default (ReadOnlyConfigService.getValue). Needs Forward support permission, as OrganizationValue does. Preview: composed from
+// existing reads, untested against a live Forward.
+func (s *PropertiesService) EffectiveOrganizationValue(ctx context.Context, orgID string, property OrgProperty) (*EffectiveOrganizationValue, *Response, error) {
+	value, resp, err := s.OrganizationValue(ctx, orgID, property)
+	if err != nil {
+		return nil, resp, err
+	}
+	out := &EffectiveOrganizationValue{Value: propertyRaw(value, property)}
+	own, resp, err := s.Organization(ctx, orgID, PropertyFilterConfigured)
+	if err != nil {
+		return nil, resp, err
+	}
+	if propertyRaw(own, property) != nil {
+		out.Source = PropertySourceOrganization
+		return out, resp, nil
+	}
+	global, resp, err := s.Global(ctx, PropertyFilterConfigured)
+	if err != nil {
+		return nil, resp, err
+	}
+	out.Source = PropertySourceDefault
+	if propertyRaw(global, property) != nil {
+		out.Source = PropertySourceGlobal
+	}
+	return out, resp, nil
 }
