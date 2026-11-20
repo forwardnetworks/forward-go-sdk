@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "name": "k8s1",
+      "requestedDeviceName": "k8s1",
+      "relatedDevicesWithoutSnapshots": ["k8s1_cp1", "k8s1_default_web-a", "k8s1_w1"],
+      "vendor": "k8s_cni_control_plane",
+      "deviceType": "K8S_CNI_CONTROL_PLANE",
+      "files": ["k8s1,acl_conf.txt", "k8s1,k8s_cni_nodes.json", "k8s1,metadata.txt"],
+      "states": ["acl_conf", "metadata", "k8s_cni_nodes"],
+      "collectionIp": "192.0.2.10",
+      "collectionPort": 6443,
+      "createdBy": "k8s_cni_control_plane_api",
+      "error": "NONE",
+      "customCommandError": "NONE",
+      "collectionInstantMillis": 1795139294795,
+      "clientPackageVersion": "1.0.0-261118-x",
+      "futureField": {"a": 1}
+    },
+    {"name": "sw1", "vendor": "cisco", "deviceType": "CISCO_IOS_XE", "relatedDevicesWithoutSnapshots": ["k8s1_w1"]}
+  ]
+}
