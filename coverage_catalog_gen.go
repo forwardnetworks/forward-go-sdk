@@ -312,8 +312,15 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"ClassicDevices.ConnTypes": {
 		{Method: "GET", Route: "/api/deviceConnTypes"},
 	},
+	"ClassicDevices.ConnTypesExposed": {
+		{Method: "GET", Route: "/api/deviceConnTypes"},
+	},
 	"ClassicDevices.Create": {
 		{Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
+	},
+	"ClassicDevices.CreateWithAPIKey": {
+		{Method: "POST", Route: "/api/networks/{networkId}/classic-devices"},
+		{Method: "POST", Route: "/api/networks/{networkId}/http-credentials"},
 	},
 	"ClassicDevices.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/classic-devices/{deviceName}"},
