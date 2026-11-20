@@ -2083,6 +2083,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Snapshots.Logs": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/logs"},
 	},
+	"Snapshots.MergeFileIntoLatest": {
+		{Method: "POST", Route: "/api/networks/{networkId}/snapshots"},
+	},
+	"Snapshots.MergeIntoLatest": {
+		{Method: "POST", Route: "/api/networks/{networkId}/snapshots"},
+	},
 	"Snapshots.Metrics": {
 		{Method: "GET", Route: "/api/snapshots/{snapshotId}/metrics"},
 	},

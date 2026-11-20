@@ -95,6 +95,10 @@ const (
 	// fed only by snapshot uploads). Seen live on 26.10.6 by the AutoCon6 workshop; what worked there was creating each device with
 	// ClassicDevices.Create (collect=false, no credentials) and assigning again. ErrorResponse.UnrecognizedDevices lists them.
 	ErrorKindUnrecognizedDevices ErrorKind = "unrecognized-devices"
+	// ErrorKindSnapshotMergeConflict is the 409 "Conflicting devices" Snapshots.MergeIntoLatest gets with mergeType NONE when a device is in
+	// both the uploaded ZIP and the latest snapshot (SnapshotController.mergeAndCreateSnapshot; from source, not seen live).
+	// ErrorResponse.ConflictDevices lists them, sorted.
+	ErrorKindSnapshotMergeConflict ErrorKind = "snapshot-merge-conflict"
 	// ErrorKindOrgNotAccessible is the 403 "Org <id> is not accessible to user <id>" a support or cross-org key gets for an organization that
 	// has not granted it access (seen live on 26.10.6 with a support-org key on /api/orgs/{id}/config).
 	ErrorKindOrgNotAccessible ErrorKind = "org-not-accessible"
@@ -124,6 +128,7 @@ var (
 	ErrOrgNotAccessible                  = errors.New("forward: the organization is not accessible to this user")
 	ErrCheckFieldNotAllowed              = errors.New("forward: the check type does not take that field")
 	ErrUnrecognizedDevices               = errors.New("forward: the network does not know some of the devices named")
+	ErrSnapshotMergeConflict             = errors.New("forward: devices are in both the uploaded snapshot and the latest one")
 	ErrGlobalDefaultNotAllowed           = errors.New("forward: the property can only be set per organization, not as a global default")
 )
 
@@ -183,9 +188,11 @@ type ErrorResponse struct {
 	GateProperty string `json:"-"`
 	// UnrecognizedDevices names the devices of an ErrorKindUnrecognizedDevices refusal, in the order Forward listed them.
 	UnrecognizedDevices []string `json:"-"`
-	GateEnabled         bool     `json:"-"`
-	GateScope           string   `json:"-"`
-	Body                []byte   `json:"-"`
+	// ConflictDevices names the devices of an ErrorKindSnapshotMergeConflict refusal (the body's conflictDevices), sorted by Forward.
+	ConflictDevices []string `json:"conflictDevices,omitempty"`
+	GateEnabled     bool     `json:"-"`
+	GateScope       string   `json:"-"`
+	Body            []byte   `json:"-"`
 }
 
 // Is lets callers use errors.Is with the stable classification sentinels.
@@ -236,6 +243,8 @@ func (e *ErrorResponse) Is(target error) bool {
 		return e.Kind == ErrorKindCheckFieldNotAllowed
 	case ErrUnrecognizedDevices:
 		return e.Kind == ErrorKindUnrecognizedDevices
+	case ErrSnapshotMergeConflict:
+		return e.Kind == ErrorKindSnapshotMergeConflict
 	case ErrGlobalDefaultNotAllowed:
 		return e.Kind == ErrorKindGlobalDefaultNotAllowed
 	default:
@@ -405,6 +414,11 @@ func classifyErrorResponse(apiErr *ErrorResponse) ErrorKind {
 	// RateDetectionFilter / SessionRateLimitFilter: 429 "Rate limit exceeded, please try again later".
 	if status == http.StatusTooManyRequests && strings.HasPrefix(strings.TrimSpace(apiErr.Message), "Rate limit exceeded") {
 		return ErrorKindRateLimited
+	}
+	// SnapshotController.mergeAndCreateSnapshot: ConflictException("Conflicting devices", {conflictDevices: [...]}) on action=merge.
+	if status == http.StatusConflict && requestHasQueryValue(apiErr.Response, "action", "merge") &&
+		(len(apiErr.ConflictDevices) != 0 || strings.EqualFold(strings.TrimSpace(apiErr.Message), "Conflicting devices")) {
+		return ErrorKindSnapshotMergeConflict
 	}
 	if status == http.StatusConflict && serviceNowAsleepMessage.MatchString(strings.TrimSpace(apiErr.Message)) {
 		return ErrorKindServiceNowInstanceAsleep
