@@ -534,6 +534,12 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"ControllerManagedSetups.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}"},
 	},
+	"ControllerManagedSetups.DeleteController": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}/controllers/{name}"},
+	},
+	"ControllerManagedSetups.DeleteManagedDevice": {
+		{Method: "DELETE", Route: "/api/networks/{networkId}/controller-managed-setups/{setupName}/managed-devices/{name}"},
+	},
 	"ControllerManagedSetups.List": {
 		{Method: "GET", Route: "/api/networks/{networkId}/controller-managed-setups"},
 	},

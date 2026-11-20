@@ -675,3 +675,41 @@ func (s *ControllerManagedSetupsService) patchMember(ctx context.Context, networ
 	req = markOperation(req, operation)
 	return s.client.Do(req, out)
 }
+
+// DeleteController removes one controller from a setup without restating the others (DELETE
+// /api/networks/{id}/controller-managed-setups/{setup}/controllers/{name}, ControllerManagedSetupController.deleteControllerDevice,
+// DELETE_COLLECTION_SOURCES, 204; mapped at both pinned builds). Removing the setup's LAST controller is a 400 (the setup would be
+// left with none; ControllerManagedSetupService.deleteControllerDevice maps IllegalArgumentException to BadRequestException), so
+// delete the whole setup with Delete instead. A 404 is success (the member, or its setup, is already absent), so a typo in the setup
+// name also reads as success. Preview.
+func (s *ControllerManagedSetupsService) DeleteController(ctx context.Context, networkID, setupName, controllerName string) (*Response, error) {
+	return s.deleteMember(ctx, networkID, setupName, "controllers", controllerName, "ControllerManagedSetups.DeleteController")
+}
+
+// DeleteManagedDevice removes one guest device from a setup without restating the others (DELETE
+// .../controller-managed-setups/{setup}/managed-devices/{name}, deleteManagedDevice, DELETE_COLLECTION_SOURCES, 204). Removing the
+// last managed device is a 400, as for DeleteController; a 404 is success. Preview.
+func (s *ControllerManagedSetupsService) DeleteManagedDevice(ctx context.Context, networkID, setupName, deviceName string) (*Response, error) {
+	return s.deleteMember(ctx, networkID, setupName, "managed-devices", deviceName, "ControllerManagedSetups.DeleteManagedDevice")
+}
+
+func (s *ControllerManagedSetupsService) deleteMember(ctx context.Context, networkID, setupName, kind, memberName, operation string) (*Response, error) {
+	setupName, memberName = strings.TrimSpace(setupName), strings.TrimSpace(memberName)
+	if setupName == "" || memberName == "" {
+		return nil, errors.New("forward: controller-managed setup name and device name are required")
+	}
+	base, err := s.base(networkID)
+	if err != nil {
+		return nil, err
+	}
+	req, err := s.client.NewRequest(ctx, http.MethodDelete, base+"/"+url.PathEscape(strings.ToLower(setupName))+"/"+kind+"/"+url.PathEscape(memberName), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = markOperation(req, operation)
+	resp, err := s.client.Do(req, nil)
+	if isGone(err) {
+		return resp, nil
+	}
+	return resp, err
+}
