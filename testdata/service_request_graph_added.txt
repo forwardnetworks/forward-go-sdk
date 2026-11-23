@@ -1,0 +1,7 @@
+CloudManagedSetups.CreateMeraki
+CloudManagedSetups.DeleteMeraki
+CloudManagedSetups.DiscoverMeraki
+CloudManagedSetups.GetMeraki
+CloudManagedSetups.ListMeraki
+CloudManagedSetups.PatchMeraki
+CloudManagedSetups.TestMeraki

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -160,7 +164,7 @@ func TestJobsCancelNotFound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Jobs.Cancel(context.Background(), "gone"); !IsStatus(err, http.StatusNotFound) {
+	if _, err := client.Jobs.Cancel(context.Background(), "gone"); !ports.IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("Cancel() error = %v, want 404", err)
 	}
 }

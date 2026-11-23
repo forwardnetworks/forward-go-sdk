@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"net/http"
 	"testing"
@@ -19,7 +24,7 @@ func TestOrgHTTPCredentialRoutes(t *testing.T) {
 	c := newTestClient(t, server.URL).Credentials
 	ctx := context.Background()
 
-	created, _, err := c.CreateOrgHTTP(ctx, HTTPCredentialRequest{Name: "tvm", Username: "AK", Password: "SK"})
+	created, _, err := c.CreateOrgHTTP(ctx, domain.HTTPCredentialRequest{Name: "tvm", Username: "AK", Password: "SK"})
 	if err != nil || created.ID != "H-3" || created.PasswordID != "S-9" || created.CreatedBy != "ada" {
 		t.Fatalf("CreateOrgHTTP = %+v, %v", created, err)
 	}
@@ -36,7 +41,7 @@ func TestOrgHTTPCredentialRoutes(t *testing.T) {
 	}
 
 	newName := "tvm2"
-	updated, _, err := c.UpdateOrgHTTP(ctx, "H-3", HTTPCredentialPatch{Name: &newName})
+	updated, _, err := c.UpdateOrgHTTP(ctx, "H-3", domain.HTTPCredentialPatch{Name: &newName})
 	if err != nil || updated.ID != "H-3" {
 		t.Fatalf("UpdateOrgHTTP = %+v, %v", updated, err)
 	}
@@ -45,7 +50,7 @@ func TestOrgHTTPCredentialRoutes(t *testing.T) {
 	}
 
 	// An API_KEY credential carries no username: it must reach the server and send no username key.
-	if _, _, err := c.CreateOrgHTTP(ctx, HTTPCredentialRequest{Type: "API_KEY", Name: "key", Password: "SK"}); err != nil {
+	if _, _, err := c.CreateOrgHTTP(ctx, domain.HTTPCredentialRequest{Type: "API_KEY", Name: "key", Password: "SK"}); err != nil {
 		t.Fatalf("a valid API_KEY credential was refused: %v", err)
 	}
 	if g := (*seen)[3]; g.body != `{"type":"API_KEY","name":"key","password":"SK"}` {
@@ -55,24 +60,24 @@ func TestOrgHTTPCredentialRoutes(t *testing.T) {
 	before := len(*seen)
 	for name, call := range map[string]func() error{
 		"login without username": func() error {
-			_, _, err := c.CreateOrgHTTP(ctx, HTTPCredentialRequest{Name: "x", Password: "p"})
+			_, _, err := c.CreateOrgHTTP(ctx, domain.HTTPCredentialRequest{Name: "x", Password: "p"})
 			return err
 		},
 		"username with space": func() error {
-			_, _, err := c.CreateOrgHTTP(ctx, HTTPCredentialRequest{Name: "x", Username: "a b", Password: "p"})
+			_, _, err := c.CreateOrgHTTP(ctx, domain.HTTPCredentialRequest{Name: "x", Username: "a b", Password: "p"})
 			return err
 		},
 		"api key with username": func() error {
-			_, _, err := c.CreateOrgHTTP(ctx, HTTPCredentialRequest{Type: "API_KEY", Name: "x", Username: "u", Password: "p"})
+			_, _, err := c.CreateOrgHTTP(ctx, domain.HTTPCredentialRequest{Type: "API_KEY", Name: "x", Username: "u", Password: "p"})
 			return err
 		},
 		"no password": func() error {
-			_, _, err := c.CreateOrgHTTP(ctx, HTTPCredentialRequest{Name: "x", Username: "u"})
+			_, _, err := c.CreateOrgHTTP(ctx, domain.HTTPCredentialRequest{Name: "x", Username: "u"})
 			return err
 		},
 		"get no id": func() error { _, _, err := c.GetOrgHTTP(ctx, " "); return err },
 		"update no id": func() error {
-			_, _, err := c.UpdateOrgHTTP(ctx, "", HTTPCredentialPatch{})
+			_, _, err := c.UpdateOrgHTTP(ctx, "", domain.HTTPCredentialPatch{})
 			return err
 		},
 		"delete no id": func() error { _, err := c.DeleteOrgHTTP(ctx, ""); return err },
@@ -108,7 +113,7 @@ func TestOrgHTTPCredentialListAndDelete(t *testing.T) {
 
 	// Forward refuses the delete while a scanner uses the credential; that is the caller's to see, not swallowed.
 	busy, _ := vulnRecorder(t, http.StatusBadRequest, `{"httpStatusCode":400,"message":"HTTP Credential H-1 is used by 1 sources, e.g.: tvm"}`)
-	if _, err := newTestClient(t, busy.URL).Credentials.DeleteOrgHTTP(context.Background(), "H-1"); !IsStatus(err, http.StatusBadRequest) {
+	if _, err := newTestClient(t, busy.URL).Credentials.DeleteOrgHTTP(context.Background(), "H-1"); !ports.IsStatus(err, http.StatusBadRequest) {
 		t.Fatalf("a refused delete = %v, want a 400", err)
 	}
 }

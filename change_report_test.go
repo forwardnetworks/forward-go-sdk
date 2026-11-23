@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
@@ -27,7 +31,7 @@ func TestChangeReportGoldens(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			report, err := AssembleChangeReport(raw)
+			report, err := domain.AssembleChangeReport(raw)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -40,7 +44,7 @@ func TestChangeReportGoldens(t *testing.T) {
 				t.Errorf("report.md differs:\n%s", firstDifference(string(wantMD), got))
 			}
 			// The renderer reads only report.json: rendering the parsed golden gives the same text.
-			parsed, err := ParseChangeReport(wantJSON)
+			parsed, err := domain.ParseChangeReport(wantJSON)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -169,19 +173,19 @@ func TestChangeReportInputErrors(t *testing.T) {
 		"unknown section status":  replace(base("collected", ""), "routing", `{"status":"maybe"}`),
 	}
 	for name, input := range cases {
-		if _, err := AssembleChangeReport([]byte(input)); err == nil {
+		if _, err := domain.AssembleChangeReport([]byte(input)); err == nil {
 			t.Errorf("%s: expected an input error", name)
 		}
 	}
 	// The same shapes without the defect assemble: an `any` flow that loses its path never drives the verdict.
 	lost := `{"blackhole":0,"dropped":1,"loop":0,"other":0,"unreachable":0,"valid":0}`
 	ok := base("collected", `,"flows":{"status":"ok","items":[`+flow(`,"expectation":"any","base":`+counts+`,"after":`+lost)+`]}`)
-	report, err := AssembleChangeReport([]byte(ok))
-	if err != nil || report.Verdict() != ChangeReportNoRegression {
+	report, err := domain.AssembleChangeReport([]byte(ok))
+	if err != nil || report.Verdict() != domain.ChangeReportNoRegression {
 		t.Fatalf("an `any` flow must not drive the verdict: %v %v", err, report.Verdict())
 	}
 	valid := base("collected", `,"flows":{"status":"ok","items":[`+flow(`,"expectation":"valid","base":`+counts+`,"after":`+lost)+`]}`)
-	if report, err := AssembleChangeReport([]byte(valid)); err != nil || report.Verdict() != ChangeReportRegression {
+	if report, err := domain.AssembleChangeReport([]byte(valid)); err != nil || report.Verdict() != domain.ChangeReportRegression {
 		t.Fatalf("a `valid` flow that loses its path regresses: %v", err)
 	}
 }

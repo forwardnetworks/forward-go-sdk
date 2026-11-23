@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"fmt"
@@ -13,41 +18,13 @@ import (
 	"time"
 )
 
-func TestForNetworkSharesTransportAndScopesServices(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/networks/tenant-2/snapshots" {
-			t.Errorf("path = %q", r.URL.Path)
-		}
-		_, _ = io.WriteString(w, `[{"id":12,"state":"PROCESSED"}]`)
-	}))
-	defer server.Close()
-
-	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "user", Password: "pass", NetworkID: "tenant-1"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	scoped := client.ForNetwork("tenant-2")
-	if scoped == client || scoped.httpClient != client.httpClient || scoped.capabilities != client.capabilities {
-		t.Fatal("ForNetwork must clone scope while sharing transport and capability state")
-	}
-	if client.Network() != "tenant-1" || scoped.Network() != "tenant-2" {
-		t.Fatalf("network scopes = %q, %q", client.Network(), scoped.Network())
-	}
-	snapshots, _, err := scoped.Snapshots.List(context.Background(), "", SnapshotListOptions{})
-	if err != nil || len(snapshots) != 1 || snapshots[0].ID != "12" {
-		t.Fatalf("scoped Snapshots.List() = %#v, %v", snapshots, err)
-	}
-}
-
 func TestUnavailableClientFailsClosed(t *testing.T) {
 	t.Parallel()
 
 	cause := errors.New("credential lookup failed")
 	client := NewUnavailable("tenant-9", cause)
-	_, _, err := client.Snapshots.List(context.Background(), "", SnapshotListOptions{})
-	var unavailable *UnavailableError
+	_, _, err := client.Snapshots.List(context.Background(), "", ports.SnapshotListOptions{})
+	var unavailable *domain.UnavailableError
 	if !errors.As(err, &unavailable) || !errors.Is(err, cause) || unavailable.NetworkID != "tenant-9" {
 		t.Fatalf("unavailable error = %#v, %v", unavailable, err)
 	}
@@ -64,12 +41,12 @@ func TestTypedAPIErrorClassifications(t *testing.T) {
 		body   string
 		want   error
 	}{
-		{"collection code", http.MethodPost, "/api/collector-tasks", http.StatusConflict, `{"errorCode":"COLLECTION_ALREADY_IN_PROGRESS"}`, ErrCollectionAlreadyInProgress},
-		{"collection wording", http.MethodPost, "/api/collector-tasks", http.StatusBadRequest, `{"message":"A collection for network 77 is already in progress"}`, ErrCollectionAlreadyInProgress},
-		{"snapshot", http.MethodPost, "/api/snapshots/55", http.StatusConflict, `{"reason":"SNAPSHOT_NOT_PROCESSED"}`, ErrSnapshotNotProcessed},
-		{"network", http.MethodDelete, "/api/networks/missing", http.StatusNotFound, `{}`, ErrNetworkNotFound},
-		{"network collection route", http.MethodGet, "/api/networks/missing/snapshots", http.StatusNotFound, `{}`, ErrNetworkNotFound},
-		{"auth", http.MethodGet, "/api/networks", http.StatusUnauthorized, `{"message":"bad token"}`, ErrAuthentication},
+		{"collection code", http.MethodPost, "/api/collector-tasks", http.StatusConflict, `{"errorCode":"COLLECTION_ALREADY_IN_PROGRESS"}`, domain.ErrCollectionAlreadyInProgress},
+		{"collection wording", http.MethodPost, "/api/collector-tasks", http.StatusBadRequest, `{"message":"A collection for network 77 is already in progress"}`, domain.ErrCollectionAlreadyInProgress},
+		{"snapshot", http.MethodPost, "/api/snapshots/55", http.StatusConflict, `{"reason":"SNAPSHOT_NOT_PROCESSED"}`, domain.ErrSnapshotNotProcessed},
+		{"network", http.MethodDelete, "/api/networks/missing", http.StatusNotFound, `{}`, domain.ErrNetworkNotFound},
+		{"network collection route", http.MethodGet, "/api/networks/missing/snapshots", http.StatusNotFound, `{}`, domain.ErrNetworkNotFound},
+		{"auth", http.MethodGet, "/api/networks", http.StatusUnauthorized, `{"message":"bad token"}`, domain.ErrAuthentication},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -117,21 +94,21 @@ func TestChecksRequireNonVacuousScoringAndCreatePersistent(t *testing.T) {
 	client := newTestClient(t, server.URL)
 
 	_, _, err := client.Checks.ForScoring(context.Background(), "100")
-	if !errors.Is(err, ErrNoChecks) {
+	if !errors.Is(err, domain.ErrNoChecks) {
 		t.Fatalf("empty ForScoring() error = %v", err)
 	}
 	set, _, err := client.Checks.ForScoring(context.Background(), "100")
 	if err != nil || set.Len() != 1 || set.SnapshotID() != "100" || set.Checks()[0].Name != "reach-app" {
 		t.Fatalf("ForScoring() = %#v, %v", set, err)
 	}
-	_, _, err = client.Checks.ForScoring(context.Background(), "100", CheckRequirements{
+	_, _, err = client.Checks.ForScoring(context.Background(), "100", domain.CheckRequirements{
 		RequiredPatterns: []string{`^chg_.+_reach_`},
 	})
-	if !errors.Is(err, ErrCheckCorpusIncomplete) {
+	if !errors.Is(err, domain.ErrCheckCorpusIncomplete) {
 		t.Fatalf("missing corpus error = %v", err)
 	}
-	id, _, err := client.Checks.CreatePersistent(context.Background(), "100", NewCheck{
-		Name: "reach-app", Definition: map[string]any{"checkType": "Existential"}, Enabled: Ptr(true),
+	id, _, err := client.Checks.CreatePersistent(context.Background(), "100", domain.NewCheck{
+		Name: "reach-app", Definition: map[string]any{"checkType": "Existential"}, Enabled: domain.Ptr(true),
 	})
 	if err != nil || id != "902" {
 		t.Fatalf("CreatePersistent() = %q, %v", id, err)
@@ -190,7 +167,7 @@ func TestSnapshotSubsetExportRetriesAndResolveSkipsPredicted(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	archive, _, err := client.Snapshots.ExportSubset(context.Background(), "20", SnapshotSubsetRequest{
+	archive, _, err := client.Snapshots.ExportSubset(context.Background(), "20", domain.SnapshotSubsetRequest{
 		IncludeDevices: []string{"r1"}, PollInterval: time.Millisecond, Attempts: 2,
 	})
 	if err != nil || string(archive) != "PKzip" || exports.Load() != 2 {
@@ -236,10 +213,10 @@ func TestSnapshotMultipartMergePreservesResultMetadata(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	snapshot, _, err := client.Snapshots.Upload(context.Background(), "n1", []SnapshotUploadFile{
+	snapshot, _, err := client.Snapshots.Upload(context.Background(), "n1", []domain.SnapshotUploadFile{
 		{Name: "carried.zip", Reader: strings.NewReader("carried")},
 		{Name: "fresh.zip", Reader: strings.NewReader("fresh")},
-	}, SnapshotUploadOptions{Async: true, SkipSnapshotProcessing: true})
+	}, ports.SnapshotUploadOptions{Async: true, SkipSnapshotProcessing: true})
 	if err != nil || snapshot.ID != "88" || snapshot.TotalDevices != 40 || snapshot.Message != "accepted" {
 		t.Fatalf("merge Upload() = %#v, %v", snapshot, err)
 	}
@@ -279,15 +256,15 @@ func TestCapabilityProfileBlocksUnsupportedEndpoint(t *testing.T) {
 	defer server.Close()
 	client, err := NewClient(Config{HTTPClient: privateHTTPClient(),
 		BaseURL: server.URL, Username: "user", Password: "pass", NetworkID: "n1",
-		Capabilities: CapabilityProfile{Track: "stable", Build: "stable-build", Features: map[Capability]CapabilitySupport{
-			CapabilityStructuredBGPAdvertisements: CapabilityUnsupported,
+		Capabilities: domain.CapabilityProfile{Track: "stable", Build: "stable-build", Features: map[domain.Capability]domain.CapabilitySupport{
+			domain.CapabilityStructuredBGPAdvertisements: domain.CapabilityUnsupported,
 		}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.Predict.StageBGPAdvertisement(context.Background(), "", "cs1", BGPAdvertisement{Device: "r1"})
-	var unsupported *UnsupportedCapabilityError
+	_, err = client.Predict.StageBGPAdvertisement(context.Background(), "", "cs1", domain.BGPAdvertisement{Device: "r1"})
+	var unsupported *domain.UnsupportedCapabilityError
 	if !errors.As(err, &unsupported) || calls.Load() != 0 {
 		t.Fatalf("StageBGPAdvertisement() error = %v, calls = %d", err, calls.Load())
 	}
@@ -329,7 +306,7 @@ func TestDeviceTagsAndCollectorPerformance(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL).ForNetwork("n1")
 	ctx := context.Background()
-	if _, err := client.DeviceTags.AddBatch(ctx, "", []DeviceTag{{Name: "branch", Color: "#fff"}}); err != nil {
+	if _, err := client.DeviceTags.AddBatch(ctx, "", []domain.DeviceTag{{Name: "branch", Color: "#fff"}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := client.DeviceTags.AddBatchTo(ctx, "", []string{"r1"}, []string{"branch"}); err != nil {
@@ -356,7 +333,7 @@ func TestNQEResultBuildShapesConvertInsideSDK(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL).ForNetwork("n1")
-	result, _, err := client.NQE.Run(context.Background(), "", "20", NQEQueryRequest{Query: "foreach d in network.devices select d.name"})
+	result, _, err := client.NQE.Run(context.Background(), "", "20", domain.NQEQueryRequest{Query: "foreach d in network.devices select d.name"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"encoding/json"
 	"testing"
 )
@@ -14,21 +18,21 @@ func TestDecodeNQE(t *testing.T) {
 		Modes  []string `json:"Modes"`
 		Bytes  int64    `json:"Bytes"`
 	}
-	var rec NQERecord
+	var rec domain.NQERecord
 	if err := json.Unmarshal([]byte(`{"Device":"core.SW1","Status":"AdminStatus.UP","Modes":["Mode.ACCESS","Mode.TRUNK"],"Bytes":9007199254740993,"Extra":1}`), &rec); err != nil {
 		t.Fatal(err)
 	}
-	plain, err := DecodeNQE[row]([]NQERecord{rec})
+	plain, err := domain.DecodeNQE[row]([]domain.NQERecord{rec})
 	if err != nil || plain[0].Status != "AdminStatus.UP" || plain[0].Bytes != 9007199254740993 {
 		t.Fatalf("plain = %+v err = %v", plain, err)
 	}
-	norm, err := DecodeNQE[row]([]NQERecord{rec}, NQENormalizeEnums())
+	norm, err := domain.DecodeNQE[row]([]domain.NQERecord{rec}, domain.NQENormalizeEnums())
 	if err != nil || norm[0].Status != "UP" || norm[0].Modes[1] != "TRUNK" || norm[0].Device != "core.SW1" || norm[0].Bytes != 9007199254740993 {
 		t.Fatalf("normalised = %+v err = %v", norm, err)
 	}
-	var bad NQERecord
+	var bad domain.NQERecord
 	_ = json.Unmarshal([]byte(`{"Device":5}`), &bad)
-	if _, err := DecodeNQE[row]([]NQERecord{rec, bad}); err == nil {
+	if _, err := domain.DecodeNQE[row]([]domain.NQERecord{rec, bad}); err == nil {
 		t.Fatal("a row that does not fit must be an error")
 	}
 }

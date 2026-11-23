@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -17,11 +21,11 @@ func TestSyntheticNodeNameCannotEscapeToTheCollection(t *testing.T) {
 		t.Errorf("no request should be sent, got %s %s", r.Method, r.URL.Path)
 	})
 	ctx := context.Background()
-	for _, kind := range []SyntheticNodeKind{SyntheticIntranet, SyntheticL3VPN} {
+	for _, kind := range []domain.SyntheticNodeKind{domain.SyntheticIntranet, domain.SyntheticL3VPN} {
 		if _, _, err := c.SyntheticNodes.Get(ctx, "net-1", kind, "  "); err == nil {
 			t.Errorf("%s: an empty name must be refused on get", kind)
 		}
-		if _, err := c.SyntheticNodes.Put(ctx, "net-1", kind, "", SyntheticNode{}); err == nil {
+		if _, err := c.SyntheticNodes.Put(ctx, "net-1", kind, "", domain.SyntheticNode{}); err == nil {
 			t.Errorf("%s: an empty name must be refused on put", kind)
 		}
 		if _, err := c.SyntheticNodes.Delete(ctx, "net-1", kind, ""); err == nil {
@@ -29,7 +33,7 @@ func TestSyntheticNodeNameCannotEscapeToTheCollection(t *testing.T) {
 		}
 	}
 	// The internet node is one per network and has no delete route at all.
-	if _, err := c.SyntheticNodes.Delete(ctx, "net-1", SyntheticInternet, ""); err == nil {
+	if _, err := c.SyntheticNodes.Delete(ctx, "net-1", domain.SyntheticInternet, ""); err == nil {
 		t.Error("the internet node must not be deletable")
 	}
 }
@@ -40,7 +44,7 @@ func TestSyntheticNodeGetTreatsAbsenceAsAbsence(t *testing.T) {
 	c := acClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	})
-	got, _, err := c.SyntheticNodes.Get(context.Background(), "net-1", SyntheticL3VPN, "vpn-a")
+	got, _, err := c.SyntheticNodes.Get(context.Background(), "net-1", domain.SyntheticL3VPN, "vpn-a")
 	if err != nil {
 		t.Fatalf("a 404 must not be an error: %v", err)
 	}
@@ -54,12 +58,12 @@ func TestSyntheticNodeGetTreatsAbsenceAsAbsence(t *testing.T) {
 // serialized form as {"l3Vpns": [...]}.
 func TestSyntheticNodeListAcceptsForwardsEnvelopes(t *testing.T) {
 	for name, tc := range map[string]struct {
-		kind SyntheticNodeKind
+		kind domain.SyntheticNodeKind
 		body string
 	}{
-		"l3 vpns keyed":  {SyntheticL3VPN, `{"l3Vpns":[{"name":"a"},{"name":"b"}]}`},
-		"intranet keyed": {SyntheticIntranet, `{"intranetNodes":[{"name":"a"},{"name":"b"}]}`},
-		"bare array":     {SyntheticL3VPN, `[{"name":"a"},{"name":"b"}]`},
+		"l3 vpns keyed":  {domain.SyntheticL3VPN, `{"l3Vpns":[{"name":"a"},{"name":"b"}]}`},
+		"intranet keyed": {domain.SyntheticIntranet, `{"intranetNodes":[{"name":"a"},{"name":"b"}]}`},
+		"bare array":     {domain.SyntheticL3VPN, `[{"name":"a"},{"name":"b"}]`},
 	} {
 		c := acClient(t, func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(tc.body))
@@ -77,7 +81,7 @@ func TestSyntheticNodeListAcceptsForwardsEnvelopes(t *testing.T) {
 	c := acClient(t, func(w http.ResponseWriter, r *http.Request) {
 		t.Error("the internet node has no collection route")
 	})
-	got, _, err := c.SyntheticNodes.List(context.Background(), "net-1", SyntheticInternet)
+	got, _, err := c.SyntheticNodes.List(context.Background(), "net-1", domain.SyntheticInternet)
 	if err != nil || got != nil {
 		t.Fatalf("internet list must be empty and non-error: %v %v", got, err)
 	}
@@ -99,11 +103,11 @@ func TestSyntheticNodeRoundTripKeepsTheQueryAndNeverSendsItsResult(t *testing.T)
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL).ForNetwork("n1")
-	n, _, err := client.SyntheticNodes.Get(context.Background(), "", SyntheticL3VPN, "dir")
+	n, _, err := client.SyntheticNodes.Get(context.Background(), "", domain.SyntheticL3VPN, "dir")
 	if err != nil || n == nil || n.QueryID != "Q_abc" || n.QueryResult == nil || len(n.QueryResult.Connections) != 1 {
 		t.Fatalf("Get: %+v %v", n, err)
 	}
-	if _, err := client.SyntheticNodes.Put(context.Background(), "", SyntheticL3VPN, "dir", *n); err != nil {
+	if _, err := client.SyntheticNodes.Put(context.Background(), "", domain.SyntheticL3VPN, "dir", *n); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(putBody, `"queryId":"Q_abc"`) || strings.Contains(putBody, "queryResult") {
@@ -122,17 +126,17 @@ func TestSyntheticNodesSetQuerySendsOnlyTheQueryAndReturnsTheResult(t *testing.T
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL).ForNetwork("n1")
-	n, _, err := client.SyntheticNodes.SetQuery(context.Background(), "", SyntheticL3VPN, "dir", " Q_abc ")
+	n, _, err := client.SyntheticNodes.SetQuery(context.Background(), "", domain.SyntheticL3VPN, "dir", " Q_abc ")
 	if err != nil || method != http.MethodPatch || path != "/api/networks/n1/l3-vpns/dir" || body != `{"queryId":"Q_abc"}` {
 		t.Fatalf("%s %s %s %v", method, path, body, err)
 	}
 	if n.QueryResult == nil || n.QueryResult.Error == nil || n.QueryResult.Error.Status != "COLUMN_DATATYPE_MISMATCH" {
 		t.Fatalf("the query error must come back: %+v", n)
 	}
-	if _, _, err := client.SyntheticNodes.SetQuery(context.Background(), "", SyntheticIntranet, "x", ""); err != nil || body != `{"queryId":null}` || path != "/api/networks/n1/intranet-nodes/x" {
+	if _, _, err := client.SyntheticNodes.SetQuery(context.Background(), "", domain.SyntheticIntranet, "x", ""); err != nil || body != `{"queryId":null}` || path != "/api/networks/n1/intranet-nodes/x" {
 		t.Fatalf("clearing sends an explicit null: %s %s %v", path, body, err)
 	}
-	if _, _, err := client.SyntheticNodes.SetQuery(context.Background(), "", SyntheticIntranet, " ", "Q_1"); err == nil {
+	if _, _, err := client.SyntheticNodes.SetQuery(context.Background(), "", domain.SyntheticIntranet, " ", "Q_1"); err == nil {
 		t.Fatal("an empty node name must be refused locally (it would address the collection)")
 	}
 }

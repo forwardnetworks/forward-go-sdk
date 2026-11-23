@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"encoding/json"
 	"fmt"
 	"os"
@@ -122,7 +126,7 @@ func requireExportedSDKMethod(clientType reflect.Type, symbol string) error {
 	if !ok || !method.IsExported() {
 		return fmt.Errorf("SDK symbol %q has no corresponding exported method", symbol)
 	}
-	rawRequestType := reflect.TypeOf(RawRequest{})
+	rawRequestType := reflect.TypeOf(ports.RawRequest{})
 	for i := 0; i < method.Type.NumIn(); i++ {
 		if method.Type.In(i) == rawRequestType {
 			return fmt.Errorf("SDK symbol %q accepts RawRequest and is not typed coverage", symbol)

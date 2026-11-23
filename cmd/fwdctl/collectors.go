@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 func newCollectorsCmd() *cobra.Command {
@@ -50,7 +50,7 @@ func newCollectorCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := client(cmd).Collectors.Attach(cmd.Context(), network(cmd),
-				forward.CollectorAttachmentRequest{Username: args[0]})
+				ports.CollectorAttachmentRequest{Username: args[0]})
 			return err
 		},
 	})

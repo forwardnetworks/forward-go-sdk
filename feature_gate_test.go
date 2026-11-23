@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -43,11 +48,11 @@ func TestFeatureGatedRoutesAreClassified(t *testing.T) {
 		_, _, err := newTestClient(t, server.URL).Diffs.SubnetConnectivity(context.Background(), "1", "2")
 		server.Close()
 
-		var apiErr *ErrorResponse
+		var apiErr *ports.ErrorResponse
 		if !errors.As(err, &apiErr) {
 			t.Fatalf("%s: err = %v, want an ErrorResponse", tc.name, err)
 		}
-		if got := errors.Is(err, ErrFeatureGated); got != tc.gated {
+		if got := errors.Is(err, domain.ErrFeatureGated); got != tc.gated {
 			t.Errorf("%s: errors.Is(ErrFeatureGated) = %v, want %v (kind %s)", tc.name, got, tc.gated, apiErr.Kind)
 			continue
 		}
@@ -57,7 +62,7 @@ func TestFeatureGatedRoutesAreClassified(t *testing.T) {
 			}
 			continue
 		}
-		if errors.Is(err, ErrAuthentication) {
+		if errors.Is(err, domain.ErrAuthentication) {
 			t.Errorf("%s: a feature gate also reads as an authentication failure", tc.name)
 		}
 		if apiErr.GateProperty != tc.property || apiErr.GateEnabled != tc.enabled || apiErr.GateScope != tc.scope {

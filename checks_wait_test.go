@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -29,7 +34,7 @@ func TestDiffsWaitChecks(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	rows, _, err := client.Diffs.WaitChecks(context.Background(), "10", "11", "NQE", PollOptions[[]CheckDiffEntry]{Interval: time.Millisecond, MaxInterval: 4 * time.Millisecond})
+	rows, _, err := client.Diffs.WaitChecks(context.Background(), "10", "11", "NQE", ports.PollOptions[[]domain.CheckDiffEntry]{Interval: time.Millisecond, MaxInterval: 4 * time.Millisecond})
 	if err != nil || len(rows) != 1 || rows[0].DiffType != "MODIFIED" || calls.Load() != 3 {
 		t.Fatalf("rows=%+v err=%v calls=%d", rows, err, calls.Load())
 	}
@@ -39,15 +44,15 @@ func TestDiffsWaitChecks(t *testing.T) {
 		_, _ = w.Write([]byte(`[{"diffType":"PROCESSING"}]`))
 	}))
 	defer stuck.Close()
-	rows, _, err = newTestClient(t, stuck.URL).Diffs.WaitChecks(context.Background(), "10", "11", "NQE", PollOptions[[]CheckDiffEntry]{Interval: time.Millisecond, Budget: 60 * time.Millisecond})
-	if !errors.Is(err, ErrPollBudget) || len(rows) != 1 {
+	rows, _, err = newTestClient(t, stuck.URL).Diffs.WaitChecks(context.Background(), "10", "11", "NQE", ports.PollOptions[[]domain.CheckDiffEntry]{Interval: time.Millisecond, Budget: 60 * time.Millisecond})
+	if !errors.Is(err, domain.ErrPollBudget) || len(rows) != 1 {
 		t.Fatalf("rows=%+v err=%v", rows, err)
 	}
 
 	// The caller's own cancellation stays the caller's error.
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, _, err = newTestClient(t, stuck.URL).Diffs.WaitChecks(ctx, "10", "11", "NQE", PollOptions[[]CheckDiffEntry]{}); !errors.Is(err, context.Canceled) || errors.Is(err, ErrPollBudget) {
+	if _, _, err = newTestClient(t, stuck.URL).Diffs.WaitChecks(ctx, "10", "11", "NQE", ports.PollOptions[[]domain.CheckDiffEntry]{}); !errors.Is(err, context.Canceled) || errors.Is(err, domain.ErrPollBudget) {
 		t.Fatalf("err=%v", err)
 	}
 }
@@ -68,7 +73,7 @@ func TestChecksUpdate(t *testing.T) {
 	client := newTestClient(t, server.URL)
 
 	name := "renamed"
-	check, _, err := client.Checks.Update(context.Background(), "9", "287072", CheckPatch{Name: &name})
+	check, _, err := client.Checks.Update(context.Background(), "9", "287072", domain.CheckPatch{Name: &name})
 	if err != nil || check.Name != "renamed" || string(check.ID) != "287072" {
 		t.Fatalf("check=%+v err=%v", check, err)
 	}
@@ -78,10 +83,10 @@ func TestChecksUpdate(t *testing.T) {
 	if string(body["name"]) != `"renamed"` || string(body["tags"]) != "null" || len(body) != 2 {
 		t.Fatalf("body = %v", body)
 	}
-	if _, _, err = client.Checks.Update(context.Background(), "9", "287072", CheckPatch{Tags: []string{}}); err != nil || string(body["tags"]) != "[]" {
+	if _, _, err = client.Checks.Update(context.Background(), "9", "287072", domain.CheckPatch{Tags: []string{}}); err != nil || string(body["tags"]) != "[]" {
 		t.Fatalf("an empty non-nil tag list must clear: %v %v", body, err)
 	}
-	if _, _, err = client.Checks.Update(context.Background(), "9", "287072", CheckPatch{}); err == nil {
+	if _, _, err = client.Checks.Update(context.Background(), "9", "287072", domain.CheckPatch{}); err == nil {
 		t.Fatal("an empty patch must be refused")
 	}
 }

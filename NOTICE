@@ -1,0 +1,21 @@
+forward-go-sdk
+Copyright 2026 Forward Networks, Inc.
+
+Everything in this repository that Forward Networks wrote is licensed under the
+Fair Core License, Version 1.0, with an Apache 2.0 future license
+(FCL-1.0-ALv2). The full text is in LICENSE.
+
+FCL-1.0-ALv2 is source-available, not open source. You may use, copy, modify and
+redistribute the software for any purpose other than a Competing Use, as LICENSE
+defines it. You may not move, change, disable or circumvent any license key
+functionality in the software. Each release converts to the Apache License,
+Version 2.0 on the second anniversary of the date it was first made available.
+
+Releases up to and including v0.8.59 were published without a license file.
+
+Third-party software this project depends on is not covered by this license and
+stays under its own. The root package has no third-party dependencies; the
+fwdctl command uses github.com/spf13/cobra (Apache-2.0) and its dependencies
+github.com/spf13/pflag (BSD-3-Clause) and github.com/inconshreveable/mousetrap
+(Apache-2.0). None of their code is copied here; they are fetched as modules and
+their notices travel with them.

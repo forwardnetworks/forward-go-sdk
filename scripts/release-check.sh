@@ -38,7 +38,7 @@ go vet ./... || fail "go vet"
 go build ./... || fail "go build"
 
 step "generated files are current"
-generated=(COVERAGE.md coverage_catalog_gen.go)
+generated=(COVERAGE.md coverage_catalog_gen_test.go)
 before="$(sha256sum "${generated[@]}")"
 go generate ./... || fail "go generate"
 after="$(sha256sum "${generated[@]}")"

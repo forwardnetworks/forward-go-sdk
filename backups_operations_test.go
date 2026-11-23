@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -35,7 +40,7 @@ func TestBackupsListAndProgress(t *testing.T) {
 	ctx := context.Background()
 
 	list, _, err := backups.ListBackups(ctx)
-	if err != nil || len(list) != 2 || list[0].ID != 41 || list[0].StorageType != StorageTypeS3 || !list[0].SnapshotsIncluded || list[0].Size != 52428800 || list[0].Note != "nightly" ||
+	if err != nil || len(list) != 2 || list[0].ID != 41 || list[0].StorageType != domain.StorageTypeS3 || !list[0].SnapshotsIncluded || list[0].Size != 52428800 || list[0].Note != "nightly" ||
 		list[0].AppVersion != "26.9.1" || !list[0].BackupTime.Equal(time.UnixMilli(1759395000000)) {
 		t.Fatalf("ListBackups() = %+v, %v", list, err)
 	}
@@ -45,7 +50,7 @@ func TestBackupsListAndProgress(t *testing.T) {
 	}
 	progressBody = `{"id":"12","type":"restore","appStatus":"IN_PROGRESS","snapshotToStatus":{"13790":"DONE","13791":"NOT_STARTED"}}`
 	op, _, err := backups.BackupProgress(ctx)
-	if err != nil || op.Type != "restore" || op.AppStatus != CBRInProgress || op.SnapshotToStatus["13790"] != CBRDone || op.ID != "12" {
+	if err != nil || op.Type != "restore" || op.AppStatus != domain.CBRInProgress || op.SnapshotToStatus["13790"] != domain.CBRDone || op.ID != "12" {
 		t.Fatalf("BackupProgress() = %+v, %v", op, err)
 	}
 	if res, _, err := backups.LastRestoreResult(ctx); res != nil || err != nil {
@@ -70,17 +75,17 @@ func TestBackupsCancelAndDelete(t *testing.T) {
 	if _, err := backups.CancelOperation(ctx); err != nil || calls[0] != "POST /api/backups?action=cancel" {
 		t.Fatalf("CancelOperation: %v %q", err, calls)
 	}
-	if _, err := backups.DeleteBackup(ctx, 41, StorageTypeS3); err != nil || calls[1] != "DELETE /api/backups/41?storageType=S3" {
+	if _, err := backups.DeleteBackup(ctx, 41, domain.StorageTypeS3); err != nil || calls[1] != "DELETE /api/backups/41?storageType=S3" {
 		t.Fatalf("delete from S3: %v %q", err, calls[1])
 	}
-	if _, err := backups.DeleteBackup(ctx, 41, StorageTypeAll); err != nil || calls[2] != "DELETE /api/backups/41" {
+	if _, err := backups.DeleteBackup(ctx, 41, domain.StorageTypeAll); err != nil || calls[2] != "DELETE /api/backups/41" {
 		t.Fatalf("delete everywhere sends no storage parameter: %v %q", err, calls[2])
 	}
 	before := len(calls)
 	for name, f := range map[string]func() error{
 		"no storage choice": func() error { _, err := backups.DeleteBackup(ctx, 41, ""); return err },
 		"unknown storage":   func() error { _, err := backups.DeleteBackup(ctx, 41, "TAPE"); return err },
-		"zero id":           func() error { _, err := backups.DeleteBackup(ctx, 0, StorageTypeAll); return err },
+		"zero id":           func() error { _, err := backups.DeleteBackup(ctx, 0, domain.StorageTypeAll); return err },
 	} {
 		if err := f(); err == nil {
 			t.Errorf("%s must be refused", name)
@@ -114,14 +119,14 @@ func TestBackupsRestoreSnapshot(t *testing.T) {
 	ctx := context.Background()
 
 	started, _, err := backups.RestoreSnapshot(ctx, "13790")
-	if err != nil || started.Status != CBRNotStarted || started.Finished() || !started.Start.Equal(time.UnixMilli(1759395000000)) || calls[0] != "POST /api/snapshots/13790?action=restore" {
+	if err != nil || started.Status != domain.CBRNotStarted || started.Finished() || !started.Start.Equal(time.UnixMilli(1759395000000)) || calls[0] != "POST /api/snapshots/13790?action=restore" {
 		t.Fatalf("RestoreSnapshot() = %+v, %v; %q", started, err, calls[0])
 	}
-	if _, _, err := backups.RestoreSnapshot(ctx, "13791"); !IsStatus(err, http.StatusConflict) {
+	if _, _, err := backups.RestoreSnapshot(ctx, "13791"); !ports.IsStatus(err, http.StatusConflict) {
 		t.Fatalf("a snapshot already on disk must surface its 409: %v", err)
 	}
 	status, _, err := backups.SnapshotRestoreStatus(ctx, "13790")
-	if err != nil || status.Status != CBRInProgress || status.Stage != "DOWNLOADING" || *status.CurrentProgress != 250 || *status.MaxProgress != 1000 || status.Finished() {
+	if err != nil || status.Status != domain.CBRInProgress || status.Stage != "DOWNLOADING" || *status.CurrentProgress != 250 || *status.MaxProgress != 1000 || status.Finished() {
 		t.Fatalf("SnapshotRestoreStatus() = %+v, %v", status, err)
 	}
 	if calls[len(calls)-1] != "GET /api/snapshots/13790?view=restoreStatus" {
@@ -130,7 +135,7 @@ func TestBackupsRestoreSnapshot(t *testing.T) {
 	if none, _, err := backups.SnapshotRestoreStatus(ctx, "none"); none != nil || err != nil {
 		t.Fatalf("204 means no restore: %+v, %v", none, err)
 	}
-	if (SnapshotRestoreStatus{Status: CBRDone}).Finished() != true || !(SnapshotRestoreStatus{Status: CBRDone}).Done() || (SnapshotRestoreStatus{Status: CBRError}).Done() {
+	if (domain.SnapshotRestoreStatus{Status: domain.CBRDone}).Finished() != true || !(domain.SnapshotRestoreStatus{Status: domain.CBRDone}).Done() || (domain.SnapshotRestoreStatus{Status: domain.CBRError}).Done() {
 		t.Fatal("Done and Finished disagree with the status values")
 	}
 	if _, _, err := backups.RestoreSnapshot(ctx, " "); err == nil {

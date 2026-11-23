@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -14,11 +18,11 @@ import (
 func TestEffectiveOrganizationValueSource(t *testing.T) {
 	cases := []struct {
 		name, orgConfigured, globalConfigured string
-		want                                  PropertySource
+		want                                  domain.PropertySource
 	}{
-		{"org row wins over global", `{"parser":"PROD"}`, `{"parser":"DEV"}`, PropertySourceOrganization},
-		{"global override", `{"other":1}`, `{"PARSER":"DEV"}`, PropertySourceGlobal},
-		{"built-in default", `{}`, `{"other":1}`, PropertySourceDefault},
+		{"org row wins over global", `{"parser":"PROD"}`, `{"parser":"DEV"}`, domain.PropertySourceOrganization},
+		{"global override", `{"other":1}`, `{"PARSER":"DEV"}`, domain.PropertySourceGlobal},
+		{"built-in default", `{}`, `{"other":1}`, domain.PropertySourceDefault},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -28,7 +32,7 @@ func TestSnapshotListingAsksForPredictedSnapshotsOnlyWhenWanted(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	if _, _, err := client.Snapshots.List(context.Background(), "n1", SnapshotListOptions{}); err != nil {
+	if _, _, err := client.Snapshots.List(context.Background(), "n1", ports.SnapshotListOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if queries[0] != "" {
@@ -36,13 +40,13 @@ func TestSnapshotListingAsksForPredictedSnapshotsOnlyWhenWanted(t *testing.T) {
 	}
 
 	yes := true
-	listed, _, err := client.Snapshots.List(context.Background(), "n1", SnapshotListOptions{IncludePredicted: &yes})
+	listed, _, err := client.Snapshots.List(context.Background(), "n1", ports.SnapshotListOptions{IncludePredicted: &yes})
 	if err != nil || len(listed) != 2 || queries[1] != "includePredicted=true" {
 		t.Fatalf("List(IncludePredicted) = %d rows, %v, query %q", len(listed), err, queries[1])
 	}
 
 	// ListDocument keeps Forward's envelope but must forward the same flag.
-	if _, _, err := client.Snapshots.ListDocument(context.Background(), "n1", SnapshotListOptions{IncludePredicted: &yes}); err != nil || queries[len(queries)-1] != "includePredicted=true" {
+	if _, _, err := client.Snapshots.ListDocument(context.Background(), "n1", ports.SnapshotListOptions{IncludePredicted: &yes}); err != nil || queries[len(queries)-1] != "includePredicted=true" {
 		t.Fatalf("ListDocument(IncludePredicted) err %v, query %q", err, queries[len(queries)-1])
 	}
 

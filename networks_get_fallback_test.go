@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -60,7 +64,7 @@ func TestNetworksGetFallsBackToTheListingOnlyWhenTheRouteIsMissing(t *testing.T)
 		w.WriteHeader(405)
 	}))
 	defer server.Close()
-	if _, _, err := newTestClient(t, server.URL).Networks.Get(context.Background(), "zzz"); !errors.Is(err, ErrNetworkNotFound) {
+	if _, _, err := newTestClient(t, server.URL).Networks.Get(context.Background(), "zzz"); !errors.Is(err, domain.ErrNetworkNotFound) {
 		t.Fatalf("a network missing from the listing = %v, want ErrNetworkNotFound", err)
 	}
 }

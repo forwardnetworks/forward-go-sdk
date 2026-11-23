@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -21,26 +26,26 @@ func TestEndpointNotServedIsClassifiedBeforeNetworkNotFound(t *testing.T) {
 		method string
 		path   string
 		body   string
-		want   ErrorKind
+		want   domain.ErrorKind
 	}{
 		{"unmapped route", http.MethodGet, "/api/orgs/7/licenses",
-			`{"apiUrl":"/api/orgs/7/licenses","httpMethod":"GET","message":"No endpoint GET /api/orgs/7/licenses."}`, ErrorKindEndpointNotServed},
+			`{"apiUrl":"/api/orgs/7/licenses","httpMethod":"GET","message":"No endpoint GET /api/orgs/7/licenses."}`, domain.ErrorKindEndpointNotServed},
 		{"unmapped route under a network is not a missing network", http.MethodGet, "/api/networks/9/snapshots",
-			`{"apiUrl":"/api/networks/9/snapshots","httpMethod":"GET","message":"No endpoint GET /api/networks/9/snapshots."}`, ErrorKindEndpointNotServed},
+			`{"apiUrl":"/api/networks/9/snapshots","httpMethod":"GET","message":"No endpoint GET /api/networks/9/snapshots."}`, domain.ErrorKindEndpointNotServed},
 		{"method comes from the request when the body omits it", http.MethodPost, "/api/backups",
-			`{"message":"No endpoint POST /api/backups."}`, ErrorKindEndpointNotServed},
+			`{"message":"No endpoint POST /api/backups."}`, domain.ErrorKindEndpointNotServed},
 		{"a real missing network is still a missing network", http.MethodGet, "/api/networks/9/snapshots",
-			`{"apiUrl":"/api/networks/9/snapshots","httpMethod":"GET","message":"Network 9 not found"}`, ErrorKindNetworkNotFound},
+			`{"apiUrl":"/api/networks/9/snapshots","httpMethod":"GET","message":"Network 9 not found"}`, domain.ErrorKindNetworkNotFound},
 		{"an empty 404 under a network is still a missing network", http.MethodGet, "/api/networks/9",
-			`{}`, ErrorKindNetworkNotFound},
+			`{}`, domain.ErrorKindNetworkNotFound},
 		{"another method's message does not match", http.MethodGet, "/api/orgs/7/licenses",
-			`{"message":"No endpoint POST /api/orgs/7/licenses."}`, ErrorKindUnknown},
+			`{"message":"No endpoint POST /api/orgs/7/licenses."}`, domain.ErrorKindUnknown},
 		{"a reason code means Forward chose this answer", http.MethodGet, "/api/orgs/7/licenses",
-			`{"reason":"SOMETHING","message":"No endpoint GET /api/orgs/7/licenses."}`, ErrorKindUnknown},
+			`{"reason":"SOMETHING","message":"No endpoint GET /api/orgs/7/licenses."}`, domain.ErrorKindUnknown},
 		{"other 404 text is not it", http.MethodGet, "/api/orgs/7/licenses",
-			`{"message":"Org 7 not found"}`, ErrorKindUnknown},
+			`{"message":"Org 7 not found"}`, domain.ErrorKindUnknown},
 		{"a 400 with the text is not it", http.MethodGet, "/api/orgs/7/licenses",
-			`{"message":"No endpoint GET /api/orgs/7/licenses."}`, ErrorKindUnknown},
+			`{"message":"No endpoint GET /api/orgs/7/licenses."}`, domain.ErrorKindUnknown},
 	}
 	for _, tc := range cases {
 		status := http.StatusNotFound
@@ -60,7 +65,7 @@ func TestEndpointNotServedIsClassifiedBeforeNetworkNotFound(t *testing.T) {
 		}
 		_, err = client.Do(req, nil)
 		server.Close()
-		var apiErr *ErrorResponse
+		var apiErr *ports.ErrorResponse
 		if !errors.As(err, &apiErr) {
 			t.Errorf("%s: err = %v, want an *ErrorResponse", tc.name, err)
 			continue
@@ -68,10 +73,10 @@ func TestEndpointNotServedIsClassifiedBeforeNetworkNotFound(t *testing.T) {
 		if apiErr.Kind != tc.want {
 			t.Errorf("%s: kind = %q, want %q", tc.name, apiErr.Kind, tc.want)
 		}
-		if got := errors.Is(err, ErrEndpointNotServed); got != (tc.want == ErrorKindEndpointNotServed) {
+		if got := errors.Is(err, domain.ErrEndpointNotServed); got != (tc.want == domain.ErrorKindEndpointNotServed) {
 			t.Errorf("%s: errors.Is(ErrEndpointNotServed) = %v", tc.name, got)
 		}
-		if tc.want == ErrorKindEndpointNotServed && (errors.Is(err, ErrNetworkNotFound) || !IsStatus(err, http.StatusNotFound)) {
+		if tc.want == domain.ErrorKindEndpointNotServed && (errors.Is(err, domain.ErrNetworkNotFound) || !ports.IsStatus(err, http.StatusNotFound)) {
 			t.Errorf("%s: must stay a 404 and not read as a missing network", tc.name)
 		}
 	}

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -39,10 +43,10 @@ func TestNetworkLinkOverridesWire(t *testing.T) {
 	if err != nil || len(staged.PresentAdditions) != 1 || staged.PresentAdditions[0].Port2 != "b:e1" {
 		t.Fatalf("StagedOverrideChanges = %#v, %v", staged, err)
 	}
-	if _, err := client.Topology.SetNetworkOverrides(ctx, "7", TopologyOverrides{Present: []TopologyOverrideLink{{Port1: "a:e1", Port2: "b:e1"}}}); err != nil {
+	if _, err := client.Topology.SetNetworkOverrides(ctx, "7", domain.TopologyOverrides{Present: []domain.TopologyOverrideLink{{Port1: "a:e1", Port2: "b:e1"}}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Topology.EditNetworkOverrides(ctx, "7", TopologyOverridesEdit{AbsentAdditions: []TopologyOverrideLink{{Port1: "c:e1", Port2: "d:e1"}}}); err != nil {
+	if _, err := client.Topology.EditNetworkOverrides(ctx, "7", domain.TopologyOverridesEdit{AbsentAdditions: []domain.TopologyOverrideLink{{Port1: "c:e1", Port2: "d:e1"}}}); err != nil {
 		t.Fatal(err)
 	}
 	want := []seen{

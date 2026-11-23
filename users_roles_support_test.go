@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -12,7 +16,7 @@ import (
 func TestUserRolesCarrySystemRolesAndSupportedOrgs(t *testing.T) {
 	t.Parallel()
 
-	var roles UserRoles
+	var roles domain.UserRoles
 	body := `{"system":["SUPPORT_ADMIN"],"org":[],"network":{"7":"ADMIN"},"supportedOrgIds":["205","310"]}`
 	if err := json.Unmarshal([]byte(body), &roles); err != nil {
 		t.Fatal(err)
@@ -24,7 +28,7 @@ func TestUserRolesCarrySystemRolesAndSupportedOrgs(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"org":[],"network":{}}`), &roles); err != nil || len(roles.System) != 0 || len(roles.SupportedOrgIDs) != 0 {
 		t.Fatalf("stale fields survived a decode: %v %+v", err, roles)
 	}
-	var plain UserRoles
+	var plain domain.UserRoles
 	if err := json.Unmarshal([]byte(`{"org":["ADMIN"],"network":{}}`), &plain); err != nil || len(plain.System) != 0 || len(plain.SupportedOrgIDs) != 0 || !plain.HasOrgAdmin() {
 		t.Fatalf("an ordinary user has neither: %v %+v", err, plain)
 	}

@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"bytes"
 	"context"
 	"io"
@@ -63,7 +68,7 @@ func TestPredictInternalReadsSendTheParametersForwardSelectsOn(t *testing.T) {
 	}
 
 	got = nil
-	names, _, err := p.ChangeSetSubset(ctx, "s1", []string{"r1", " r2 ", ""}, ChangeSetSubsetOptions{NumIterations: &three, Threshold: &threshold})
+	names, _, err := p.ChangeSetSubset(ctx, "s1", []string{"r1", " r2 ", ""}, domain.ChangeSetSubsetOptions{NumIterations: &three, Threshold: &threshold})
 	if err != nil || !reflect.DeepEqual(names, []string{"a", "b"}) {
 		t.Fatalf("ChangeSetSubset = %v, %v", names, err)
 	}
@@ -103,15 +108,15 @@ func TestPredictInternalReadsRefuseBadInputWithoutSending(t *testing.T) {
 		"config no device": func() error { _, _, err := p.ConfigNodes(ctx, "s1", "", ""); return err }(),
 		"ospf no device":   func() error { _, _, err := p.OSPFNodes(ctx, "s1", "", ""); return err }(),
 		"subset no device": func() error {
-			_, _, err := p.ChangeSetSubset(ctx, "s1", []string{" "}, ChangeSetSubsetOptions{})
+			_, _, err := p.ChangeSetSubset(ctx, "s1", []string{" "}, domain.ChangeSetSubsetOptions{})
 			return err
 		}(),
 		"subset negative": func() error {
-			_, _, err := p.ChangeSetSubset(ctx, "s1", []string{"r1"}, ChangeSetSubsetOptions{NumIterations: &neg})
+			_, _, err := p.ChangeSetSubset(ctx, "s1", []string{"r1"}, domain.ChangeSetSubsetOptions{NumIterations: &neg})
 			return err
 		}(),
 		"subset threshold": func() error {
-			_, _, err := p.ChangeSetSubset(ctx, "s1", []string{"r1"}, ChangeSetSubsetOptions{Threshold: &zero})
+			_, _, err := p.ChangeSetSubset(ctx, "s1", []string{"r1"}, domain.ChangeSetSubsetOptions{Threshold: &zero})
 			return err
 		}(),
 		"download no dst": func() error { _, err := p.DownloadProtocolModeling(ctx, "s1", nil); return err }(),
@@ -155,7 +160,7 @@ func TestPredictProtocolModelingReadsKeepTypedErrorsAndOutwaitShortClients(t *te
 		t.Fatalf("partitions did not outwait a short client timeout: %v", err)
 	}
 	fail = true
-	if _, err := client.Predict.DownloadProtocolModeling(ctx, "s1", io.Discard); !IsStatus(err, http.StatusForbidden) {
+	if _, err := client.Predict.DownloadProtocolModeling(ctx, "s1", io.Discard); !ports.IsStatus(err, http.StatusForbidden) {
 		t.Fatalf("a refused download = %v, want a typed 403", err)
 	}
 }

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -117,16 +121,16 @@ func TestLicensingRefusesEmptyInputWithoutCallingTheServer(t *testing.T) {
 	c := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	if _, _, err := c.Licensing.Decode(ctx, "   "); !errors.Is(err, ErrLicenseKeyRequired) {
+	if _, _, err := c.Licensing.Decode(ctx, "   "); !errors.Is(err, domain.ErrLicenseKeyRequired) {
 		t.Errorf("Decode(blank) error = %v, want ErrLicenseKeyRequired", err)
 	}
-	if _, _, err := c.Licensing.Apply(ctx, ""); !errors.Is(err, ErrLicenseKeyRequired) {
+	if _, _, err := c.Licensing.Apply(ctx, ""); !errors.Is(err, domain.ErrLicenseKeyRequired) {
 		t.Errorf("Apply(blank) error = %v, want ErrLicenseKeyRequired", err)
 	}
-	if _, err := c.Licensing.RemoveAllForOrg(ctx, ""); !errors.Is(err, ErrLicenseOrgIDRequired) {
+	if _, err := c.Licensing.RemoveAllForOrg(ctx, ""); !errors.Is(err, domain.ErrLicenseOrgIDRequired) {
 		t.Errorf("RemoveAllForOrg(blank) error = %v, want ErrLicenseOrgIDRequired", err)
 	}
-	if _, _, err := c.Licensing.ListForOrg(ctx, " "); !errors.Is(err, ErrLicenseOrgIDRequired) {
+	if _, _, err := c.Licensing.ListForOrg(ctx, " "); !errors.Is(err, domain.ErrLicenseOrgIDRequired) {
 		t.Errorf("ListForOrg(blank) error = %v, want ErrLicenseOrgIDRequired", err)
 	}
 	if _, err := c.Licensing.InvalidateForOrg(ctx, "org-1", ""); err == nil {
@@ -164,12 +168,12 @@ func TestLicensingFingerprintRejectsAnEmptyInstanceID(t *testing.T) {
 // that treats "not refused" as "accepted" would activate on a response it never
 // understood.
 func TestLicenseKeyStatusOKIsAffirmativeOnly(t *testing.T) {
-	if !LicenseKeyValid.OK() {
+	if !domain.LicenseKeyValid.OK() {
 		t.Error("VALID must be OK")
 	}
-	for _, s := range []LicenseKeyStatus{
-		"", LicenseKeyInvalidLicense, LicenseKeyInvalidSignature, LicenseKeyInvalidFingerprint,
-		LicenseKeyWrongTier, LicenseKeyBadTierTrialTiming, LicenseKeyBadTrialTier,
+	for _, s := range []domain.LicenseKeyStatus{
+		"", domain.LicenseKeyInvalidLicense, domain.LicenseKeyInvalidSignature, domain.LicenseKeyInvalidFingerprint,
+		domain.LicenseKeyWrongTier, domain.LicenseKeyBadTierTrialTiming, domain.LicenseKeyBadTrialTier,
 	} {
 		if s.OK() {
 			t.Errorf("status %q must not be OK", s)
@@ -201,7 +205,7 @@ func TestLicensingDecodeWireShapeMatchesForward(t *testing.T) {
 	if _, present := gotBody["key"]; present {
 		t.Fatal("body still carries the old `key` field Forward never read")
 	}
-	if out.Status != LicenseKeyAlreadyUsed || !out.AlreadyUsed() || out.Started == nil || !*out.Started {
+	if out.Status != domain.LicenseKeyAlreadyUsed || !out.AlreadyUsed() || out.Started == nil || !*out.Started {
 		t.Fatalf("26.9 decode read as %+v", out)
 	}
 	// 26.8.x shape decodes through the same struct

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"archive/zip"
 	"bytes"
 	"context"
@@ -102,19 +106,19 @@ func TestExportSourcesRefusesWrongAnswers(t *testing.T) {
 // QUERY_EDIT drafts carry no path (Forward's ChangeInfo.QueryEdit has only directory, name and basis): QueryPath must name the query from
 // the basis, with a move or rename applied.
 func TestNQEDraftQueryPath(t *testing.T) {
-	basis := &NQEChangeBasis{Path: "/team/stale_bgp"}
+	basis := &domain.NQEChangeBasis{Path: "/team/stale_bgp"}
 	cases := []struct {
 		name  string
-		draft NQEDraftChange
+		draft domain.NQEDraftChange
 		want  string
 	}{
-		{"add", NQEDraftChange{Type: "QUERY_ADD", Path: "/new/q"}, "/new/q"},
-		{"edit in place", NQEDraftChange{Type: "QUERY_EDIT", Basis: basis}, "/team/stale_bgp"},
-		{"edit and rename", NQEDraftChange{Type: "QUERY_EDIT", Basis: basis, Name: "stale_bgp_v2"}, "/team/stale_bgp_v2"},
-		{"edit and move", NQEDraftChange{Type: "QUERY_EDIT", Basis: basis, Directory: "/other"}, "/other/stale_bgp"},
-		{"edit, move and rename", NQEDraftChange{Type: "QUERY_EDIT", Basis: basis, Directory: "/other/", Name: "x"}, "/other/x"},
-		{"delete", NQEDraftChange{Type: "QUERY_DELETE", Basis: basis}, "/team/stale_bgp"},
-		{"permission change", NQEDraftChange{Type: "PERMISSION_SET", Directory: "/team/"}, ""},
+		{"add", domain.NQEDraftChange{Type: "QUERY_ADD", Path: "/new/q"}, "/new/q"},
+		{"edit in place", domain.NQEDraftChange{Type: "QUERY_EDIT", Basis: basis}, "/team/stale_bgp"},
+		{"edit and rename", domain.NQEDraftChange{Type: "QUERY_EDIT", Basis: basis, Name: "stale_bgp_v2"}, "/team/stale_bgp_v2"},
+		{"edit and move", domain.NQEDraftChange{Type: "QUERY_EDIT", Basis: basis, Directory: "/other"}, "/other/stale_bgp"},
+		{"edit, move and rename", domain.NQEDraftChange{Type: "QUERY_EDIT", Basis: basis, Directory: "/other/", Name: "x"}, "/other/x"},
+		{"delete", domain.NQEDraftChange{Type: "QUERY_DELETE", Basis: basis}, "/team/stale_bgp"},
+		{"permission change", domain.NQEDraftChange{Type: "PERMISSION_SET", Directory: "/team/"}, ""},
 	}
 	for _, tc := range cases {
 		if got := tc.draft.QueryPath(); got != tc.want {
@@ -126,11 +130,11 @@ func TestNQEDraftQueryPath(t *testing.T) {
 // A draft concerns a path when the path is its Path, where it ends up, or the committed path it started from: the last catches an edit that
 // renames the query away from the path, whose draft has no Path.
 func TestNQEDraftTouches(t *testing.T) {
-	renamed := NQEDraftChange{Type: "QUERY_EDIT", Basis: &NQEChangeBasis{Path: "/team/q"}, Name: "q2"}
+	renamed := domain.NQEDraftChange{Type: "QUERY_EDIT", Basis: &domain.NQEChangeBasis{Path: "/team/q"}, Name: "q2"}
 	if !renamed.Touches("/team/q") || !renamed.Touches("/team/q2") || renamed.Touches("/team/other") || renamed.Touches("") {
 		t.Fatalf("a rename must touch both the old and the new path: %+v", renamed)
 	}
-	if !(NQEDraftChange{Type: "QUERY_ADD", Path: "/new/q"}).Touches("/new/q") {
+	if !(domain.NQEDraftChange{Type: "QUERY_ADD", Path: "/new/q"}).Touches("/new/q") {
 		t.Fatal("an add touches its Path")
 	}
 }

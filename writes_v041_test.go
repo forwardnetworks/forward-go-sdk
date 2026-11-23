@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -15,14 +20,18 @@ import (
 func TestV041DeletesTolerateGoneButNotAnUnservedRoute(t *testing.T) {
 	t.Parallel()
 
-	calls := map[string]func(*Client) (*Response, error){
-		"DELETE /api/integrations/infoblox/instances/7": func(c *Client) (*Response, error) { return c.Integrations.DeleteInfoblox(context.Background(), "7") },
-		"DELETE /api/networks/n1/rapid7-sources/scan%201": func(c *Client) (*Response, error) {
+	calls := map[string]func(*Client) (*ports.Response, error){
+		"DELETE /api/integrations/infoblox/instances/7": func(c *Client) (*ports.Response, error) {
+			return c.Integrations.DeleteInfoblox(context.Background(), "7")
+		},
+		"DELETE /api/networks/n1/rapid7-sources/scan%201": func(c *Client) (*ports.Response, error) {
 			return c.Integrations.DeleteRapid7(context.Background(), "n1", "scan 1")
 		},
-		"DELETE /api/networks/n1/jumpServers/j1": func(c *Client) (*Response, error) { return c.JumpServers.Delete(context.Background(), "n1", "j1") },
-		"DELETE /api/custom-banners/b1":          func(c *Client) (*Response, error) { return c.Banners.Delete(context.Background(), "b1") },
-		"DELETE /api/networks/n1/locations/l1/clusters/c%201": func(c *Client) (*Response, error) {
+		"DELETE /api/networks/n1/jumpServers/j1": func(c *Client) (*ports.Response, error) {
+			return c.JumpServers.Delete(context.Background(), "n1", "j1")
+		},
+		"DELETE /api/custom-banners/b1": func(c *Client) (*ports.Response, error) { return c.Banners.Delete(context.Background(), "b1") },
+		"DELETE /api/networks/n1/locations/l1/clusters/c%201": func(c *Client) (*ports.Response, error) {
 			return c.Locations.DeleteCluster(context.Background(), "n1", "l1", "c 1")
 		},
 	}
@@ -44,7 +53,7 @@ func TestV041DeletesTolerateGoneButNotAnUnservedRoute(t *testing.T) {
 			if got != want {
 				t.Errorf("sent %q, want %q", got, want)
 			}
-			if unserved && !errors.Is(err, ErrEndpointNotServed) {
+			if unserved && !errors.Is(err, domain.ErrEndpointNotServed) {
 				t.Errorf("%s: an unserved route must surface ErrEndpointNotServed, got %v", want, err)
 			}
 			if !unserved && err != nil {
@@ -72,14 +81,14 @@ func TestV041UpdatesSendOnlyStatedFields(t *testing.T) {
 	ctx := context.Background()
 	pw, port := "s3cret", 2222
 
-	if _, err := c.JumpServers.Update(ctx, "n1", "j1", JumpServerUpdate{Password: &pw, Port: &port}); err != nil {
+	if _, err := c.JumpServers.Update(ctx, "n1", "j1", domain.JumpServerUpdate{Password: &pw, Port: &port}); err != nil {
 		t.Fatal(err)
 	}
 	if method != "PATCH" || path != "/api/networks/n1/jumpServers/j1" || len(body) != 2 || string(body["password"]) != `"s3cret"` || string(body["port"]) != "2222" {
 		t.Errorf("jump server update = %s %s %v", method, path, body)
 	}
 	name := "dns"
-	if _, err := c.Integrations.UpdateInfoblox(ctx, "7", InfobloxInstanceUpdate{Name: &name}); err != nil {
+	if _, err := c.Integrations.UpdateInfoblox(ctx, "7", domain.InfobloxInstanceUpdate{Name: &name}); err != nil {
 		t.Fatal(err)
 	}
 	if method != "PATCH" || path != "/api/integrations/infoblox/instances/7" || len(body) != 1 || string(body["name"]) != `"dns"` {
@@ -92,7 +101,7 @@ func TestV041UpdatesSendOnlyStatedFields(t *testing.T) {
 		t.Errorf("unfavorite = %s %s", method, path)
 	}
 	for _, bad := range []string{"", "abc", "-1"} {
-		if _, err := c.Integrations.UpdateInfoblox(ctx, bad, InfobloxInstanceUpdate{}); err == nil {
+		if _, err := c.Integrations.UpdateInfoblox(ctx, bad, domain.InfobloxInstanceUpdate{}); err == nil {
 			t.Errorf("Infoblox instance id %q must be refused before any request", bad)
 		}
 	}

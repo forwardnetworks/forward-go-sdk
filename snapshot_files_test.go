@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"testing"
 )
@@ -13,7 +17,7 @@ func TestSnapshotFileExcerptsReadsPredictedFileInfo(t *testing.T) {
 	snapshots := newTestClient(t, predictRecorder(t, 200, `{"lineCount":120,"excerpts":[{"start":0,"end":1,"lines":["a","b"]}],"predictedFileInfo":{"numModifiedLines":3,"changeSetId":"cs1","baseSnapshotId":"s1","commitId":"c1"}}`, &seen).URL).Snapshots
 	ctx := context.Background()
 
-	got, _, err := snapshots.FileExcerpts(ctx, "p9", "fw 1", "configuration.txt", []FileLines{{Start: 0, End: 40}})
+	got, _, err := snapshots.FileExcerpts(ctx, "p9", "fw 1", "configuration.txt", []domain.FileLines{{Start: 0, End: 40}})
 	if err != nil || got.LineCount != 120 || len(got.Excerpts) != 1 || got.Excerpts[0].Lines[1] != "b" || got.PredictedFileInfo == nil || got.PredictedFileInfo.NumModifiedLines != 3 || got.PredictedFileInfo.CommitID != "c1" {
 		t.Fatalf("got = %+v, %v", got, err)
 	}
@@ -21,7 +25,7 @@ func TestSnapshotFileExcerptsReadsPredictedFileInfo(t *testing.T) {
 		t.Fatalf("request = %+v", seen[0])
 	}
 	// Several ranges go in one comma-separated value, sorted; overlapping ones are refused.
-	if _, _, err := snapshots.FileExcerpts(ctx, "p9", "fw1", "configuration.txt", []FileLines{{Start: 60, End: 80}, {Start: 7, End: 45}}); err != nil {
+	if _, _, err := snapshots.FileExcerpts(ctx, "p9", "fw1", "configuration.txt", []domain.FileLines{{Start: 60, End: 80}, {Start: 7, End: 45}}); err != nil {
 		t.Fatal(err)
 	}
 	if got := seen[len(seen)-1].uri; got != "/api/snapshots/p9/files/fw1,configuration.txt?lines=7-45%2C60-80" {
@@ -30,24 +34,24 @@ func TestSnapshotFileExcerptsReadsPredictedFileInfo(t *testing.T) {
 	seen = seen[:len(seen)-1]
 	for name, err := range map[string]error{
 		"overlap": func() error {
-			_, _, err := snapshots.FileExcerpts(ctx, "p9", "d", "f", []FileLines{{Start: 0, End: 5}, {Start: 5, End: 9}})
+			_, _, err := snapshots.FileExcerpts(ctx, "p9", "d", "f", []domain.FileLines{{Start: 0, End: 5}, {Start: 5, End: 9}})
 			return err
 		}(),
 		"no ranges": func() error { _, _, err := snapshots.FileExcerpts(ctx, "p9", "d", "f", nil); return err }(),
 		"reversed": func() error {
-			_, _, err := snapshots.FileExcerpts(ctx, "p9", "d", "f", []FileLines{{Start: 5, End: 1}})
+			_, _, err := snapshots.FileExcerpts(ctx, "p9", "d", "f", []domain.FileLines{{Start: 5, End: 1}})
 			return err
 		}(),
 		"negative": func() error {
-			_, _, err := snapshots.FileExcerpts(ctx, "p9", "d", "f", []FileLines{{Start: -1, End: 1}})
+			_, _, err := snapshots.FileExcerpts(ctx, "p9", "d", "f", []domain.FileLines{{Start: -1, End: 1}})
 			return err
 		}(),
 		"no device": func() error {
-			_, _, err := snapshots.FileExcerpts(ctx, "p9", " ", "f", []FileLines{{Start: 0, End: 1}})
+			_, _, err := snapshots.FileExcerpts(ctx, "p9", " ", "f", []domain.FileLines{{Start: 0, End: 1}})
 			return err
 		}(),
 		"no snapshot": func() error {
-			_, _, err := snapshots.FileExcerpts(ctx, "", "d", "f", []FileLines{{Start: 0, End: 1}})
+			_, _, err := snapshots.FileExcerpts(ctx, "", "d", "f", []domain.FileLines{{Start: 0, End: 1}})
 			return err
 		}(),
 	} {

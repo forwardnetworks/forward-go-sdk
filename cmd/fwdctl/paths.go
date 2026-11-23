@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 func newPathsCmd() *cobra.Command {
@@ -19,7 +19,7 @@ func newPathsCmd() *cobra.Command {
 			"FWD_FROM, if set, names the device the search starts from.",
 		Args: cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req := forward.PathSearchRequest{SnapshotID: args[0], SrcIP: args[1], DstIP: args[2], From: os.Getenv("FWD_FROM")}
+			req := ports.PathSearchRequest{SnapshotID: args[0], SrcIP: args[1], DstIP: args[2], From: os.Getenv("FWD_FROM")}
 			if tcpPort != "" {
 				tcp := 6
 				req.IPProto, req.DstPort = &tcp, tcpPort

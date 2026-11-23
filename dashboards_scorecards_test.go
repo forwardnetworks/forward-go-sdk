@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"context"
 	"io"
@@ -141,25 +145,28 @@ func TestChecksReports(t *testing.T) {
 	ctx := context.Background()
 
 	var out bytes.Buffer
-	n, _, err := checks.ChecksReport(ctx, "S9", ChecksReportOptions{}, &out)
+	n, _, err := checks.ChecksReport(ctx, "S9", domain.ChecksReportOptions{}, &out)
 	if err != nil || n != int64(out.Len()) || uris[0] != "/api/snapshots/S9/checksReport" || !strings.Contains(accept, "spreadsheetml") {
 		t.Fatalf("ChecksReport: n=%d err=%v uri=%s accept=%s", n, err, uris[0], accept)
 	}
-	if _, _, err := checks.CheckCategoryReport(ctx, "S1", "intent", "/dc1", ChecksReportOptions{}, io.Discard); err == nil || !strings.Contains(err.Error(), "did not return a workbook") || uris[1] != "/api/snapshots/S1/checks-report?dir=%2Fdc1&type=INTENT" {
+	if _, _, err := checks.CheckCategoryReport(ctx, "S1", "intent", "/dc1", domain.ChecksReportOptions{}, io.Discard); err == nil || !strings.Contains(err.Error(), "did not return a workbook") || uris[1] != "/api/snapshots/S1/checks-report?dir=%2Fdc1&type=INTENT" {
 		t.Fatalf("a non-workbook body must be an error: %v %s", err, uris[1])
 	}
 	for name, f := range map[string]func() error{
 		"unknown category": func() error {
-			_, _, err := checks.CheckCategoryReport(ctx, "S1", "LOGS", "", ChecksReportOptions{}, io.Discard)
+			_, _, err := checks.CheckCategoryReport(ctx, "S1", "LOGS", "", domain.ChecksReportOptions{}, io.Discard)
 			return err
 		},
 		"dir on non-intent": func() error {
-			_, _, err := checks.CheckCategoryReport(ctx, "S1", "NQE", "/x", ChecksReportOptions{}, io.Discard)
+			_, _, err := checks.CheckCategoryReport(ctx, "S1", "NQE", "/x", domain.ChecksReportOptions{}, io.Discard)
 			return err
 		},
-		"nil writer": func() error { _, _, err := checks.ChecksReport(ctx, "S1", ChecksReportOptions{}, nil); return err },
+		"nil writer": func() error {
+			_, _, err := checks.ChecksReport(ctx, "S1", domain.ChecksReportOptions{}, nil)
+			return err
+		},
 		"blank snapshot": func() error {
-			_, _, err := checks.ChecksReport(ctx, " ", ChecksReportOptions{}, io.Discard)
+			_, _, err := checks.ChecksReport(ctx, " ", domain.ChecksReportOptions{}, io.Discard)
 			return err
 		},
 	} {

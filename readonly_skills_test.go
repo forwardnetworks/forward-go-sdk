@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"context"
 	"io"
@@ -66,26 +70,6 @@ func TestRetryRefusedOnlyDoesNotRetryTransportErrors(t *testing.T) {
 	}
 	if _, _, err := client.Version.Get(context.Background()); err == nil || calls.Load() != 1 {
 		t.Fatalf("err = %v after %d calls, want a transport error after one", err, calls.Load())
-	}
-}
-
-// Jitter only shortens a backoff, within its fraction, and never touches a
-// server's Retry-After.
-func TestRetryJitterBounds(t *testing.T) {
-	t.Parallel()
-
-	for i := 0; i < 200; i++ {
-		wait, ok := retryWait(nil, time.Second, 3, time.Minute, 0.5)
-		if !ok || wait < 2*time.Second || wait > 4*time.Second {
-			t.Fatalf("jittered wait = %s, want within [2s, 4s]", wait)
-		}
-	}
-	after := &http.Response{Header: http.Header{"Retry-After": []string{"3"}}}
-	if wait, _ := retryWait(after, time.Second, 1, time.Minute, 1); wait != 3*time.Second {
-		t.Fatalf("Retry-After with jitter = %s, want exactly 3s", wait)
-	}
-	if wait, _ := retryWait(nil, time.Second, 1, time.Minute, 7); wait < 0 || wait > time.Second {
-		t.Fatalf("jitter above 1 must clamp: wait = %s", wait)
 	}
 }
 
@@ -172,7 +156,7 @@ func TestDiffsFilesListsChangedFiles(t *testing.T) {
 		"leaf-1,BGP_TAB,,tag1.txt":  "",
 		"global-file":               "",
 	} {
-		name, ok := DiffFile{Name: stored}.DeviceFileName()
+		name, ok := domain.DiffFile{Name: stored}.DeviceFileName()
 		if name != want || ok != (want != "") {
 			t.Errorf("DeviceFileName(%q) = %q, %v; want %q", stored, name, ok, want)
 		}

@@ -1,0 +1,795 @@
+AI.AddMessage panics
+AI.DeleteChat panics
+AI.GetChat panics
+AI.ListChats panics
+AI.ListMessages panics
+AI.RenameChat panics
+AI.StartChat panics
+AI.StartChatOperation panics
+AIAssist.AskNQEDocs panics
+AIAssist.GenerateNQEQuery panics
+AIAssist.GeneratePredictCLI panics
+AIAssist.GeneratePredictOverview panics
+AIAssist.SuggestNQEDocFollowups panics
+AIAssist.SummarizeChangeImpact panics
+AIAssist.SummarizeConfigDiff panics
+AIAssist.SummarizeFailures panics
+AIAssist.SummarizeNQEQuery panics
+AccessControl.AddLabels panics
+AccessControl.CreateDeviceAccessLabel panics
+AccessControl.CreateGroup panics
+AccessControl.DeleteDeviceAccessLabel panics
+AccessControl.DeleteGroup panics
+AccessControl.DeviceAccessLabelNames panics
+AccessControl.GroupNames panics
+AccessControl.ListDeviceAccessLabels panics
+AccessControl.ListGroups panics
+AccessControl.RemoveLabels panics
+AccessControl.SetGroupNetworkRole returns zero, zero, error
+AccessControl.UpdateDeviceAccessLabel panics
+AccessControl.UpdateGroup panics
+Admin.AddSupportedOrganization returns zero, error "forward: admin service is nil"
+Admin.CreateOrganizationUser returns zero, error "forward: admin service is nil"
+Admin.DeleteUser returns zero, error "forward: admin service is nil"
+Admin.FDBSize panics
+Admin.FDBUsage panics
+Admin.GrantOrganizationAdmin returns zero, error "forward: admin service is nil"
+Admin.ListNetworks returns zero, zero, error "forward: admin service is nil"
+Admin.ListUsers returns zero, zero, error "forward: admin service is nil"
+Admin.LookupUser returns zero, zero, error "forward: admin service is nil"
+Admin.PatchUser returns zero, error "forward: admin service is nil"
+Admin.PurgeFDBGarbage panics
+Admin.SetSupportedOrganizations returns zero, error "forward: admin service is nil"
+Aliases.Deactivate panics
+Aliases.Get panics
+Aliases.List panics
+Aliases.Put returns zero, zero, error
+AuditLogs.List returns zero, zero, error
+Backups.BackupProgress panics
+Backups.CancelOperation panics
+Backups.DeleteBackup returns zero, error
+Backups.GetS3Storage returns zero, zero, error "forward: backups service is nil"
+Backups.GetSettings returns zero, zero, error "forward: backups service is nil"
+Backups.Last returns zero, zero, error "forward: backups service is nil"
+Backups.LastRestoreResult panics
+Backups.ListBackups panics
+Backups.RestoreSnapshot panics
+Backups.SetS3BucketOwnership returns zero, error "forward: backups service is nil"
+Backups.SnapshotRestoreStatus panics
+Backups.Trigger returns zero, error "forward: backups service is nil"
+Backups.UpdateS3Storage returns zero, zero, error "forward: backups service is nil"
+Backups.UpdateSettings returns zero, zero, error "forward: backups service is nil"
+Banners.Announcement panics
+Banners.Create panics
+Banners.CriticalStates panics
+Banners.Delete panics
+Banners.List panics
+Banners.Replace panics
+Browser.Cookies returns zero
+Browser.CurrentSession returns zero, zero, error "forward: browser service is nil"
+Browser.CurrentUser returns zero, zero, error "forward: browser service is nil"
+Browser.Impersonate returns zero, zero, error "forward: browser service is nil"
+Browser.ImpersonateWithServiceCredential returns zero, zero, error "forward: browser service is nil"
+Browser.Login panics
+Browser.LoginLegacy returns zero, zero, error "forward: browser service is nil"
+Browser.LoginPageCSRF returns zero, zero, error "forward: browser service is nil"
+Browser.PublicCSRFAPI returns zero, zero, error "forward: browser service is nil"
+Browser.SAMLAssertionConsumer returns zero, error "forward: browser service is nil"
+Browser.SAMLAuthenticationRequest returns zero, zero, error "forward: browser service is nil"
+CVEIndex.Delete panics
+CVEIndex.Download panics
+CVEIndex.Metadata panics
+CVEIndex.Put returns zero, error
+CVEIndex.UpdateFromSoftwareCentral panics
+Capabilities.All returns zero
+Capabilities.Profile returns zero
+Capabilities.Support returns set
+ChangeReports.Compare panics
+Checks.CheckCategoryReport returns zero, zero, error
+Checks.ChecksReport panics
+Checks.Create panics
+Checks.CreatePersistent panics
+Checks.Deactivate panics
+Checks.DeactivateAll panics
+Checks.ExistingNames panics
+Checks.ForScoring panics
+Checks.Get panics
+Checks.List panics
+Checks.ListPredefined panics
+Checks.Update panics
+ClassicDevices.ConnTypes panics
+ClassicDevices.ConnTypesExposed panics
+ClassicDevices.Create panics
+ClassicDevices.CreateWithAPIKey returns zero, zero, error
+ClassicDevices.Delete panics
+ClassicDevices.Get panics
+ClassicDevices.GetMany panics
+ClassicDevices.List panics
+ClassicDevices.ListTestStatuses panics
+ClassicDevices.Patch panics
+ClassicDevices.PatchMany returns zero, error
+ClassicDevices.Put panics
+ClassicDevices.PutBatch panics
+ClassicDevices.ResolveGlobs panics
+CloudAccounts.AWSAssumeRoleExternalID panics
+CloudAccounts.Create panics
+CloudAccounts.Delete panics
+CloudAccounts.Discover panics
+CloudAccounts.Get panics
+CloudAccounts.GetAWSCapCredential panics
+CloudAccounts.List panics
+CloudAccounts.NewlyDiscovered panics
+CloudAccounts.Patch panics
+CloudAccounts.Test panics
+CloudAccounts.Update panics
+CloudAccounts.UpdateCredential panics
+CloudManagedSetups.CreateMist panics
+CloudManagedSetups.DeleteMist panics
+CloudManagedSetups.DiscoverMist panics
+CloudManagedSetups.ListMist panics
+CollectionSchedules.Create returns zero, zero, error
+CollectionSchedules.Delete panics
+CollectionSchedules.Get panics
+CollectionSchedules.List panics
+CollectionSchedules.Replace returns zero, error
+Collections.DeviceStatuses panics
+CollectorTasks.Get panics
+CollectorTasks.GetWithSubTasks panics
+CollectorTasks.List panics
+CollectorTasks.Progress panics
+CollectorTasks.ResumeCollectionOperation returns zero, error "forward: collector tasks service is nil"
+CollectorTasks.SnapshotProgress panics
+CollectorTasks.Start panics
+CollectorTasks.StartCollectionOperation returns zero, zero, error "forward: collector tasks service is nil"
+CollectorTasks.StartOperation panics
+CollectorTasks.Stop returns zero, error
+CollectorTasks.SubTasksAt panics
+Collectors.Attach panics
+Collectors.Attachment panics
+Collectors.Delete panics
+Collectors.GetOrganizationSettings panics
+Collectors.GetSettings panics
+Collectors.List panics
+Collectors.Metrics returns zero, zero, error
+Collectors.PatchOrganizationSettings returns zero, error
+Collectors.PatchSettings panics
+Collectors.Register panics
+Collectors.ResetKey panics
+Collectors.SetPerformanceCollection panics
+Collectors.Upgrade panics
+Collectors.UpgradeAll panics
+Compatibility.Checks panics
+Compatibility.ListSnapshots panics
+Compatibility.StartCollectorTask panics
+Configuration.GetDeployment panics
+Configuration.SetDeployment panics
+ConnectivityTests.BulkStart panics
+ConnectivityTests.BulkStop panics
+ConnectivityTests.Get panics
+ConnectivityTests.List panics
+ConnectivityTests.Start panics
+ConnectivityTests.Stop panics
+ControllerManagedSetups.Create panics
+ControllerManagedSetups.CreateMigratingClassic panics
+ControllerManagedSetups.Delete panics
+ControllerManagedSetups.DeleteController panics
+ControllerManagedSetups.DeleteManagedDevice panics
+ControllerManagedSetups.List panics
+ControllerManagedSetups.ListWithTestResults panics
+ControllerManagedSetups.Patch returns zero, zero, error
+ControllerManagedSetups.PatchController returns set, zero, error
+ControllerManagedSetups.PatchManagedDevice returns set, zero, error
+ControllerManagedSetups.Test returns zero, error
+Credentials.CreateCLI panics
+Credentials.CreateHTTP panics
+Credentials.CreateOrgHTTP returns zero, zero, error
+Credentials.CreateSNMP panics
+Credentials.CreateSNMPCredential returns zero, zero, error
+Credentials.DeleteCLI panics
+Credentials.DeleteHTTP panics
+Credentials.DeleteOrgHTTP panics
+Credentials.DeleteSNMP panics
+Credentials.GetCLI panics
+Credentials.GetHTTP panics
+Credentials.GetOrgHTTP panics
+Credentials.ListCLI panics
+Credentials.ListHTTP panics
+Credentials.ListOrgHTTP panics
+Credentials.ListSNMP panics
+Credentials.ListSNMPCredentials panics
+Credentials.UpdateCLI panics
+Credentials.UpdateHTTP panics
+Credentials.UpdateHTTPWithResult panics
+Credentials.UpdateOrgHTTP panics
+Credentials.UpdateSNMP panics
+Credentials.UpdateSNMPCredential returns zero, error
+CustomCommandGroups.Create returns zero, error
+CustomCommandGroups.Delete panics
+CustomCommandGroups.Get panics
+CustomCommandGroups.List panics
+CustomCommandGroups.Update returns zero, error
+CustomCommandGroups.Validate panics
+Dashboards.Defaults panics
+Dashboards.DisplaySettings panics
+Dashboards.Get panics
+Dashboards.List panics
+DataConnectors.Add panics
+DataConnectors.Delete panics
+DataConnectors.Get panics
+DataConnectors.List panics
+DataConnectors.Test panics
+DataConnectors.Update returns zero, zero, error
+DataFiles.Add returns zero, zero, error
+DataFiles.AddToNetwork panics
+DataFiles.AssessReplacement panics
+DataFiles.Content panics
+DataFiles.Delete panics
+DataFiles.InferSchema returns zero, zero, error
+DataFiles.List panics
+DataFiles.ListForNetwork panics
+DataFiles.Patch panics
+DataFiles.RemoveFromNetwork panics
+DataFiles.ReplaceContent panics
+DataFiles.Schema panics
+Decorators.Decorate panics
+Decorators.Delete panics
+Decorators.Get panics
+Decorators.List panics
+Decorators.Put returns zero, zero, error
+Decorators.SetManagedEnabled panics
+DeviceDiscovery.CreateScheduled returns zero, zero, error
+DeviceDiscovery.DeleteScheduled panics
+DeviceDiscovery.GetScheduled panics
+DeviceDiscovery.ListDiscovered panics
+DeviceDiscovery.ListScheduled panics
+DeviceDiscovery.Start returns zero, zero, error
+DeviceDiscovery.Stop panics
+DeviceTags.AddBatch panics
+DeviceTags.AddBatchTo panics
+DeviceTags.AddBatchToAt panics
+DeviceTags.DeleteTag panics
+DeviceTags.List panics
+DeviceTags.ListAt panics
+DeviceTags.RemoveBatchFrom panics
+DeviceTags.RemoveBatchFromAt panics
+DeviceTags.UpdateTag returns zero, zero, error
+Devices.BGPAdvertisements panics
+Devices.Diff panics
+Devices.DownloadFile panics
+Devices.DownloadFileHead panics
+Devices.Get panics
+Devices.Interface panics
+Devices.Interfaces panics
+Devices.List panics
+Devices.ListFiles panics
+Devices.Missing panics
+Diffs.ACLDevices panics
+Diffs.ARPDevices panics
+Diffs.Checks panics
+Diffs.ChecksCount panics
+Diffs.ConnectivityDiffLocationPair panics
+Diffs.ConnectivityDiffLocationPairs returns zero, zero, error
+Diffs.ConnectivityDiffLocations panics
+Diffs.Count panics
+Diffs.DeviceACL panics
+Diffs.DeviceARP panics
+Diffs.DeviceL3 panics
+Diffs.DeviceMAC panics
+Diffs.DeviceNAT panics
+Diffs.Devices panics
+Diffs.Files panics
+Diffs.FilesCount panics
+Diffs.L3Devices panics
+Diffs.L3PrefixDetails panics
+Diffs.L3Prefixes panics
+Diffs.L3Summary panics
+Diffs.MACDevices panics
+Diffs.MaterialSummary panics
+Diffs.NATDevices panics
+Diffs.RoutingLoopsBidirectional panics
+Diffs.SubnetConnectivity panics
+Diffs.VulnerabilitiesBidirectional panics
+Diffs.VulnerabilitiesCounts panics
+Diffs.WaitChecks panics
+Diffs.WaitConnectivityDiffLocationPairs panics
+Diffs.WaitForSubnetConnectivity panics
+EdgeAssets.Delete panics
+EdgeAssets.List panics
+EdgeAssets.RemoveCriticality panics
+EdgeAssets.SetCriticality returns zero, error
+EdgeAssets.Update panics
+Endpoints.AddBatch panics
+Endpoints.ApprovedCLICommands panics
+Endpoints.AssessCLICommands panics
+Endpoints.CreateProfile panics
+Endpoints.CreateProfileDefinition returns zero, zero, error
+Endpoints.Delete panics
+Endpoints.DeleteProfile panics
+Endpoints.GetProfile panics
+Endpoints.List panics
+Endpoints.ListProfiles panics
+Endpoints.ListTestStatuses panics
+Endpoints.Patch panics
+Endpoints.UpdateApprovedCLICommands panics
+Endpoints.UpdateProfile returns zero, zero, error
+FwdAppConnection.Proxy panics
+FwdAppConnection.Test panics
+Integrations.AddCheckIncident returns zero, zero, error
+Integrations.AddCheckIncidents returns zero, zero, error
+Integrations.AttachToChangeSetChangeRequest panics
+Integrations.CheckIncidentUpdateHistory panics
+Integrations.CloseServiceNowIncident panics
+Integrations.CloseServiceNowIncidents panics
+Integrations.CollectVulnerabilityScanner panics
+Integrations.CreateChangeSetChangeRequest returns zero, zero, error
+Integrations.CreateInfoblox panics
+Integrations.CreateRapid7 panics
+Integrations.CreateTenableSC panics
+Integrations.CreateVulnerabilityScanner returns zero, zero, error
+Integrations.DeleteInfoblox returns zero, error
+Integrations.DeleteRapid7 panics
+Integrations.DeleteServiceNow panics
+Integrations.DeleteServiceNowCMDBConfiguration panics
+Integrations.DeleteTenableSC panics
+Integrations.DeleteVulnerabilityScanner panics
+Integrations.DisableServiceNowCMDB panics
+Integrations.DownloadChangeSetChangeRequestAttachment panics
+Integrations.DownloadServiceNowCMDBPayload panics
+Integrations.DownloadServiceNowCMDBSyncReport panics
+Integrations.EnableServiceNowCMDB panics
+Integrations.GetChangeSetChangeRequest panics
+Integrations.GetServiceNow panics
+Integrations.GetServiceNowCMDBConfiguration panics
+Integrations.GetServiceNowIncident panics
+Integrations.InfobloxStatus panics
+Integrations.LinkCheckIncident panics
+Integrations.ListCheckIncidents panics
+Integrations.ListInfoblox panics
+Integrations.ListInfobloxLegacy panics
+Integrations.ListNetworkVulnerabilityScanners panics
+Integrations.ListRapid7 panics
+Integrations.ListTenableSC panics
+Integrations.ListVulnerabilityScanners panics
+Integrations.PatchServiceNow panics
+Integrations.PushServiceNowCMDB panics
+Integrations.RefreshCheckIncidents panics
+Integrations.SaveServiceNowCMDB panics
+Integrations.ServiceNowCMDBConfigurationItems panics
+Integrations.ServiceNowCMDBDiscoverySources panics
+Integrations.ServiceNowCMDBPayload panics
+Integrations.ServiceNowCMDBSchema panics
+Integrations.ServiceNowCMDBStatusReport panics
+Integrations.ServiceNowCMDBSyncHistory panics
+Integrations.SetNetworkVulnerabilityScannerInclude panics
+Integrations.TestServiceNowCMDB panics
+Integrations.TestTenableSC panics
+Integrations.TestVulnerabilityScanner panics
+Integrations.UnlinkCheckIncident panics
+Integrations.UpdateInfoblox returns zero, error
+Integrations.UpdateRapid7 panics
+Integrations.UpdateServiceNow returns zero, zero, error
+Integrations.UpdateTenableSC panics
+Integrations.UpdateVulnerabilityScanner returns zero, zero, error
+Jobs.Cancel panics
+Jobs.DebugView panics
+Jobs.ListActive panics
+Jobs.ListCompleted panics
+JumpServers.Create panics
+JumpServers.CreateLegacy panics
+JumpServers.CreateWithPassword panics
+JumpServers.Delete panics
+JumpServers.List panics
+JumpServers.Update panics
+Licensing.ActivateForOrg panics
+Licensing.AllOrgUsage panics
+Licensing.Apply panics
+Licensing.CCHDebug panics
+Licensing.CCHHistory returns zero, zero, error
+Licensing.CCHUsage panics
+Licensing.CCHUsedSince panics
+Licensing.Decode panics
+Licensing.DeviceCounts panics
+Licensing.EdgeAssetCounts panics
+Licensing.Fingerprint panics
+Licensing.InvalidateForOrg panics
+Licensing.LicensedDevices panics
+Licensing.List panics
+Licensing.ListForOrg panics
+Licensing.OrgCloudUsage panics
+Licensing.OrgUsage panics
+Licensing.RemoveAllForOrg panics
+Licensing.SaaSOrgInfos panics
+Licensing.TierAndStatus panics
+Licensing.Usage panics
+Licensing.UsageHistory returns zero, zero, error
+Locations.Assign panics
+Locations.Atlas panics
+Locations.AtlasByLocation panics
+Locations.Create panics
+Locations.CreateCluster panics
+Locations.Delete panics
+Locations.DeleteCluster panics
+Locations.Get panics
+Locations.List panics
+Locations.ListClusters panics
+Locations.Patch panics
+Locations.PatchCluster panics
+NQE.ACLCounts panics
+NQE.ACLEntries panics
+NQE.ACLEntriesWith panics
+NQE.BGPSessions panics
+NQE.CheckResult panics
+NQE.Diff panics
+NQE.DiffSource returns zero, zero, error
+NQE.ExplainPath panics
+NQE.ExplainQuery panics
+NQE.InterfaceAdmin panics
+NQE.LLDPAdjacencies panics
+NQE.ListQueries panics
+NQE.Result panics
+NQE.ResultJSONLines panics
+NQE.Run returns zero, zero, error
+NQE.RunAll returns zero, zero, error
+NQE.RunMetrics panics
+NQE.Schema panics
+NQE.SchemaAt panics
+NQE.Start returns zero, zero, error
+NQE.StartOperation returns zero, zero, error
+NQE.Status panics
+NQERepository.AddDirectory panics
+NQERepository.AddQuery panics
+NQERepository.Commit panics
+NQERepository.CommitDryRun panics
+NQERepository.DeleteDirectory panics
+NQERepository.DeleteQuery panics
+NQERepository.DiscardChange panics
+NQERepository.DiscardChanges panics
+NQERepository.EditQuery panics
+NQERepository.ExportForwardSources returns zero, zero, error
+NQERepository.ExportOrgSources returns zero, zero, error
+NQERepository.GetDraft panics
+NQERepository.GetQuery panics
+NQERepository.GetQueryByID panics
+NQERepository.Head panics
+NQERepository.History panics
+NQERepository.ListDrafts panics
+NQERepository.ListHeadQueries panics
+NetworkMaps.Directories panics
+NetworkMaps.Get panics
+NetworkMaps.GetWithDirectory panics
+NetworkMaps.List panics
+NetworkMaps.Snapshot panics
+NetworkMaps.Structures panics
+Networks.CheckAccess panics
+Networks.CloudObject panics
+Networks.CloudObjectFiles panics
+Networks.CloudObjects panics
+Networks.Create panics
+Networks.CreateWorkspace panics
+Networks.Delete panics
+Networks.Get panics
+Networks.GetSnapshotRetentionPolicy panics
+Networks.InterestingPaths panics
+Networks.L7Applications panics
+Networks.List panics
+Networks.Paths panics
+Networks.PathsBulk panics
+Networks.PreviewSnapshotRetention panics
+Networks.SecurityZones panics
+Networks.SetSnapshotRetentionPolicy returns zero, error
+Networks.Update panics
+Organizations.Create panics
+Organizations.Current panics
+Organizations.Delete panics
+Organizations.DeleteNetworkInOrg panics
+Organizations.DeleteOrgCleanly panics
+Organizations.DeleteOrgNetworks panics
+Organizations.List panics
+Organizations.SetEnabled panics
+Organizations.Update panics
+Performance.CollectorDevices panics
+Performance.DefaultThresholds panics
+Performance.DeviceHealth panics
+Performance.DeviceMetricHistory panics
+Performance.DeviceMetricHistoryDocument panics
+Performance.DeviceMetrics panics
+Performance.DeviceMetricsDocument panics
+Performance.DevicesHealth panics
+Performance.DevicesWithData panics
+Performance.GenerateSynthetic panics
+Performance.InterfaceHealth panics
+Performance.InterfaceMetricHistory panics
+Performance.InterfaceMetricHistoryDocument panics
+Performance.InterfaceMetrics panics
+Performance.InterfaceMetricsDocument panics
+Performance.PatchSettings panics
+Performance.RawSNMPData returns zero, zero, error
+Performance.Readiness panics
+Performance.Settings panics
+Performance.UnhealthyDevices panics
+Performance.UnhealthyInterfaces panics
+Performance.Upload panics
+Performance.UploadPayload panics
+Performance.UploadPayloadWithIdentity panics
+Performance.UploadWithIdentity panics
+Predict.AddChangeSetCheck returns zero, zero, error
+Predict.AddChangeSetDirectory returns zero, error
+Predict.AddSecurityRule panics
+Predict.AffectedDevices panics
+Predict.AllowedCommands returns zero, zero, error
+Predict.BGPAdvertisementDiffs panics
+Predict.BGPAdvertisementReadiness panics
+Predict.BGPAdvertisementReadinessFor panics
+Predict.BGPCollectionRequirements panics
+Predict.BGPNode panics
+Predict.BGPNodeDevices panics
+Predict.BGPRules returns zero, zero, error
+Predict.ChangeSetNQEChecks panics
+Predict.ChangeSetSubset panics
+Predict.Commit panics
+Predict.CommitWithOptions panics
+Predict.CommittedBGPAdvertisementDiffs panics
+Predict.ConfigNodeDevices panics
+Predict.ConfigNodes panics
+Predict.CreateChangeSet panics
+Predict.DeleteChangeSet panics
+Predict.DeleteChangeSetCheck panics
+Predict.DeleteChangeSetDirectory returns zero, error
+Predict.DeleteChangeSets panics
+Predict.DeleteCommit panics
+Predict.DiscardAllDeviceChanges panics
+Predict.DiscardDraftDevice panics
+Predict.DiscardSecurityRuleChange panics
+Predict.DownloadProtocolModeling panics
+Predict.DuplicateChangeSet panics
+Predict.DuplicateChangeSetToNetwork panics
+Predict.EditCommitNote panics
+Predict.EditSecurityRule panics
+Predict.ExportChangeSetZip panics
+Predict.FirewallObjects returns zero, zero, error
+Predict.GetChangeSetSummary panics
+Predict.GetCommit panics
+Predict.GetCommittedConfig panics
+Predict.GetDraft panics
+Predict.GetDraftConfig panics
+Predict.GetHeadCommit panics
+Predict.ListAddressGroups panics
+Predict.ListAddressObjects panics
+Predict.ListApplicationGroups panics
+Predict.ListApplicationObjects panics
+Predict.ListChangeSetChecks panics
+Predict.ListChangeSetDirectories panics
+Predict.ListChangeSets panics
+Predict.ListCommits panics
+Predict.ListFirewallZones panics
+Predict.ListPredictedSnapshots panics
+Predict.ListServiceGroups panics
+Predict.ListServiceObjects panics
+Predict.ListURLObjects panics
+Predict.ListUserObjects panics
+Predict.MoveChangeSetDirectory returns zero, error
+Predict.MoveChangeSetToDirectory returns zero, error
+Predict.MoveChangeSetsToDirectory returns zero, error
+Predict.MoveSecurityRule panics
+Predict.OSPFNodeDevices panics
+Predict.OSPFNodes panics
+Predict.PatchChangeSetsTags returns zero, error
+Predict.PredictOSes panics
+Predict.PrettifyCommands panics
+Predict.PreviewCommandsConfig panics
+Predict.ProtocolModelingDone panics
+Predict.ProtocolModelingPartitions panics
+Predict.ProtocolPathSelection panics
+Predict.ProtocolSeedRoutes panics
+Predict.RemoveSecurityRule panics
+Predict.RenameChangeSetDirectory returns zero, error
+Predict.RestoreBGPAdvertisement returns zero, error
+Predict.RestoreBGPAdvertisements returns zero, error
+Predict.RestoreCommit panics
+Predict.RestoreCommitAsNew panics
+Predict.RetriggerProtocolModeling panics
+Predict.Run panics
+Predict.RunIEntryChecks returns zero, zero, error
+Predict.RunOperation panics
+Predict.SaveDeviceConfig panics
+Predict.SecurityRulesDiff panics
+Predict.StageBGPAdvertisement panics
+Predict.StageBGPAdvertisements panics
+Predict.StageCommands panics
+Predict.TriggerProtocolModeling panics
+Predict.UpdateChangeSet panics
+Predict.UpdateChangeSetCheck returns zero, error
+Predict.ValidateCommands panics
+Predict.VerifyBGPStaging panics
+Predict.VerifyPredictModeling panics
+Predict.WithdrawBGPAdvertisement returns zero, error
+Predict.WithdrawBGPAdvertisements returns zero, error
+Properties.ClearCurrent panics
+Properties.ClearGlobal panics
+Properties.ClearNetwork panics
+Properties.ClearOrganization panics
+Properties.Current panics
+Properties.CurrentValue panics
+Properties.DescribeOrganization panics
+Properties.EffectiveOrganizationValue panics
+Properties.Global panics
+Properties.NetworkOverrides panics
+Properties.NetworkValue panics
+Properties.Organization panics
+Properties.OrganizationOverrides panics
+Properties.OrganizationValue panics
+Properties.PatchNetworkOverrides panics
+Properties.SetCurrent panics
+Properties.SetGlobal panics
+Properties.SetNetwork panics
+Properties.SetOrganization panics
+Proxies.Create panics
+Proxies.List panics
+Proxies.Update panics
+Raw.Do panics
+Raw.DoJSON panics
+Routing.DevicePrefixInfo panics
+Routing.InstalledPrefixes returns zero, zero, error
+Routing.PrefixDetails panics
+Routing.PrefixSearch returns zero, zero, error
+Routing.PrefixTrace returns zero, zero, error
+Routing.RPDevicePrefixInfo panics
+Routing.RPPrefixDetails panics
+Routing.RPPrefixSearch returns zero, zero, error
+Routing.RPPrefixTrace returns zero, zero, error
+SAML.GetSettings panics
+SAML.PutSettings panics
+SaseSetups.Create returns zero, zero, error
+SaseSetups.Delete panics
+SaseSetups.Get panics
+SaseSetups.List panics
+SaseSetups.NewlyDiscovered panics
+SaseSetups.Patch panics
+SaseSetups.Test panics
+SaseSetups.TestConnector panics
+SaseSetups.TestConnectors panics
+SaseSetups.TestSetup panics
+Scorecards.Definitions panics
+Scorecards.ForSnapshot panics
+Scorecards.KPICategories panics
+Scorecards.KPICategoryDefinitions panics
+Scorecards.Trends returns zero, zero, error
+Snapshots.Collect panics
+Snapshots.CollectionExceptions panics
+Snapshots.CollectionLog panics
+Snapshots.CollectionMetrics panics
+Snapshots.ComputeAdvancedReachability panics
+Snapshots.Delete panics
+Snapshots.Download panics
+Snapshots.Exceptions panics
+Snapshots.ExceptionsText panics
+Snapshots.Export returns zero, zero, error
+Snapshots.ExportSubset panics
+Snapshots.ExportSubsetCompatibility returns zero, zero, error
+Snapshots.Favorite panics
+Snapshots.FileExcerpts panics
+Snapshots.ForCollectionTask panics
+Snapshots.Get panics
+Snapshots.Invalidate panics
+Snapshots.LatestCollected panics
+Snapshots.LatestProcessed panics
+Snapshots.List panics
+Snapshots.ListDocument panics
+Snapshots.Logs panics
+Snapshots.MergeFileIntoLatest returns zero, zero, error
+Snapshots.MergeIntoLatest returns zero, zero, error
+Snapshots.Metrics panics
+Snapshots.Operation panics
+Snapshots.ProcessEstimate panics
+Snapshots.ProcessingQueue panics
+Snapshots.Progress panics
+Snapshots.Reprocess panics
+Snapshots.ReprocessInvalidated panics
+Snapshots.ResolveID returns set, zero, zero
+Snapshots.ResumeOperation returns zero, error "forward: snapshots service is nil"
+Snapshots.SetNote panics
+Snapshots.StartUploadOperation panics
+Snapshots.Unfavorite panics
+Snapshots.Upload panics
+Snapshots.UploadMergeCompatibility panics
+SoftwareCentral.DeploymentArtifactURL panics
+SoftwareCentral.DownloadClientPackage panics
+SoftwareCentral.DownloadDeploymentArtifact panics
+SoftwareCentral.ListDeploymentArtifacts panics
+SoftwareCentral.ListForwardApplianceOVAs panics
+SyntheticNodes.Backdate panics
+SyntheticNodes.CompatibleQueries panics
+SyntheticNodes.ComputeQuery panics
+SyntheticNodes.Delete panics
+SyntheticNodes.DeleteIntranetNode panics
+SyntheticNodes.DeleteL3VPN panics
+SyntheticNodes.Get panics
+SyntheticNodes.GetInternetNode panics
+SyntheticNodes.GetIntranetNode panics
+SyntheticNodes.GetL3VPN panics
+SyntheticNodes.InternetConnectionSuggestions panics
+SyntheticNodes.List panics
+SyntheticNodes.ListIntranetNodes panics
+SyntheticNodes.ListL3VPNs panics
+SyntheticNodes.Put panics
+SyntheticNodes.PutInternetNode panics
+SyntheticNodes.PutIntranetNode panics
+SyntheticNodes.PutL3VPN panics
+SyntheticNodes.SetInternetExcludedSubnets panics
+SyntheticNodes.SetQuery panics
+ThreatExposure.CreateDefinition returns zero, zero, error
+ThreatExposure.CriticalAssetsSummary panics
+ThreatExposure.DeleteDefinition panics
+ThreatExposure.DirectExposureDetails panics
+ThreatExposure.Evaluate panics
+ThreatExposure.GetDefinition panics
+ThreatExposure.ListDefinitions panics
+ThreatExposure.ResolveDefinition returns zero, zero, error
+ThreatExposure.Status panics
+ThreatExposure.TransitiveExposureDetails panics
+ThreatExposure.UpdateDefinition returns zero, error
+Topology.BackdateLinkOverrides panics
+Topology.EditNetworkOverrides panics
+Topology.EditOverrides panics
+Topology.List panics
+Topology.NetworkOverrides panics
+Topology.Overrides panics
+Topology.SetNetworkOverrides panics
+Topology.SnapshotOverrides panics
+Topology.StagedOverrideChanges panics
+Trace.Explain returns zero, zero, error
+Trace.ExplainQuery returns zero, zero, error
+Trace.Facets returns zero, zero, error
+Trace.FacetsQuery returns zero, zero, error
+Trace.Trace returns zero, zero, error
+Trace.TraceFor returns zero, zero, error
+TrustedCertificates.Add panics
+TrustedCertificates.Apply panics
+TrustedCertificates.ApplyOperations panics
+TrustedCertificates.Delete panics
+TrustedCertificates.List panics
+Users.Access panics
+Users.AddNetworkRole returns zero, error
+Users.BulkSetEnabled panics
+Users.ClearNetworkRoles panics
+Users.Create panics
+Users.CreateToken panics
+Users.Current panics
+Users.CurrentSession panics
+Users.Delete panics
+Users.DeleteToken panics
+Users.DeleteTokenFor panics
+Users.Get panics
+Users.GrantOrgAdmin panics
+Users.List panics
+Users.ListTokens panics
+Users.ListTokensFor panics
+Users.ListWithRoles panics
+Users.Patch panics
+Users.RemoveNetworkRole returns zero, error
+Users.Reset2FA panics
+Users.ResetPassword panics
+Users.RevokeOrgAdmin panics
+Users.Roles panics
+Users.RolesDirect panics
+Users.SetNetworkRole returns zero, error
+Users.TwoFactorStatuses panics
+Version.Get panics
+Version.Reachable returns zero, zero, error "forward: version service is nil"
+Vulnerabilities.DetectionLogic returns zero, zero, error
+Vulnerabilities.Get panics
+Vulnerabilities.List panics
+Vulnerabilities.ListByOS panics
+Vulnerabilities.ListDevices returns zero, zero, error
+WanCircuits.Backdate panics
+WanCircuits.Delete panics
+WanCircuits.Get panics
+WanCircuits.List panics
+WanCircuits.Patch panics
+WanCircuits.Put panics
+WanCircuits.ReplaceAll panics
+Webhooks.Create panics
+Webhooks.Delete panics
+Webhooks.List panics
+Webhooks.TestNew panics
+Webhooks.Update panics

@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"net/http"
@@ -27,7 +32,7 @@ func TestVulnerabilitiesDetectionLogic(t *testing.T) {
 	ctx := context.Background()
 
 	logic, _, err := client.Vulnerabilities.DetectionLogic(ctx, " cve-2011-0946 ")
-	if err != nil || !logic.HasLogic() || logic.SourceType != CVEDetectionConfigBlockPattern || logic.Source != "ip http server\n  no ip http secure-server" || logic.CVEID != "CVE-2011-0946" {
+	if err != nil || !logic.HasLogic() || logic.SourceType != domain.CVEDetectionConfigBlockPattern || logic.Source != "ip http server\n  no ip http secure-server" || logic.CVEID != "CVE-2011-0946" {
 		t.Fatalf("logic=%+v err=%v", logic, err)
 	}
 	if path != "/api/cves/CVE-2011-0946/detection-logic" {
@@ -42,13 +47,13 @@ func TestVulnerabilitiesDetectionLogic(t *testing.T) {
 
 	status, body = http.StatusForbidden, `{"message":"CVE_DETECTION_LOGIC_EXPOSED is off for your organization"}`
 	_, _, err = client.Vulnerabilities.DetectionLogic(ctx, "CVE-2021-1234")
-	var apiErr *ErrorResponse
-	if !errors.Is(err, ErrFeatureGated) || !errors.As(err, &apiErr) || apiErr.GateProperty != "CVE_DETECTION_LOGIC_EXPOSED" || apiErr.GateEnabled {
+	var apiErr *ports.ErrorResponse
+	if !errors.Is(err, domain.ErrFeatureGated) || !errors.As(err, &apiErr) || apiErr.GateProperty != "CVE_DETECTION_LOGIC_EXPOSED" || apiErr.GateEnabled {
 		t.Fatalf("the gate off must be a feature gate naming the property: %v", err)
 	}
 
 	status, body = http.StatusNotFound, `{"message":"CVE-2099-0001 not found"}`
-	if _, _, err = client.Vulnerabilities.DetectionLogic(ctx, "CVE-2099-0001"); !IsStatus(err, http.StatusNotFound) || errors.Is(err, ErrNetworkNotFound) {
+	if _, _, err = client.Vulnerabilities.DetectionLogic(ctx, "CVE-2099-0001"); !ports.IsStatus(err, http.StatusNotFound) || errors.Is(err, domain.ErrNetworkNotFound) {
 		t.Fatalf("an unknown CVE is a plain 404: %v", err)
 	}
 

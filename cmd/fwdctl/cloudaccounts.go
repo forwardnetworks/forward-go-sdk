@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 func newCloudAccountsCmd() *cobra.Command {
@@ -52,7 +53,7 @@ func newCloudAccountsCredentialCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			req := forward.CloudAccountCredentialRequest{Type: acct.Type}
+			req := ports.CloudAccountCredentialRequest{Type: acct.Type}
 			rest := args[1:]
 			if azure || strings.EqualFold(acct.Type, "AZURE") {
 				if len(rest) < 3 {
@@ -85,7 +86,7 @@ func newCloudAccountsCollectCmd() *cobra.Command {
 				return err
 			}
 			// A PATCH with only these fields leaves the account's credentials and environment as they are.
-			_, _, err = c.CloudAccounts.Update(ctx, net, args[0], forward.CloudAccountRequest{
+			_, _, err = c.CloudAccounts.Update(ctx, net, args[0], ports.CloudAccountRequest{
 				Type: acct.Type, Name: acct.Name, Collect: args[1] == "on",
 			})
 			return err
@@ -93,15 +94,15 @@ func newCloudAccountsCollectCmd() *cobra.Command {
 	}
 }
 
-func cloudAccountByName(ctx context.Context, c *forward.Client, net, name string) (forward.CloudAccount, error) {
+func cloudAccountByName(ctx context.Context, c *forward.Client, net, name string) (ports.CloudAccount, error) {
 	list, _, err := c.CloudAccounts.List(ctx, net)
 	if err != nil {
-		return forward.CloudAccount{}, err
+		return ports.CloudAccount{}, err
 	}
 	for _, a := range list {
 		if a.Name == name {
 			return a, nil
 		}
 	}
-	return forward.CloudAccount{}, fmt.Errorf("no cloud account %q", name)
+	return ports.CloudAccount{}, fmt.Errorf("no cloud account %q", name)
 }

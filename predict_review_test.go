@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -29,7 +34,7 @@ func TestStageBGPAdvertisementsIsOneOrderedBulkAdd(t *testing.T) {
 	defer server.Close()
 	c := newTestClient(t, server.URL)
 	pref := int64(100)
-	ads := []BGPAdvertisement{
+	ads := []domain.BGPAdvertisement{
 		{Prefix: "10.200.0.0/24", ExternalPeer: "10.253.1.1", Type: "EBGP", Origin: "IGP", VRF: "default", LocalPref: &pref},
 		{Prefix: "10.200.0.0/24", ExternalPeer: "10.253.2.1", Type: "EBGP", Origin: "IGP", VRF: "default"},
 	}
@@ -64,8 +69,8 @@ func TestStageBGPAdvertisementsUnsupportedActionIsATyped400(t *testing.T) {
 	}))
 	defer server.Close()
 	_, err := newTestClient(t, server.URL).Predict.StageBGPAdvertisements(context.Background(), "7", "cs-1", "core",
-		[]BGPAdvertisement{{Prefix: "10.0.0.0/8", ExternalPeer: "1.1.1.1"}})
-	var apiErr *ErrorResponse
+		[]domain.BGPAdvertisement{{Prefix: "10.0.0.0/8", ExternalPeer: "1.1.1.1"}})
+	var apiErr *ports.ErrorResponse
 	if !errors.As(err, &apiErr) || apiErr.Response.StatusCode != http.StatusBadRequest || len(apiErr.Body) == 0 {
 		t.Fatalf("err = %v, want a 400 ErrorResponse carrying the body", err)
 	}
@@ -112,7 +117,7 @@ func TestListChangeSetChecksRefusalSurfaces(t *testing.T) {
 	}))
 	defer server.Close()
 	_, _, err := newTestClient(t, server.URL).Predict.ListChangeSetChecks(context.Background(), "7", "cs-1", "1")
-	if !IsStatus(err, http.StatusBadRequest) {
+	if !ports.IsStatus(err, http.StatusBadRequest) {
 		t.Fatalf("err = %v, want the 400 refusal", err)
 	}
 }
@@ -144,7 +149,7 @@ func TestValidateCommandsSendsTheValidationRequest(t *testing.T) {
 		t.Fatalf("errors decoded wrong: %+v", got.CommandErrors)
 	}
 
-	if _, _, err := c.Predict.ValidateCommands(context.Background(), "7", "cs-1", "br1", "hostname x", CommandValidationOptions{CursorLine: 1, CursorColumn: 4}); err != nil {
+	if _, _, err := c.Predict.ValidateCommands(context.Background(), "7", "cs-1", "br1", "hostname x", domain.CommandValidationOptions{CursorLine: 1, CursorColumn: 4}); err != nil {
 		t.Fatal(err)
 	}
 	if body["cursorColumnNum"] != float64(4) {

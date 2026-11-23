@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -29,8 +33,8 @@ func TestPredictBGPWithdrawAndRestore(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	p := client.Predict
 	ctx := context.Background()
-	key := BGPAdvertisementKey{VRF: "default", ExternalPeer: "4.16.225.165", Prefix: "0.0.0.0/0"}
-	keys := []BGPAdvertisementKey{key, {VRF: "default", ExternalPeer: "4.16.225.165", Prefix: "10.0.0.0/8"}}
+	key := domain.BGPAdvertisementKey{VRF: "default", ExternalPeer: "4.16.225.165", Prefix: "0.0.0.0/0"}
+	keys := []domain.BGPAdvertisementKey{key, {VRF: "default", ExternalPeer: "4.16.225.165", Prefix: "10.0.0.0/8"}}
 
 	if _, err := p.WithdrawBGPAdvertisement(ctx, "205507", "cs1", "ldc31-rtedg-1", key); err != nil {
 		t.Fatal(err)
@@ -60,28 +64,28 @@ func TestPredictBGPWithdrawAndRestore(t *testing.T) {
 	sent := len(calls)
 	for name, call := range map[string]func() error{
 		"no vrf": func() error {
-			_, err := p.WithdrawBGPAdvertisement(ctx, "5", "cs1", "d", BGPAdvertisementKey{ExternalPeer: "1.1.1.1", Prefix: "0.0.0.0/0"})
+			_, err := p.WithdrawBGPAdvertisement(ctx, "5", "cs1", "d", domain.BGPAdvertisementKey{ExternalPeer: "1.1.1.1", Prefix: "0.0.0.0/0"})
 			return err
 		},
 		"bad peer": func() error {
-			_, err := p.WithdrawBGPAdvertisement(ctx, "5", "cs1", "d", BGPAdvertisementKey{VRF: "default", ExternalPeer: "peer", Prefix: "0.0.0.0/0"})
+			_, err := p.WithdrawBGPAdvertisement(ctx, "5", "cs1", "d", domain.BGPAdvertisementKey{VRF: "default", ExternalPeer: "peer", Prefix: "0.0.0.0/0"})
 			return err
 		},
 		"bad prefix": func() error {
-			_, err := p.RestoreBGPAdvertisement(ctx, "5", "cs1", "d", BGPAdvertisementKey{VRF: "default", ExternalPeer: "1.1.1.1", Prefix: "ten"})
+			_, err := p.RestoreBGPAdvertisement(ctx, "5", "cs1", "d", domain.BGPAdvertisementKey{VRF: "default", ExternalPeer: "1.1.1.1", Prefix: "ten"})
 			return err
 		},
 		"host bits": func() error {
-			_, err := p.WithdrawBGPAdvertisement(ctx, "5", "cs1", "d", BGPAdvertisementKey{VRF: "default", ExternalPeer: "1.1.1.1", Prefix: "10.0.0.1/8"})
+			_, err := p.WithdrawBGPAdvertisement(ctx, "5", "cs1", "d", domain.BGPAdvertisementKey{VRF: "default", ExternalPeer: "1.1.1.1", Prefix: "10.0.0.1/8"})
 			return err
 		},
 		"duplicate key": func() error {
-			_, err := p.WithdrawBGPAdvertisements(ctx, "5", "cs1", "d", []BGPAdvertisementKey{key, key})
+			_, err := p.WithdrawBGPAdvertisements(ctx, "5", "cs1", "d", []domain.BGPAdvertisementKey{key, key})
 			return err
 		},
 		"no keys": func() error { _, err := p.WithdrawBGPAdvertisements(ctx, "5", "cs1", "d", nil); return err },
 		"one bad": func() error {
-			_, err := p.RestoreBGPAdvertisements(ctx, "5", "cs1", "d", append(keys, BGPAdvertisementKey{}))
+			_, err := p.RestoreBGPAdvertisements(ctx, "5", "cs1", "d", append(keys, domain.BGPAdvertisementKey{}))
 			return err
 		},
 		"no device": func() error { _, err := p.WithdrawBGPAdvertisement(ctx, "5", "cs1", " ", key); return err },
@@ -95,7 +99,7 @@ func TestPredictBGPWithdrawAndRestore(t *testing.T) {
 	}
 
 	// A host route is written by Forward as a bare address; it must be accepted, and fields are trimmed before they are sent.
-	if _, err := p.WithdrawBGPAdvertisement(ctx, "5", "cs1", "d", BGPAdvertisementKey{VRF: " default ", ExternalPeer: " 4.16.225.165", Prefix: "10.0.0.1 "}); err != nil {
+	if _, err := p.WithdrawBGPAdvertisement(ctx, "5", "cs1", "d", domain.BGPAdvertisementKey{VRF: " default ", ExternalPeer: " 4.16.225.165", Prefix: "10.0.0.1 "}); err != nil {
 		t.Fatalf("a host route key must be accepted: %v", err)
 	}
 	if got := bodies[len(bodies)-1]; got != `{"vrf":"default","externalPeer":"4.16.225.165","prefix":"10.0.0.1"}` {
@@ -114,13 +118,13 @@ func TestStageBGPAdvertisementsRefusesADuplicateKey(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	ad := BGPAdvertisement{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8", NextHop: "192.0.2.1", Type: "EBGP", Origin: "IGP", ASPath: []int64{65001}}
-	if _, err := client.Predict.StageBGPAdvertisements(context.Background(), "5", "cs1", "d", []BGPAdvertisement{ad, ad}); err == nil || sent {
+	ad := domain.BGPAdvertisement{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8", NextHop: "192.0.2.1", Type: "EBGP", Origin: "IGP", ASPath: []int64{65001}}
+	if _, err := client.Predict.StageBGPAdvertisements(context.Background(), "5", "cs1", "d", []domain.BGPAdvertisement{ad, ad}); err == nil || sent {
 		t.Fatalf("a repeated key must be refused before the request: err=%v sent=%v", err, sent)
 	}
 	ibgp := ad
 	ibgp.Type = "IBGP"
-	if _, err := client.Predict.StageBGPAdvertisements(context.Background(), "5", "cs1", "d", []BGPAdvertisement{ad, ibgp}); err != nil {
+	if _, err := client.Predict.StageBGPAdvertisements(context.Background(), "5", "cs1", "d", []domain.BGPAdvertisement{ad, ibgp}); err != nil {
 		t.Fatalf("the same key with a different peer type is allowed: %v", err)
 	}
 }

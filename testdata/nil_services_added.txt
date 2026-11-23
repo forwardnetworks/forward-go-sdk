@@ -1,0 +1,7 @@
+CloudManagedSetups.CreateMeraki panics
+CloudManagedSetups.DeleteMeraki panics
+CloudManagedSetups.DiscoverMeraki panics
+CloudManagedSetups.GetMeraki panics
+CloudManagedSetups.ListMeraki panics
+CloudManagedSetups.PatchMeraki panics
+CloudManagedSetups.TestMeraki panics

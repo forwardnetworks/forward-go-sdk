@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -58,7 +63,7 @@ func TestPollerRetainsStateAndCallsBack(t *testing.T) {
 	type state struct{ Status string }
 	states := []*state{{Status: "QUEUED"}, {Status: "RUNNING"}, {Status: "DONE"}}
 	next := 1
-	poller, err := NewPoller(states[0], func(context.Context) (*state, *Response, error) {
+	poller, err := NewPoller(states[0], func(context.Context) (*state, *ports.Response, error) {
 		value := states[next]
 		next++
 		return value, nil, nil
@@ -67,9 +72,9 @@ func TestPollerRetainsStateAndCallsBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	var transitions []string
-	value, _, err := poller.Wait(context.Background(), PollOptions[state]{
+	value, _, err := poller.Wait(context.Background(), ports.PollOptions[state]{
 		Interval: time.Millisecond,
-		OnUpdate: func(update PollUpdate[state]) {
+		OnUpdate: func(update ports.PollUpdate[state]) {
 			transitions = append(transitions, update.Previous.Status+"->"+update.Value.Status)
 		},
 	})
@@ -112,15 +117,15 @@ func TestResourceCRUDRoutes(t *testing.T) {
 
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	workspace, _, err := client.Networks.CreateWorkspace(ctx, "parent", WorkspaceNetworkRequest{Name: "change", Devices: []string{"r1"}})
+	workspace, _, err := client.Networks.CreateWorkspace(ctx, "parent", domain.WorkspaceNetworkRequest{Name: "change", Devices: []string{"r1"}})
 	if err != nil || workspace.ParentID != "parent" {
 		t.Fatalf("CreateWorkspace() = %#v, %v", workspace, err)
 	}
-	credential, _, err := client.Credentials.CreateCLI(ctx, "workspace-1", CLICredentialRequest{Type: "LOGIN", Name: "admin", Username: "admin", Password: "password"})
+	credential, _, err := client.Credentials.CreateCLI(ctx, "workspace-1", domain.CLICredentialRequest{Type: "LOGIN", Name: "admin", Username: "admin", Password: "password"})
 	if err != nil || credential.ID != "L-3" {
 		t.Fatalf("CreateCLI() = %#v, %v", credential, err)
 	}
-	device, _, err := client.ClassicDevices.Create(ctx, "workspace-1", ClassicDeviceRequest{Name: "r1", Host: "10.0.0.1", CLICredentialID: credential.ID})
+	device, _, err := client.ClassicDevices.Create(ctx, "workspace-1", domain.ClassicDeviceRequest{Name: "r1", Host: "10.0.0.1", CLICredentialID: credential.ID})
 	if err != nil || device.Name != "r1" || device.Raw["futureField"] == nil {
 		t.Fatalf("ClassicDevices.Create() = %#v, %v", device, err)
 	}

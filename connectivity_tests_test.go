@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -56,7 +61,7 @@ func TestConnectivityTestsStartStopAndCap(t *testing.T) {
 	}
 
 	sent := len(calls)
-	many := make([]string, MaxConnectivityTestDevices+1)
+	many := make([]string, domain.MaxConnectivityTestDevices+1)
 	for i := range many {
 		many[i] = "d" + string(rune('a'+i%26)) + string(rune('a'+i/26))
 	}
@@ -79,7 +84,7 @@ func TestConnectivityTestsStartStopAndCap(t *testing.T) {
 	if len(calls) != sent {
 		t.Fatal("a refused call reached Forward")
 	}
-	if _, err := client.ConnectivityTests.BulkStart(ctx, "5", many[:MaxConnectivityTestDevices]); err != nil {
+	if _, err := client.ConnectivityTests.BulkStart(ctx, "5", many[:domain.MaxConnectivityTestDevices]); err != nil {
 		t.Fatalf("exactly the cap is allowed: %v", err)
 	}
 	if _, err := client.ConnectivityTests.BulkStop(ctx, "5", many); err != nil {
@@ -122,7 +127,7 @@ func TestConnectivityTestsListAndGet(t *testing.T) {
 	if err != nil || one.Error != "PING_FAILED" || one.ErrorPhase != "CONNECTION" || one.DeviceName != "edge1" {
 		t.Fatalf("get: %v %+v", err, one)
 	}
-	if _, _, err := client.ConnectivityTests.Get(ctx, "5", "never"); err == nil || errors.Is(err, ErrNetworkNotFound) || !IsStatus(err, http.StatusNotFound) {
+	if _, _, err := client.ConnectivityTests.Get(ctx, "5", "never"); err == nil || errors.Is(err, domain.ErrNetworkNotFound) || !ports.IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("an untested device is a plain 404, got %v", err)
 	}
 }

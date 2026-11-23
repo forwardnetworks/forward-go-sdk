@@ -12,6 +12,7 @@ import (
 
 	forward "github.com/forwardnetworks/forward-go-sdk"
 	"github.com/forwardnetworks/forward-go-sdk/forwardtest"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 // The point of the fake: each canned error must classify as the same forward error the real appserver's reply does, and a route nobody
@@ -22,13 +23,13 @@ func TestErrorRepliesClassifyLikeTheRealAppserver(t *testing.T) {
 		reply forwardtest.Reply
 		want  error
 	}{
-		{"rate limited", forwardtest.RateLimited(30), forward.ErrRateLimited},
-		{"feature gated", forwardtest.FeatureGated("SOFTWARE_CENTRAL", false, "organization"), forward.ErrFeatureGated},
-		{"missing permission", forwardtest.MissingPermission("NetworkOperation", "EDIT_CHECKS"), forward.ErrPermissionDenied},
-		{"unauthorized", forwardtest.Unauthorized(), forward.ErrAuthentication},
-		{"action not supported", forwardtest.ActionNotSupported("bulkAdd"), forward.ErrActionNotSupported},
-		{"snapshot not processed", forwardtest.SnapshotNotProcessed(), forward.ErrSnapshotNotProcessed},
-		{"servicenow asleep", forwardtest.ServiceNowAsleep(), forward.ErrServiceNowInstanceAsleep},
+		{"rate limited", forwardtest.RateLimited(30), ports.ErrRateLimited},
+		{"feature gated", forwardtest.FeatureGated("SOFTWARE_CENTRAL", false, "organization"), ports.ErrFeatureGated},
+		{"missing permission", forwardtest.MissingPermission("NetworkOperation", "EDIT_CHECKS"), ports.ErrPermissionDenied},
+		{"unauthorized", forwardtest.Unauthorized(), ports.ErrAuthentication},
+		{"action not supported", forwardtest.ActionNotSupported("bulkAdd"), ports.ErrActionNotSupported},
+		{"snapshot not processed", forwardtest.SnapshotNotProcessed(), ports.ErrSnapshotNotProcessed},
+		{"servicenow asleep", forwardtest.ServiceNowAsleep(), ports.ErrServiceNowInstanceAsleep},
 	}
 	for _, tc := range cases {
 		srv := forwardtest.New(t)
@@ -41,7 +42,7 @@ func TestErrorRepliesClassifyLikeTheRealAppserver(t *testing.T) {
 
 	srv := forwardtest.New(t) // nothing mapped
 	_, _, err := srv.Client().Networks.List(context.Background())
-	if !errors.Is(err, forward.ErrEndpointNotServed) {
+	if !errors.Is(err, ports.ErrEndpointNotServed) {
 		t.Fatalf("an unmapped route must read as endpoint-not-served, got %v", err)
 	}
 }
@@ -67,8 +68,8 @@ func TestRepliesAreServedInOrderAndRetriesSeeThem(t *testing.T) {
 func TestPredictBGPStagingScenario(t *testing.T) {
 	srv := forwardtest.New(t)
 	srv.BGPStaging("n1", "c1", "edge")
-	staged := forward.BGPAdvertisement{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "203.0.113.0/24", Type: "EBGP", NextHop: "192.0.2.1", Origin: "IGP", ASPath: []int64{64500}}
-	ghost := forward.BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.9", Prefix: "198.51.100.0/24"}
+	staged := ports.BGPAdvertisement{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "203.0.113.0/24", Type: "EBGP", NextHop: "192.0.2.1", Origin: "IGP", ASPath: []int64{64500}}
+	ghost := ports.BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.9", Prefix: "198.51.100.0/24"}
 	srv.BGPDiffs("n1", "c1", "edge", forwardtest.BGPInjected(staged), forwardtest.BGPAbsent(ghost))
 	client := srv.Client()
 	ctx := context.Background()
@@ -76,8 +77,8 @@ func TestPredictBGPStagingScenario(t *testing.T) {
 	if _, err := client.Predict.WithdrawBGPAdvertisement(ctx, "n1", "c1", "edge", ghost); err != nil {
 		t.Fatal(err)
 	}
-	report, _, err := client.Predict.VerifyBGPStaging(ctx, "n1", "c1", "edge", []forward.BGPAdvertisement{staged}, []forward.BGPAdvertisementKey{ghost})
-	if !errors.Is(err, forward.ErrBGPKeyMatchedNothing) || report.Staged[0].Change != forward.BGPChangeInjected {
+	report, _, err := client.Predict.VerifyBGPStaging(ctx, "n1", "c1", "edge", []ports.BGPAdvertisement{staged}, []ports.BGPAdvertisementKey{ghost})
+	if !errors.Is(err, ports.ErrBGPKeyMatchedNothing) || report.Staged[0].Change != ports.BGPChangeInjected {
 		t.Fatalf("report=%+v err=%v", report, err)
 	}
 }
@@ -90,7 +91,7 @@ func TestNQEPagingScenario(t *testing.T) {
 		rows[i] = map[string]any{"Device": fmt.Sprintf("d%02d", i)}
 	}
 	srv.NQE("9", rows)
-	got, _, err := srv.Client().NQE.RunAll(context.Background(), "n1", "9", forward.NQEQueryRequest{Query: "select {Device: 1}"}, forward.NQEPagedOptions{KeyColumn: "Device", PageSize: 10})
+	got, _, err := srv.Client().NQE.RunAll(context.Background(), "n1", "9", ports.NQEQueryRequest{Query: "select {Device: 1}"}, ports.NQEPagedOptions{KeyColumn: "Device", PageSize: 10})
 	if err != nil || len(got) != 25 {
 		t.Fatalf("got %d rows, err %v", len(got), err)
 	}
@@ -102,8 +103,8 @@ func TestNQEPagingScenario(t *testing.T) {
 // Check diffs that are still PROCESSING: WaitChecks must read until the fake says they are done.
 func TestCheckDiffsProcessingScenario(t *testing.T) {
 	srv := forwardtest.New(t)
-	srv.CheckDiffs("10", "11", "NQE", 2, []forward.CheckDiffEntry{{DiffType: "UNCHANGED"}})
-	rows, _, err := srv.Client().Diffs.WaitChecks(context.Background(), "10", "11", "NQE", forward.PollOptions[[]forward.CheckDiffEntry]{Interval: time.Millisecond})
+	srv.CheckDiffs("10", "11", "NQE", 2, []ports.CheckDiffEntry{{DiffType: "UNCHANGED"}})
+	rows, _, err := srv.Client().Diffs.WaitChecks(context.Background(), "10", "11", "NQE", ports.PollOptions[[]ports.CheckDiffEntry]{Interval: time.Millisecond})
 	if err != nil || len(rows) != 1 || rows[0].DiffType != "UNCHANGED" {
 		t.Fatalf("rows=%+v err=%v", rows, err)
 	}
@@ -115,8 +116,8 @@ func TestCheckDiffsProcessingScenario(t *testing.T) {
 // Received advertisements: a prefix with nothing is an empty list, as on a real device.
 func TestReceivedBGPScenario(t *testing.T) {
 	srv := forwardtest.New(t)
-	row := forward.BGPAdvertisement{VRF: "default", ExternalPeer: "10.0.0.2", Prefix: "10.0.0.2", Type: "EBGP", NextHop: "10.0.0.2", Origin: "IGP", ASPath: []int64{65001}}
-	srv.ReceivedBGP("n1", "edge", map[[2]string][]forward.BGPAdvertisement{{"default", "10.0.0.2"}: {row}})
+	row := ports.BGPAdvertisement{VRF: "default", ExternalPeer: "10.0.0.2", Prefix: "10.0.0.2", Type: "EBGP", NextHop: "10.0.0.2", Origin: "IGP", ASPath: []int64{65001}}
+	srv.ReceivedBGP("n1", "edge", map[[2]string][]ports.BGPAdvertisement{{"default", "10.0.0.2"}: {row}})
 	client := srv.Client()
 	got, _, err := client.Devices.BGPAdvertisements(context.Background(), "n1", "edge", "", "default", "10.0.0.2")
 	if err != nil || len(got) != 1 || got[0].ExternalPeer != "10.0.0.2" {
@@ -141,7 +142,7 @@ func TestWildcardRoutesMatchAndRankBySpecificity(t *testing.T) {
 	get := func(path string) string {
 		t.Helper()
 		var out []string
-		var resp *forward.Response
+		var resp *ports.Response
 		var err error
 		out, resp, err = rawStrings(client, path)
 		if err != nil {
@@ -175,7 +176,7 @@ func TestWildcardRoutesMatchAndRankBySpecificity(t *testing.T) {
 	}
 }
 
-func rawStrings(client *forward.Client, path string) ([]string, *forward.Response, error) {
+func rawStrings(client *forward.Client, path string) ([]string, *ports.Response, error) {
 	req, err := client.NewRequest(context.Background(), http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err

@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 func newChangeSetCmd() *cobra.Command {
@@ -25,7 +25,7 @@ func newChangeSetCmd() *cobra.Command {
 				}
 				base = string(id)
 			}
-			cs, _, err := c.Predict.CreateChangeSet(ctx, net, forward.ChangeSetCreateRequest{Name: "fwdctl", SnapshotID: base})
+			cs, _, err := c.Predict.CreateChangeSet(ctx, net, ports.ChangeSetCreateRequest{Name: "fwdctl", SnapshotID: base})
 			if err != nil {
 				return err
 			}
@@ -88,7 +88,7 @@ func newRunCmd() *cobra.Command {
 				return err
 			}
 			fmt.Fprintln(os.Stderr, "predicted snapshot", poller.Current().ID, "processing…")
-			s, _, err := poller.Wait(cmd.Context(), forward.PollOptions[forward.Snapshot]{Interval: 10 * time.Second})
+			s, _, err := poller.Wait(cmd.Context(), ports.PollOptions[ports.Snapshot]{Interval: 10 * time.Second})
 			if err != nil {
 				return err
 			}

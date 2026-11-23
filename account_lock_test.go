@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"net/http"
@@ -43,14 +48,14 @@ func TestAccountLockedIsDistinctFromAWrongCredential(t *testing.T) {
 		if err == nil {
 			t.Fatalf("%q: want an error", tc.message)
 		}
-		if got := errors.Is(err, ErrAccountLocked); got != tc.locked {
+		if got := errors.Is(err, domain.ErrAccountLocked); got != tc.locked {
 			t.Errorf("%q: Is(ErrAccountLocked) = %v, want %v", tc.message, got, tc.locked)
 		}
-		var apiErr *ErrorResponse
-		if errors.As(err, &apiErr) && (apiErr.Kind == ErrorKindAccountLocked) != tc.locked {
+		var apiErr *ports.ErrorResponse
+		if errors.As(err, &apiErr) && (apiErr.Kind == domain.ErrorKindAccountLocked) != tc.locked {
 			t.Errorf("%q: Kind = %q", tc.message, apiErr.Kind)
 		}
-		if !errors.Is(err, ErrAuthentication) {
+		if !errors.Is(err, domain.ErrAuthentication) {
 			t.Errorf("%q: a 401 must still match ErrAuthentication", tc.message)
 		}
 	}

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -36,7 +40,7 @@ func TestCollectorTasksSnapshotProgress(t *testing.T) {
 	if got.Queued[1] != 2600 || got.Running[1] != 0 || got.Running[2] != 128 || got.Concurrency[2] != 128 || got.JumpServers["js1"][2] != 20 {
 		t.Fatalf("series = %+v", got)
 	}
-	if got.ConcurrencyLimits != (TaskConcurrencyLimits{Global: 128, Network: 128, VCenter: 1, JumpServer: 20}) {
+	if got.ConcurrencyLimits != (domain.TaskConcurrencyLimits{Global: 128, Network: 128, VCenter: 1, JumpServer: 20}) {
 		t.Fatalf("limits = %+v", got.ConcurrencyLimits)
 	}
 	if _, _, err := newTestClient(t, server.URL).CollectorTasks.SnapshotProgress(context.Background(), " "); err == nil {
@@ -90,7 +94,7 @@ func TestCollectorTasksSubTasks(t *testing.T) {
 	if len(running) != 2 || running[0].Description != "edge-fw1" || !running[0].StartedAt.Equal(time.Date(2026, 10, 2, 8, 5, 1, 250_000_000, time.UTC)) || !running[0].FinishedAt.IsZero() {
 		t.Fatalf("running subtask = %+v", running[0])
 	}
-	if !running[1].StartedAt.Equal(time.UnixMilli(1759392300000)) || running[1].Status != CollectorTaskSucceeded {
+	if !running[1].StartedAt.Equal(time.UnixMilli(1759392300000)) || running[1].Status != domain.CollectorTaskSucceeded {
 		t.Fatalf("epoch-millis subtask = %+v", running[1])
 	}
 	if _, _, err := tasks.SubTasksAt(ctx, "88", time.Time{}); err == nil {
@@ -101,14 +105,14 @@ func TestCollectorTasksSubTasks(t *testing.T) {
 	if err != nil || uris[1] != "/api/collector-tasks/88?for=ui&max=50000" {
 		t.Fatalf("GetWithSubTasks: %v %s", err, uris[1])
 	}
-	if full.ID != "88" || full.Status != CollectorTaskRunning || len(full.SubTasks) != 3 {
+	if full.ID != "88" || full.Status != domain.CollectorTaskRunning || len(full.SubTasks) != 3 {
 		t.Fatalf("task = %+v", full)
 	}
 	timedOut, canceled := full.SubTasks[1], full.SubTasks[2]
-	if timedOut.Status != CollectorTaskTimedOut || timedOut.Note != "device collection timeout" || timedOut.FinishedAt.Sub(timedOut.StartedAt) != 3*time.Hour {
+	if timedOut.Status != domain.CollectorTaskTimedOut || timedOut.Note != "device collection timeout" || timedOut.FinishedAt.Sub(timedOut.StartedAt) != 3*time.Hour {
 		t.Fatalf("timed-out subtask = %+v", timedOut)
 	}
-	if canceled.Status != CollectorTaskCanceled || full.SubTasks[0].Operation != "show version" {
+	if canceled.Status != domain.CollectorTaskCanceled || full.SubTasks[0].Operation != "show version" {
 		t.Fatalf("cancelled / operation = %+v", full.SubTasks)
 	}
 	if _, _, err := tasks.GetWithSubTasks(ctx, "88", 0); err != nil || uris[2] != "/api/collector-tasks/88?for=ui" {

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -16,7 +20,7 @@ import (
 // exact keys are pinned here -- including the two asymmetries that a caller
 // would otherwise get wrong.
 func TestCloudAccountRequestWireForm(t *testing.T) {
-	req := CloudAccountRequest{
+	req := domain.CloudAccountRequest{
 		Type:          "AWS",
 		Name:          "prod",
 		Collect:       true,
@@ -56,7 +60,7 @@ func TestCloudAccountRequestWireForm(t *testing.T) {
 	}
 	// collect:false must still be SENT -- omitting it would read as "leave
 	// collection as it was" rather than "turn it off".
-	off, _ := json.Marshal(CloudAccountRequest{Type: "AWS", Name: "x", Collect: false})
+	off, _ := json.Marshal(domain.CloudAccountRequest{Type: "AWS", Name: "x", Collect: false})
 	var offMap map[string]any
 	_ = json.Unmarshal(off, &offMap)
 	if v, present := offMap["collect"]; !present || v != false {
@@ -67,7 +71,7 @@ func TestCloudAccountRequestWireForm(t *testing.T) {
 // Extra reaches a property this struct does not name, but must never be able
 // to override one it does -- otherwise the typing is decorative.
 func TestCloudAccountRequestExtraCannotOverrideNamedFields(t *testing.T) {
-	b, err := json.Marshal(CloudAccountRequest{
+	b, err := json.Marshal(domain.CloudAccountRequest{
 		Type: "AZURE", Name: "real",
 		Extra: map[string]any{"name": "spoofed", "futureField": "kept"},
 	})
@@ -92,28 +96,28 @@ func TestCloudAccountRequestExtraCannotOverrideNamedFields(t *testing.T) {
 // holding whatever key it was created with forever.
 func TestCloudAccountCredentialRequestWireForm(t *testing.T) {
 	cases := map[string]struct {
-		req    CloudAccountCredentialRequest
+		req    domain.CloudAccountCredentialRequest
 		want   map[string]any
 		absent []string
 	}{
 		"aws": {
-			req:    CloudAccountCredentialRequest{Type: "AWS", Username: "AKIA", Password: "s"},
+			req:    domain.CloudAccountCredentialRequest{Type: "AWS", Username: "AKIA", Password: "s"},
 			want:   map[string]any{"type": "AWS", "username": "AKIA", "password": "s"},
 			absent: []string{"clientId", "tenant", "clientEmail", "privateKey", "apiKey"},
 		},
 		"azure": {
-			req:    CloudAccountCredentialRequest{Type: "AZURE", ClientID: "c", Tenant: "d", Password: "s"},
+			req:    domain.CloudAccountCredentialRequest{Type: "AZURE", ClientID: "c", Tenant: "d", Password: "s"},
 			want:   map[string]any{"type": "AZURE", "clientId": "c", "tenant": "d", "password": "s"},
 			absent: []string{"username", "clientEmail", "privateKey", "apiKey"},
 		},
 		"gcp": {
-			req: CloudAccountCredentialRequest{Type: "GCP", ClientID: "1", ClientEmail: "sa@p.iam.gserviceaccount.com", PrivateKeyID: "k", PrivateKey: "PEM"},
+			req: domain.CloudAccountCredentialRequest{Type: "GCP", ClientID: "1", ClientEmail: "sa@p.iam.gserviceaccount.com", PrivateKeyID: "k", PrivateKey: "PEM"},
 			want: map[string]any{"type": "GCP", "clientId": "1", "clientEmail": "sa@p.iam.gserviceaccount.com",
 				"privateKeyId": "k", "privateKey": "PEM"},
 			absent: []string{"username", "password", "tenant", "apiKey"},
 		},
 		"ibm": {
-			req:    CloudAccountCredentialRequest{Type: "IBM_CLOUD", APIKey: "key"},
+			req:    domain.CloudAccountCredentialRequest{Type: "IBM_CLOUD", APIKey: "key"},
 			want:   map[string]any{"type": "IBM_CLOUD", "apiKey": "key"},
 			absent: []string{"username", "password", "clientId", "privateKey"},
 		},
@@ -141,7 +145,7 @@ func TestCloudAccountCredentialRequestWireForm(t *testing.T) {
 // Forward stores each region's (and each Azure subscription's) last test on
 // the account; the error is what says whether the credential works.
 func TestCloudAccountDecodesTestResults(t *testing.T) {
-	var accounts []CloudAccount
+	var accounts []domain.CloudAccount
 	body := `[{"type":"GCP","name":"g","collect":true,"regions":{"us-central1":{"testInstant":1758600000000,"error":"PROJECT_VIEW_PERMISSION_MISSING"},"us-east1":null}},
 	          {"type":"AZURE","name":"a","collect":true,"testResults":{"sub-1":{"testInstant":1758600000001,"error":"NONE"}}}]`
 	if err := json.Unmarshal([]byte(body), &accounts); err != nil {
@@ -179,7 +183,7 @@ func TestCloudAccountTestInstantISO8601(t *testing.T) {
 	ctx := context.Background()
 	want := time.Date(2026, 10, 1, 12, 34, 56, 789_000_000, time.UTC)
 
-	created, _, err := client.CloudAccounts.Create(ctx, "N1", CloudAccountRequest{Type: "AWS", Name: "aws-demo", Collect: true, Regions: map[string]int{"us-east-1": 0}})
+	created, _, err := client.CloudAccounts.Create(ctx, "N1", domain.CloudAccountRequest{Type: "AWS", Name: "aws-demo", Collect: true, Regions: map[string]int{"us-east-1": 0}})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -205,7 +209,7 @@ func TestCloudAccountTestInstantISO8601(t *testing.T) {
 		t.Fatalf("numeric-string millis = %+v", r)
 	}
 
-	var bad []CloudAccount
+	var bad []domain.CloudAccount
 	if err := json.Unmarshal([]byte(`[{"regions":{"x":{"testInstant":"yesterday"}}}]`), &bad); err == nil || !strings.Contains(err.Error(), "yesterday") {
 		t.Fatalf("an unreadable testInstant must fail naming the value, got %v", err)
 	}

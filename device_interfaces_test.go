@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -30,19 +34,19 @@ func TestDeviceInterfacesAndDiffWire(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	list, _, err := client.Devices.Interfaces(ctx, "7", "sw1", DeviceInterfaceOptions{SnapshotID: "9", WithNeighbors: true})
+	list, _, err := client.Devices.Interfaces(ctx, "7", "sw1", domain.DeviceInterfaceOptions{SnapshotID: "9", WithNeighbors: true})
 	if err != nil || len(list) != 1 || list[0].Type != "ACCESS" || len(list[0].Neighbors) != 1 || list[0].Neighbors[0].Port != "e4" {
 		t.Fatalf("Interfaces = %#v, %v", list, err)
 	}
 	if len(list[0].Raw) == 0 {
 		t.Fatal("Raw not kept")
 	}
-	one, _, err := client.Devices.Interface(ctx, "7", "sw1", "Ethernet1/3", DeviceInterfaceOptions{})
+	one, _, err := client.Devices.Interface(ctx, "7", "sw1", "Ethernet1/3", domain.DeviceInterfaceOptions{})
 	if err != nil || one.Type != "L3" || !one.IsDown {
 		t.Fatalf("Interface = %#v, %v", one, err)
 	}
 	limit := int32(5)
-	diff, _, err := client.Devices.Diff(ctx, "7", "1", "2", DeviceDiffOptions{Name: "sw*", ChangeTypes: []string{"ADDED", "MODIFIED"}, With: []string{"tags"}, Limit: &limit})
+	diff, _, err := client.Devices.Diff(ctx, "7", "1", "2", domain.DeviceDiffOptions{Name: "sw*", ChangeTypes: []string{"ADDED", "MODIFIED"}, With: []string{"tags"}, Limit: &limit})
 	if err != nil || diff.TotalDiffs != 2 || diff.Diffs[0].After.Model != "y" {
 		t.Fatalf("Diff = %#v, %v", diff, err)
 	}

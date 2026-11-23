@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"archive/zip"
 	"bytes"
 	"os"
@@ -23,12 +27,12 @@ func TestReadSnapshotPackageSources(t *testing.T) {
 	}
 	_ = zw.Close()
 
-	got, err := ReadSnapshotPackageSources(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	got, err := domain.ReadSnapshotPackageSources(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	k := got.Source("K8S1")
-	if k == nil || k.DeviceType != "K8S_CNI_CONTROL_PLANE" || k.CreatedBy != ConnTypeK8sCniControlPlaneAPI || k.CollectionPort != 6443 || k.Error != "NONE" {
+	if k == nil || k.DeviceType != "K8S_CNI_CONTROL_PLANE" || k.CreatedBy != domain.ConnTypeK8sCniControlPlaneAPI || k.CollectionPort != 6443 || k.Error != "NONE" {
 		t.Fatalf("source = %+v", k)
 	}
 	if len(k.RelatedDevicesWithoutSnapshots) != 3 || string(k.Raw["futureField"]) != `{"a": 1}` {
@@ -43,7 +47,7 @@ func TestReadSnapshotPackageSources(t *testing.T) {
 	zw = zip.NewWriter(&empty)
 	_, _ = zw.Create("metadata.txt")
 	_ = zw.Close()
-	if _, err := ReadSnapshotPackageSources(bytes.NewReader(empty.Bytes()), int64(empty.Len())); err == nil {
+	if _, err := domain.ReadSnapshotPackageSources(bytes.NewReader(empty.Bytes()), int64(empty.Len())); err == nil {
 		t.Error("a package without sources.json must be an error")
 	}
 }
@@ -56,7 +60,7 @@ func TestRedactSnapshotLog(t *testing.T) {
 		"sent token Bearer abcdefghijklmnop in body\n" +
 		"Proxy-Authorization=secretvalue\nplain line, no end"
 	var out bytes.Buffer
-	if err := RedactSnapshotLog(&out, strings.NewReader(in)); err != nil {
+	if err := domain.RedactSnapshotLog(&out, strings.NewReader(in)); err != nil {
 		t.Fatal(err)
 	}
 	got := out.String()

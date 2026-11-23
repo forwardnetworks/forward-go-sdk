@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -39,13 +43,13 @@ func TestSaseSetupsWirePaths(t *testing.T) {
 	if _, _, err := c.SaseSetups.Get(ctx, "n1", "z 1"); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := c.SaseSetups.Create(ctx, "n1", ZscalerSetup{Name: "z1", BaseURL: "https://x"}); err != nil {
+	if _, _, err := c.SaseSetups.Create(ctx, "n1", domain.ZscalerSetup{Name: "z1", BaseURL: "https://x"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := c.SaseSetups.Patch(ctx, "n1", "z1", ZscalerSetupPatch{Collect: Ptr(false)}); err != nil {
+	if _, _, err := c.SaseSetups.Patch(ctx, "n1", "z1", domain.ZscalerSetupPatch{Collect: domain.Ptr(false)}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.SaseSetups.Test(ctx, "n1", ZscalerConnectivityTest{ID: "z1", BaseURL: "https://x"}); err != nil {
+	if _, err := c.SaseSetups.Test(ctx, "n1", domain.ZscalerConnectivityTest{ID: "z1", BaseURL: "https://x"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := c.SaseSetups.TestSetup(ctx, "n1", "z1"); err != nil {
@@ -91,15 +95,15 @@ func TestSaseSetupsBodies(t *testing.T) {
 	})
 	ctx := context.Background()
 	port := 22
-	if _, _, err := c.SaseSetups.Create(ctx, "n1", ZscalerSetup{
+	if _, _, err := c.SaseSetups.Create(ctx, "n1", domain.ZscalerSetup{
 		Name: "z1", BaseURL: "https://x", HTTPCredID: "H-1", CollectorID: "C7",
-		AppConnectorSetups: []AppConnectorSetup{{ConnectorID: "c1", Name: "ac1", Host: "10.0.0.1", CollectionType: AppConnectorCollectionSSH, Port: &port, CredentialID: "CL-1"}},
-		ScimConfigs:        []ScimConfig{{URL: "https://scim.zscaler.com/scim/1/2/v2", HTTPCredID: "AK-2"}},
+		AppConnectorSetups: []domain.AppConnectorSetup{{ConnectorID: "c1", Name: "ac1", Host: "10.0.0.1", CollectionType: domain.AppConnectorCollectionSSH, Port: &port, CredentialID: "CL-1"}},
+		ScimConfigs:        []domain.ScimConfig{{URL: "https://scim.zscaler.com/scim/1/2/v2", HTTPCredID: "AK-2"}},
 	}); err != nil {
 		t.Fatal(err)
 	}
-	empty := []AppConnectorSetup{}
-	if _, _, err := c.SaseSetups.Patch(ctx, "n1", "z1", ZscalerSetupPatch{AppConnectorSetups: &empty}); err != nil {
+	empty := []domain.AppConnectorSetup{}
+	if _, _, err := c.SaseSetups.Patch(ctx, "n1", "z1", domain.ZscalerSetupPatch{AppConnectorSetups: &empty}); err != nil {
 		t.Fatal(err)
 	}
 	cr := bodies[0]
@@ -174,14 +178,17 @@ func TestSaseSetupsDeleteAndValidation(t *testing.T) {
 	}
 	requests = 0
 	for name, err := range map[string]error{
-		"no name":    func() error { _, _, e := c.SaseSetups.Create(ctx, "n1", ZscalerSetup{BaseURL: "https://x"}); return e }(),
-		"no baseUrl": func() error { _, _, e := c.SaseSetups.Create(ctx, "n1", ZscalerSetup{Name: "z"}); return e }(),
+		"no name": func() error {
+			_, _, e := c.SaseSetups.Create(ctx, "n1", domain.ZscalerSetup{BaseURL: "https://x"})
+			return e
+		}(),
+		"no baseUrl": func() error { _, _, e := c.SaseSetups.Create(ctx, "n1", domain.ZscalerSetup{Name: "z"}); return e }(),
 		"bad type": func() error {
-			_, _, e := c.SaseSetups.Create(ctx, "n1", ZscalerSetup{Name: "z", BaseURL: "https://x", AppConnectorSetups: []AppConnectorSetup{{ConnectorID: "c", Name: "n", Host: "h", CollectionType: "TELNET"}}})
+			_, _, e := c.SaseSetups.Create(ctx, "n1", domain.ZscalerSetup{Name: "z", BaseURL: "https://x", AppConnectorSetups: []domain.AppConnectorSetup{{ConnectorID: "c", Name: "n", Host: "h", CollectionType: "TELNET"}}})
 			return e
 		}(),
 		"test no id": func() error {
-			_, e := c.SaseSetups.Test(ctx, "n1", ZscalerConnectivityTest{BaseURL: "https://x"})
+			_, e := c.SaseSetups.Test(ctx, "n1", domain.ZscalerConnectivityTest{BaseURL: "https://x"})
 			return e
 		}(),
 		"no connector": func() error { _, e := c.SaseSetups.TestConnector(ctx, "n1", "z", ""); return e }(),

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -28,16 +32,16 @@ func TestCloudAccountPatchPresenceSemantics(t *testing.T) {
 	c := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	if _, _, err := c.CloudAccounts.Patch(ctx, "n1", "aws1", CloudAccountPatch{Type: "AWS", Regions: map[string]int64{"us-east-1": 1760000000000}}); err != nil {
+	if _, _, err := c.CloudAccounts.Patch(ctx, "n1", "aws1", domain.CloudAccountPatch{Type: "AWS", Regions: map[string]int64{"us-east-1": 1760000000000}}); err != nil {
 		t.Fatal(err)
 	}
 	if path != "PATCH /api/networks/n1/cloudAccounts/aws1" || len(body) != 2 || string(body["type"]) != `"AWS"` || string(body["regions"]) != `{"us-east-1":1760000000000}` {
 		t.Errorf("regions-only patch = %s %v", path, body)
 	}
 
-	empty := []AWSAssumeRoleInfo{}
+	empty := []domain.AWSAssumeRoleInfo{}
 	off := false
-	if _, _, err := c.CloudAccounts.Patch(ctx, "n1", "aws1", CloudAccountPatch{Type: "AWS", Collect: &off, AssumeRoleInfos: &empty, Regions: map[string]int64{}}); err != nil {
+	if _, _, err := c.CloudAccounts.Patch(ctx, "n1", "aws1", domain.CloudAccountPatch{Type: "AWS", Collect: &off, AssumeRoleInfos: &empty, Regions: map[string]int64{}}); err != nil {
 		t.Fatal(err)
 	}
 	if string(body["assumeRoleInfos"]) != "[]" || string(body["collect"]) != "false" {
@@ -47,7 +51,7 @@ func TestCloudAccountPatchPresenceSemantics(t *testing.T) {
 		t.Errorf("an empty regions map is rejected by Forward and must be omitted: %v", body)
 	}
 
-	if _, _, err := c.CloudAccounts.Patch(ctx, "n1", "aws1", CloudAccountPatch{}); err == nil {
+	if _, _, err := c.CloudAccounts.Patch(ctx, "n1", "aws1", domain.CloudAccountPatch{}); err == nil {
 		t.Error("a patch with no type must be refused before any request")
 	}
 }

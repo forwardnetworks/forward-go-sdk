@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -37,7 +42,7 @@ func recordingClient(t *testing.T, status int, body string, headers map[string]s
 
 func TestUsersCreatePostsToOrgAdminRouteAndReturnsID(t *testing.T) {
 	c, seen := recordingClient(t, http.StatusOK, `{"id":"2701","username":"seat-07@autocon6.invalid","email":"seat-07@autocon6.invalid","enabled":true}`, nil)
-	user, _, err := c.Users.Create(context.Background(), UserCreateRequest{Email: " seat-07@autocon6.invalid ", Password: "pw"})
+	user, _, err := c.Users.Create(context.Background(), domain.UserCreateRequest{Email: " seat-07@autocon6.invalid ", Password: "pw"})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -65,14 +70,14 @@ func TestUsersCreatePostsToOrgAdminRouteAndReturnsID(t *testing.T) {
 
 func TestUsersCreateRequiresAnIDInTheResponse(t *testing.T) {
 	c, _ := recordingClient(t, http.StatusOK, `{"username":"x"}`, nil)
-	if _, _, err := c.Users.Create(context.Background(), UserCreateRequest{Email: "x@y", Password: "pw"}); err == nil {
+	if _, _, err := c.Users.Create(context.Background(), domain.UserCreateRequest{Email: "x@y", Password: "pw"}); err == nil {
 		t.Fatal("Create accepted a response without a user ID")
 	}
 }
 
 func TestUsersCreateValidatesBeforeSending(t *testing.T) {
 	c, seen := recordingClient(t, http.StatusOK, `{}`, nil)
-	if _, _, err := c.Users.Create(context.Background(), UserCreateRequest{Email: "x@y"}); err == nil {
+	if _, _, err := c.Users.Create(context.Background(), domain.UserCreateRequest{Email: "x@y"}); err == nil {
 		t.Fatal("Create accepted an empty password")
 	}
 	if len(*seen) != 0 {
@@ -98,16 +103,20 @@ func TestNetworkRoleRoutes(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name        string
-		call        func(*Client) (*Response, error)
+		call        func(*Client) (*ports.Response, error)
 		method      string
 		path, query string
 	}{
-		{"set", func(c *Client) (*Response, error) { return c.Users.SetNetworkRole(ctx, "7", "42", NetworkRoleAdmin) }, http.MethodPost, "/api/users/7/roles/network/42", "role=ADMIN"},
-		{"add", func(c *Client) (*Response, error) { return c.Users.AddNetworkRole(ctx, "7", "42", NetworkRoleOperator) }, http.MethodPost, "/api/users/7/roles/network/42/OPERATOR", ""},
-		{"remove", func(c *Client) (*Response, error) {
-			return c.Users.RemoveNetworkRole(ctx, "7", "42", NetworkRoleReadOnly)
+		{"set", func(c *Client) (*ports.Response, error) {
+			return c.Users.SetNetworkRole(ctx, "7", "42", domain.NetworkRoleAdmin)
+		}, http.MethodPost, "/api/users/7/roles/network/42", "role=ADMIN"},
+		{"add", func(c *Client) (*ports.Response, error) {
+			return c.Users.AddNetworkRole(ctx, "7", "42", domain.NetworkRoleOperator)
+		}, http.MethodPost, "/api/users/7/roles/network/42/OPERATOR", ""},
+		{"remove", func(c *Client) (*ports.Response, error) {
+			return c.Users.RemoveNetworkRole(ctx, "7", "42", domain.NetworkRoleReadOnly)
 		}, http.MethodDelete, "/api/users/7/roles/network/42/READ_ONLY", ""},
-		{"clear", func(c *Client) (*Response, error) { return c.Users.ClearNetworkRoles(ctx, "7", "42") }, http.MethodDelete, "/api/users/7/roles/network/42", ""},
+		{"clear", func(c *Client) (*ports.Response, error) { return c.Users.ClearNetworkRoles(ctx, "7", "42") }, http.MethodDelete, "/api/users/7/roles/network/42", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -125,17 +134,17 @@ func TestNetworkRoleRoutes(t *testing.T) {
 
 func TestNetworkRoleGrantInsistsOn204(t *testing.T) {
 	c, _ := recordingClient(t, http.StatusOK, `{}`, nil)
-	if _, err := c.Users.SetNetworkRole(context.Background(), "7", "42", NetworkRoleAdmin); err == nil {
+	if _, err := c.Users.SetNetworkRole(context.Background(), "7", "42", domain.NetworkRoleAdmin); err == nil {
 		t.Fatal("a 200 from the role grant was accepted as success")
 	}
 }
 
 func TestNetworkRoleRejectsUnknownRolesWithoutSending(t *testing.T) {
 	c, seen := recordingClient(t, http.StatusNoContent, "", nil)
-	if _, err := c.Users.SetNetworkRole(context.Background(), "7", "42", NetworkRole("OWNER")); err == nil {
+	if _, err := c.Users.SetNetworkRole(context.Background(), "7", "42", domain.NetworkRole("OWNER")); err == nil {
 		t.Fatal("an unknown role was accepted")
 	}
-	if _, err := c.Users.SetNetworkRole(context.Background(), "7", " ", NetworkRoleAdmin); err == nil {
+	if _, err := c.Users.SetNetworkRole(context.Background(), "7", " ", domain.NetworkRoleAdmin); err == nil {
 		t.Fatal("an empty network ID was accepted")
 	}
 	if len(*seen) != 0 {
@@ -144,7 +153,7 @@ func TestNetworkRoleRejectsUnknownRolesWithoutSending(t *testing.T) {
 }
 
 func TestUserRolesDecodesTheSingleRoleShapeForwardSends(t *testing.T) {
-	var roles UserRoles
+	var roles domain.UserRoles
 	if err := json.Unmarshal([]byte(`{"org":[],"network":{"42":"ADMIN","43":["READ_ONLY"]}}`), &roles); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -160,7 +169,7 @@ func TestUserRolesDecodesTheSingleRoleShapeForwardSends(t *testing.T) {
 }
 
 func TestUserRolesKeepsAnAbsentNetworkMapNil(t *testing.T) {
-	var roles UserRoles
+	var roles domain.UserRoles
 	if err := json.Unmarshal([]byte(`{"org":["ADMIN"]}`), &roles); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -199,7 +208,7 @@ func TestDownloadClientPackageStreamsAndDigests(t *testing.T) {
 		"Content-Disposition": `attachment; filename="fwd-unix-26.9.0-18.tar.gz"`,
 	})
 	var buf bytes.Buffer
-	pkg, _, err := c.SoftwareCentral.DownloadClientPackage(context.Background(), ClientPackageHeadlessLinux, &buf)
+	pkg, _, err := c.SoftwareCentral.DownloadClientPackage(context.Background(), domain.ClientPackageHeadlessLinux, &buf)
 	if err != nil {
 		t.Fatalf("DownloadClientPackage: %v", err)
 	}
@@ -217,7 +226,7 @@ func TestDownloadClientPackageStreamsAndDigests(t *testing.T) {
 func TestDownloadClientPackageWritesNothingOnError(t *testing.T) {
 	c, _ := recordingClient(t, http.StatusBadRequest, `{"message":"Unsupported package type: HEADLESS_LINUX"}`, nil)
 	var buf bytes.Buffer
-	if _, _, err := c.SoftwareCentral.DownloadClientPackage(context.Background(), ClientPackageHeadlessLinux, &buf); err == nil {
+	if _, _, err := c.SoftwareCentral.DownloadClientPackage(context.Background(), domain.ClientPackageHeadlessLinux, &buf); err == nil {
 		t.Fatal("a 400 was reported as a download")
 	}
 	if buf.Len() != 0 {

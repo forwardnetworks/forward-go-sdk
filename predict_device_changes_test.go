@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -21,7 +25,7 @@ func TestChangeSetChangesExposeAdvertisementsCommandsAndFlags(t *testing.T) {
 		"fw1":{"hasConfig":false,"hasSecurityRuleChanges":true},
 		"cfg1":{"hasConfig":true,"hasSecurityRuleChanges":false},
 		"idle":{"hasConfig":false,"hasSecurityRuleChanges":false}}}`
-	var changeSet ChangeSet
+	var changeSet domain.ChangeSet
 	if err := json.Unmarshal([]byte(body), &changeSet); err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +34,7 @@ func TestChangeSetChangesExposeAdvertisementsCommandsAndFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	withdraw := changes["ldc31-rtedg-1"]
-	if withdraw.Commands != "" || !reflect.DeepEqual(withdraw.RemovedAdvertisements, []BGPAdvertisementKey{{VRF: "default", ExternalPeer: "4.16.225.165", Prefix: "0.0.0.0/0"}}) || !withdraw.Edited() {
+	if withdraw.Commands != "" || !reflect.DeepEqual(withdraw.RemovedAdvertisements, []domain.BGPAdvertisementKey{{VRF: "default", ExternalPeer: "4.16.225.165", Prefix: "0.0.0.0/0"}}) || !withdraw.Edited() {
 		t.Fatalf("a withdraw-only device is edited and shows the key: %+v", withdraw)
 	}
 	inject := changes["edge2"]
@@ -44,30 +48,30 @@ func TestChangeSetChangesExposeAdvertisementsCommandsAndFlags(t *testing.T) {
 	if changes["idle"].Edited() {
 		t.Error("a device with nothing recorded is not edited")
 	}
-	if got, want := EditedDevices(changes), []string{"cfg1", "core1", "edge2", "fw1", "ldc31-rtedg-1"}; !reflect.DeepEqual(got, want) {
+	if got, want := domain.EditedDevices(changes), []string{"cfg1", "core1", "edge2", "fw1", "ldc31-rtedg-1"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("EditedDevices = %v, want %v", got, want)
 	}
 
 	// The same typed read works on a stored version and on the draft, which embed the change set's fields.
-	var commit ChangeSetCommit
+	var commit domain.ChangeSetCommit
 	if err := json.Unmarshal([]byte(body), &commit); err != nil {
 		t.Fatal(err)
 	}
-	if fromCommit, err := commit.Changes(); err != nil || len(EditedDevices(fromCommit)) != 5 {
+	if fromCommit, err := commit.Changes(); err != nil || len(domain.EditedDevices(fromCommit)) != 5 {
 		t.Fatalf("commit: %v %v", err, fromCommit)
 	}
-	var draft ChangeSetDraft
+	var draft domain.ChangeSetDraft
 	if err := json.Unmarshal([]byte(`{"draft":`+body+`}`), &draft); err != nil || draft.Draft == nil {
 		t.Fatalf("draft: %v", err)
 	}
-	if fromDraft, err := draft.Draft.Changes(); err != nil || len(EditedDevices(fromDraft)) != 5 {
+	if fromDraft, err := draft.Draft.Changes(); err != nil || len(domain.EditedDevices(fromDraft)) != 5 {
 		t.Fatalf("draft changes: %v %v", err, fromDraft)
 	}
-	var empty ChangeSet
+	var empty domain.ChangeSet
 	if none, err := empty.Changes(); err != nil || len(none) != 0 {
 		t.Fatalf("a change set with no device changes decodes to none: %v %v", err, none)
 	}
-	bad := ChangeSet{DeviceToChanges: map[string]json.RawMessage{"x": json.RawMessage(`{"hasConfig":"yes"}`)}}
+	bad := domain.ChangeSet{DeviceToChanges: map[string]json.RawMessage{"x": json.RawMessage(`{"hasConfig":"yes"}`)}}
 	if _, err := bad.Changes(); err == nil {
 		t.Error("a malformed device entry is an error naming the device")
 	}

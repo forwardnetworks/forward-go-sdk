@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -87,14 +91,14 @@ func TestControllerManagedSetupCreateRequiresNameAndControllers(t *testing.T) {
 		_, _ = w.Write([]byte(`{"name":"sdwan"}`))
 	})
 	ctx := context.Background()
-	if _, _, err := c.ControllerManagedSetups.Create(ctx, "net-1", NewControllerManagedSetup{Controllers: []ControllerDevice{{Name: "v"}}}); err == nil {
+	if _, _, err := c.ControllerManagedSetups.Create(ctx, "net-1", domain.NewControllerManagedSetup{Controllers: []domain.ControllerDevice{{Name: "v"}}}); err == nil {
 		t.Fatal("an empty name must be refused")
 	}
-	if _, _, err := c.ControllerManagedSetups.Create(ctx, "net-1", NewControllerManagedSetup{Name: "sdwan"}); err == nil {
+	if _, _, err := c.ControllerManagedSetups.Create(ctx, "net-1", domain.NewControllerManagedSetup{Name: "sdwan"}); err == nil {
 		t.Fatal("a setup with no controllers must be refused")
 	}
-	if _, _, err := c.ControllerManagedSetups.Create(ctx, "net-1", NewControllerManagedSetup{
-		Name: "sdwan", Controllers: []ControllerDevice{{Name: "vmanage", Type: "cisco_vmanage", Host: "10.0.0.1"}},
+	if _, _, err := c.ControllerManagedSetups.Create(ctx, "net-1", domain.NewControllerManagedSetup{
+		Name: "sdwan", Controllers: []domain.ControllerDevice{{Name: "vmanage", Type: "cisco_vmanage", Host: "10.0.0.1"}},
 	}); err != nil {
 		t.Fatalf("valid create: %v", err)
 	}
@@ -107,19 +111,19 @@ func TestControllerManagedSetupCreateRequiresNameAndControllers(t *testing.T) {
 // a patch that meant to change nothing.
 func TestControllerManagedSetupPatchDistinguishesAbsentFromEmpty(t *testing.T) {
 	for name, tc := range map[string]struct {
-		patch    ControllerManagedSetupPatch
+		patch    domain.ControllerManagedSetupPatch
 		wantBody string
 	}{
 		"absent leaves the stored guests alone": {
-			patch:    ControllerManagedSetupPatch{},
+			patch:    domain.ControllerManagedSetupPatch{},
 			wantBody: `{}`,
 		},
 		"an empty list clears every guest": {
-			patch:    ControllerManagedSetupPatch{ManagedDevices: &[]ManagedDevice{}},
+			patch:    domain.ControllerManagedSetupPatch{ManagedDevices: &[]domain.ManagedDevice{}},
 			wantBody: `{"managedDevices":[]}`,
 		},
 		"a populated list replaces them": {
-			patch: ControllerManagedSetupPatch{ManagedDevices: &[]ManagedDevice{{
+			patch: domain.ControllerManagedSetupPatch{ManagedDevices: &[]domain.ManagedDevice{{
 				Name: "cdg-vedge01", Type: "cisco_ios_xe_ssh",
 				Host: "service-cdg-vedge01.example.svc.cluster.local", CLICredentialID: "L-77",
 			}}},
@@ -187,19 +191,19 @@ func TestControllerManagedSetupCarriesManagedDevices(t *testing.T) {
 // setup", which is exactly what every setup Skyforge has created so far is.
 func TestNewControllerManagedSetupOmitsGuestsWhenThereAreNone(t *testing.T) {
 	for name, tc := range map[string]struct {
-		in      NewControllerManagedSetup
+		in      domain.NewControllerManagedSetup
 		wantSub string
 		absent  bool
 	}{
 		"no guests": {
-			in:     NewControllerManagedSetup{Name: "sdwan", Controllers: []ControllerDevice{{Name: "vsmart", Host: "h"}}},
+			in:     domain.NewControllerManagedSetup{Name: "sdwan", Controllers: []domain.ControllerDevice{{Name: "vsmart", Host: "h"}}},
 			absent: true,
 		},
 		"with guests": {
-			in: NewControllerManagedSetup{
+			in: domain.NewControllerManagedSetup{
 				Name:           "sdwan",
-				Controllers:    []ControllerDevice{{Name: "vsmart", Host: "h"}},
-				ManagedDevices: []ManagedDevice{{Name: "cdg-vedge01", Type: "cisco_ios_xe_ssh", Host: "h2", CLICredentialID: "L-77"}},
+				Controllers:    []domain.ControllerDevice{{Name: "vsmart", Host: "h"}},
+				ManagedDevices: []domain.ManagedDevice{{Name: "cdg-vedge01", Type: "cisco_ios_xe_ssh", Host: "h2", CLICredentialID: "L-77"}},
 			},
 			wantSub: `"managedDevices":[{"name":"cdg-vedge01","type":"cisco_ios_xe_ssh","host":"h2","cliCredentialId":"L-77"}]`,
 		},
@@ -243,11 +247,11 @@ func TestControllerManagedPatchCollector(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	for _, patch := range []ControllerManagedSetupPatch{
+	for _, patch := range []domain.ControllerManagedSetupPatch{
 		{CollectorID: "C4"},
 		{ClearCollector: true},
-		{ManagedDevices: &[]ManagedDevice{}},
-		{ManagedDevices: &[]ManagedDevice{}, ClearCollector: true},
+		{ManagedDevices: &[]domain.ManagedDevice{}},
+		{ManagedDevices: &[]domain.ManagedDevice{}, ClearCollector: true},
 	} {
 		if _, _, err := client.ControllerManagedSetups.Patch(ctx, "5", "sdwan", patch); err != nil {
 			t.Fatal(err)
@@ -260,7 +264,7 @@ func TestControllerManagedPatchCollector(t *testing.T) {
 		}
 	}
 	sent := len(bodies)
-	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "5", "sdwan", ControllerManagedSetupPatch{CollectorID: "C4", ClearCollector: true}); err == nil || len(bodies) != sent {
+	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "5", "sdwan", domain.ControllerManagedSetupPatch{CollectorID: "C4", ClearCollector: true}); err == nil || len(bodies) != sent {
 		t.Fatal("setting and clearing the collector together must be refused before the request")
 	}
 }
@@ -271,7 +275,7 @@ func TestControllerManagedPatchCollector(t *testing.T) {
 func TestControllerDeviceSendsHTTPCredentialAndPort(t *testing.T) {
 	t.Parallel()
 	port := int32(9182)
-	raw, err := json.Marshal(ControllerDevice{Name: "versa-dir", Type: "versa_director_api", Host: "10.0.0.5", Port: &port, HTTPCredentialID: "H-5", JumpServerID: "J-1"})
+	raw, err := json.Marshal(domain.ControllerDevice{Name: "versa-dir", Type: "versa_director_api", Host: "10.0.0.5", Port: &port, HTTPCredentialID: "H-5", JumpServerID: "J-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,10 +284,10 @@ func TestControllerDeviceSendsHTTPCredentialAndPort(t *testing.T) {
 		t.Fatalf("controller = %s, want port, httpCredentialId and jumpServerId", raw)
 	}
 
-	if bare, _ := json.Marshal(ControllerDevice{Name: "c"}); strings.Contains(string(bare), "httpCredentialId") || strings.Contains(string(bare), "port") {
+	if bare, _ := json.Marshal(domain.ControllerDevice{Name: "c"}); strings.Contains(string(bare), "httpCredentialId") || strings.Contains(string(bare), "port") {
 		t.Fatalf("unset connection fields were sent: %s", bare)
 	}
-	var back ManagedDevice
+	var back domain.ManagedDevice
 	if err := json.Unmarshal([]byte(`{"name":"g","httpCredentialId":"H-2","cliCredential2Id":"PM-1","cliCredential3Id":"EM-1","port":22}`), &back); err != nil || back.HTTPCredentialID != "H-2" || back.CLICredential2ID != "PM-1" || back.CLICredential3ID != "EM-1" || back.Port == nil || *back.Port != 22 {
 		t.Fatalf("managed device = %#v, %v", back, err)
 	}
@@ -294,10 +298,10 @@ func TestControllerDeviceSendsHTTPCredentialAndPort(t *testing.T) {
 // rather than sent as objects Forward ignores.
 func TestControllerManagedEntriesSendOptionsFlat(t *testing.T) {
 	t.Parallel()
-	raw, err := json.Marshal(ManagedDevice{
+	raw, err := json.Marshal(domain.ManagedDevice{
 		Name: "g", Note: "edge", PaginationMode: "DISABLE_PAGINATION", Prompt: "*#", PromptResponse: "y",
-		BGPAdvertisementCollectionOptions: &BGPCollectionOptions{CollectBGPAdvertisements: true, TableType: "ADJ_RIB_IN", PeerType: "EBGP"},
-		SNMPCollectionConfig:              &SNMPCollectionConfig{EnableSNMPCollection: true},
+		BGPAdvertisementCollectionOptions: &domain.BGPCollectionOptions{CollectBGPAdvertisements: true, TableType: "ADJ_RIB_IN", PeerType: "EBGP"},
+		SNMPCollectionConfig:              &domain.SNMPCollectionConfig{EnableSNMPCollection: true},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -317,11 +321,11 @@ func TestControllerManagedEntriesSendOptionsFlat(t *testing.T) {
 		}
 	}
 	// A flat value the caller set wins over the deprecated nested one.
-	flat, _ := json.Marshal(ControllerDevice{Name: "c", BGPTableType: "BOTH", BGPAdvertisementCollectionOptions: &BGPCollectionOptions{TableType: "ADJ_RIB_IN"}})
+	flat, _ := json.Marshal(domain.ControllerDevice{Name: "c", BGPTableType: "BOTH", BGPAdvertisementCollectionOptions: &domain.BGPCollectionOptions{TableType: "ADJ_RIB_IN"}})
 	if !strings.Contains(string(flat), `"bgpTableType":"BOTH"`) {
 		t.Fatalf("flat field overridden: %s", flat)
 	}
-	var back ControllerDevice
+	var back domain.ControllerDevice
 	if err := json.Unmarshal([]byte(`{"name":"apic","collect":false,"ndoName":"ndo1","enableSnmpCollection":true,"highCpuUsage":0.8}`), &back); err != nil || back.Collect == nil || *back.Collect || back.NDOName != "ndo1" || back.EnableSNMPCollection == nil || back.HighCPUUsage == nil {
 		t.Fatalf("controller = %#v, %v", back, err)
 	}
@@ -340,21 +344,21 @@ func TestControllerManagedMemberPatchWire(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	got, _, err := client.ControllerManagedSetups.PatchController(ctx, "7", "Fabric1", "versa-dir", ClassicDevicePatch{HTTPCredentialID: Ptr("H-7")})
+	got, _, err := client.ControllerManagedSetups.PatchController(ctx, "7", "Fabric1", "versa-dir", domain.ClassicDevicePatch{HTTPCredentialID: domain.Ptr("H-7")})
 	if err != nil || got.HTTPCredentialID != "H-7" {
 		t.Fatalf("PatchController = %#v, %v", got, err)
 	}
 	if method != http.MethodPatch || uri != "/api/networks/7/controller-managed-setups/fabric1/controllers/versa-dir" || body != `{"httpCredentialId":"H-7"}` {
 		t.Fatalf("request = %s %s %s", method, uri, body)
 	}
-	if _, _, err := client.ControllerManagedSetups.PatchManagedDevice(ctx, "7", "fabric1", "g1", ClassicDevicePatch{Note: Ptr("x"), Clear: []string{"port"}}); err != nil {
+	if _, _, err := client.ControllerManagedSetups.PatchManagedDevice(ctx, "7", "fabric1", "g1", domain.ClassicDevicePatch{Note: domain.Ptr("x"), Clear: []string{"port"}}); err != nil {
 		t.Fatal(err)
 	}
 	if uri != "/api/networks/7/controller-managed-setups/fabric1/managed-devices/g1" || body != `{"note":"x","port":null}` {
 		t.Fatalf("managed request = %s %s", uri, body)
 	}
 	uri = ""
-	if _, _, err := client.ControllerManagedSetups.PatchController(ctx, "7", "fabric1", "c", ClassicDevicePatch{CollectorID: Ptr("C1")}); err == nil || uri != "" {
+	if _, _, err := client.ControllerManagedSetups.PatchController(ctx, "7", "fabric1", "c", domain.ClassicDevicePatch{CollectorID: domain.Ptr("C1")}); err == nil || uri != "" {
 		t.Fatalf("collector patch err=%v, sent %q; want a refusal before any request", err, uri)
 	}
 }
@@ -372,19 +376,19 @@ func TestControllerManagedSetupPatchControllers(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	controllers := []ControllerDevice{{Name: "apic", HTTPCredentialID: "H-1", SNMPCollectionConfig: &SNMPCollectionConfig{EnableSNMPCollection: true}}}
-	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "7", "fabric1", ControllerManagedSetupPatch{Controllers: &controllers}); err != nil {
+	controllers := []domain.ControllerDevice{{Name: "apic", HTTPCredentialID: "H-1", SNMPCollectionConfig: &domain.SNMPCollectionConfig{EnableSNMPCollection: true}}}
+	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "7", "fabric1", domain.ControllerManagedSetupPatch{Controllers: &controllers}); err != nil {
 		t.Fatal(err)
 	}
 	if body != `{"controllers":[{"name":"apic","httpCredentialId":"H-1","enableSnmpCollection":true}]}` {
 		t.Fatalf("body = %s", body)
 	}
 	body = ""
-	none := []ControllerDevice{}
-	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "7", "fabric1", ControllerManagedSetupPatch{Controllers: &none}); err == nil || body != "" {
+	none := []domain.ControllerDevice{}
+	if _, _, err := client.ControllerManagedSetups.Patch(ctx, "7", "fabric1", domain.ControllerManagedSetupPatch{Controllers: &none}); err == nil || body != "" {
 		t.Fatalf("empty controllers err=%v, sent %q; want a refusal before any request", err, body)
 	}
-	if _, _, err := client.ControllerManagedSetups.PatchController(ctx, "7", "fabric1", "c", ClassicDevicePatch{Clear: []string{"collectorId"}}); err == nil || body != "" {
+	if _, _, err := client.ControllerManagedSetups.PatchController(ctx, "7", "fabric1", "c", domain.ClassicDevicePatch{Clear: []string{"collectorId"}}); err == nil || body != "" {
 		t.Fatalf("clearing collectorId err=%v, sent %q; want a refusal", err, body)
 	}
 }

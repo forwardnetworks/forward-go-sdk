@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -39,10 +43,10 @@ func TestClassicDeviceWritesCarryCredential2And3AndCollectionOptions(t *testing.
 	server, body := capturedBody(t, `{"name":"sw1","host":"10.0.0.1"}`)
 	client := newTestClient(t, server.URL)
 
-	if _, _, err := client.ClassicDevices.Create(ctx, "net-1", ClassicDeviceRequest{
+	if _, _, err := client.ClassicDevices.Create(ctx, "net-1", domain.ClassicDeviceRequest{
 		Name: "sw1", Host: "10.0.0.1", CLICredentialID: "L-1", CLICredential2ID: "PM-2", CLICredential3ID: "EM-3",
-		CollectBGPAdvertisements: Ptr(true), BGPTableType: "ADJ_RIB_IN", BGPPeerType: "EBGP", BGPAndBMPFailureHandling: "SWITCH_TO_CLI",
-		DisableIPv6Collection: Ptr(false), FullCollectionLog: Ptr(true), EnableSNMPCollection: Ptr(false),
+		CollectBGPAdvertisements: domain.Ptr(true), BGPTableType: "ADJ_RIB_IN", BGPPeerType: "EBGP", BGPAndBMPFailureHandling: "SWITCH_TO_CLI",
+		DisableIPv6Collection: domain.Ptr(false), FullCollectionLog: domain.Ptr(true), EnableSNMPCollection: domain.Ptr(false),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +60,7 @@ func TestClassicDeviceWritesCarryCredential2And3AndCollectionOptions(t *testing.
 			t.Errorf("create %s = %v, want %v (body %s)", key, got[key], want, *body)
 		}
 	}
-	if _, _, err := client.ClassicDevices.Create(ctx, "net-1", ClassicDeviceRequest{Name: "sw2", Host: "10.0.0.2"}); err != nil {
+	if _, _, err := client.ClassicDevices.Create(ctx, "net-1", domain.ClassicDeviceRequest{Name: "sw2", Host: "10.0.0.2"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, key := range []string{"collectBgpAdvertisements", "bgpTableType", "disableIpv6Collection", "fullCollectionLog", "enableSnmpCollection", "cliCredential2Id"} {
@@ -65,9 +69,9 @@ func TestClassicDeviceWritesCarryCredential2And3AndCollectionOptions(t *testing.
 		}
 	}
 
-	if _, err := client.ClassicDevices.PutBatch(ctx, "net-1", []ClassicDeviceBatchItem{{
+	if _, err := client.ClassicDevices.PutBatch(ctx, "net-1", []domain.ClassicDeviceBatchItem{{
 		Name: "sw1", Host: "10.0.0.1", CLICredentialID: "L-1", CLICredential2ID: "PM-2", CLICredential3ID: "EM-3",
-		BGPAndBMPFailureHandling: "ALWAYS_USE_CLI", DisableIPv6Collection: Ptr(true), FullCollectionLog: Ptr(false),
+		BGPAndBMPFailureHandling: "ALWAYS_USE_CLI", DisableIPv6Collection: domain.Ptr(true), FullCollectionLog: domain.Ptr(false),
 	}}); err != nil {
 		t.Fatal(err)
 	}
@@ -94,8 +98,8 @@ func TestClassicDevicePatchSetsAndClearsProperties(t *testing.T) {
 	server, body := capturedBody(t, `{"name":"sw1","host":"10.0.0.1"}`)
 	client := newTestClient(t, server.URL)
 
-	if _, _, err := client.ClassicDevices.Patch(ctx, "net-1", "sw1", ClassicDevicePatch{
-		CLICredential2ID: Ptr("PM-2"), CollectBGPAdvertisements: Ptr(false), BGPTableType: Ptr("BOTH"),
+	if _, _, err := client.ClassicDevices.Patch(ctx, "net-1", "sw1", domain.ClassicDevicePatch{
+		CLICredential2ID: domain.Ptr("PM-2"), CollectBGPAdvertisements: domain.Ptr(false), BGPTableType: domain.Ptr("BOTH"),
 		Clear: []string{"cliCredential3Id", "collectorId"},
 	}); err != nil {
 		t.Fatal(err)
@@ -114,8 +118,8 @@ func TestClassicDevicePatchSetsAndClearsProperties(t *testing.T) {
 	}
 
 	*body = nil
-	for name, patch := range map[string]ClassicDevicePatch{
-		"set and cleared": {CLICredential2ID: Ptr("PM-2"), Clear: []string{"cliCredential2Id"}},
+	for name, patch := range map[string]domain.ClassicDevicePatch{
+		"set and cleared": {CLICredential2ID: domain.Ptr("PM-2"), Clear: []string{"cliCredential2Id"}},
 		"not clearable":   {Clear: []string{"host"}},
 	} {
 		if _, _, err := client.ClassicDevices.Patch(ctx, "net-1", "sw1", patch); err == nil || len(*body) != 0 {
@@ -125,7 +129,7 @@ func TestClassicDevicePatchSetsAndClearsProperties(t *testing.T) {
 }
 
 func TestClassicDeviceReadsCredential2And3AndCollectionOptions(t *testing.T) {
-	var device ClassicDevice
+	var device domain.ClassicDevice
 	if err := json.Unmarshal([]byte(`{"name":"sw1","host":"h","cliCredential2Id":"PM-2","cliCredential3Id":"EM-3","jumpServerId":"J-0","collectBgpAdvertisements":true,"bgpTableType":"ADJ_RIB_OUT","bgpPeerType":"IBGP","bgpAndBmpFailureHandling":"ALWAYS_USE_BMP","disableIpv6Collection":false,"fullCollectionLog":true}`), &device); err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +139,7 @@ func TestClassicDeviceReadsCredential2And3AndCollectionOptions(t *testing.T) {
 		device.DisableIPv6Collection == nil || *device.DisableIPv6Collection || device.FullCollectionLog == nil || !*device.FullCollectionLog {
 		t.Fatalf("device = %+v", device)
 	}
-	var bare ClassicDevice
+	var bare domain.ClassicDevice
 	if err := json.Unmarshal([]byte(`{"name":"sw2","host":"h"}`), &bare); err != nil || bare.DisableIPv6Collection != nil || bare.CollectBGPAdvertisements != nil {
 		t.Fatalf("unstated options must stay nil: %+v, %v", bare, err)
 	}
@@ -145,13 +149,13 @@ func TestClassicDeviceReadsCredential2And3AndCollectionOptions(t *testing.T) {
 // "name":null, which Forward refuses with 400 "'name' is required"), and Clear refuses it.
 func TestClassicDevicePatchSendsNameOnlyWhenSet(t *testing.T) {
 	t.Parallel()
-	if b, _ := json.Marshal(ClassicDevicePatch{Name: Ptr("edge-2")}); string(b) != `{"name":"edge-2"}` {
+	if b, _ := json.Marshal(domain.ClassicDevicePatch{Name: domain.Ptr("edge-2")}); string(b) != `{"name":"edge-2"}` {
 		t.Fatalf("patch with Name = %s", b)
 	}
-	if b, _ := json.Marshal(ClassicDevicePatch{}); string(b) != `{}` {
+	if b, _ := json.Marshal(domain.ClassicDevicePatch{}); string(b) != `{}` {
 		t.Fatalf("empty patch = %s", b)
 	}
-	if _, err := json.Marshal(ClassicDevicePatch{Clear: []string{"name"}}); err == nil {
+	if _, err := json.Marshal(domain.ClassicDevicePatch{Clear: []string{"name"}}); err == nil {
 		t.Fatal("Clear: name was accepted; a device cannot be left unnamed")
 	}
 }
@@ -168,7 +172,7 @@ func TestClassicDevicePatchRenameWire(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	got, _, err := client.ClassicDevices.Patch(context.Background(), "net-1", "edge-1", ClassicDevicePatch{Name: Ptr("edge-2")})
+	got, _, err := client.ClassicDevices.Patch(context.Background(), "net-1", "edge-1", domain.ClassicDevicePatch{Name: domain.Ptr("edge-2")})
 	if err != nil || got.Name != "edge-2" {
 		t.Fatalf("Patch = %#v, %v", got, err)
 	}
@@ -176,7 +180,7 @@ func TestClassicDevicePatchRenameWire(t *testing.T) {
 		t.Fatalf("request = %s %s %s", method, uri, body)
 	}
 	uri = ""
-	if _, err := client.ClassicDevices.PatchMany(context.Background(), "net-1", []string{"edge-1"}, ClassicDevicePatch{Name: Ptr("x")}); err == nil || uri != "" {
+	if _, err := client.ClassicDevices.PatchMany(context.Background(), "net-1", []string{"edge-1"}, domain.ClassicDevicePatch{Name: domain.Ptr("x")}); err == nil || uri != "" {
 		t.Fatalf("PatchMany with Name: err=%v, sent %q; want a refusal before any request", err, uri)
 	}
 }
@@ -184,9 +188,9 @@ func TestClassicDevicePatchRenameWire(t *testing.T) {
 // TestClassicDevicePatchNewPropertiesAndClear pins the session, BMP, BGP-subnet and threshold properties added to ClassicDevicePatch: every property is sent under its spec name when set, absent when nil, and an explicit null through Clear.
 func TestClassicDevicePatchNewPropertiesAndClear(t *testing.T) {
 	t.Parallel()
-	s, i32, i64, f, b := Ptr("v"), Ptr(int32(7)), Ptr(int64(9)), Ptr(float32(0.8)), Ptr(true)
+	s, i32, i64, f, b := domain.Ptr("v"), domain.Ptr(int32(7)), domain.Ptr(int64(9)), domain.Ptr(float32(0.8)), domain.Ptr(true)
 	subnets := []string{"10.0.0.0/8"}
-	patch := ClassicDevicePatch{
+	patch := domain.ClassicDevicePatch{
 		PaginationMode: s, TerminalWidth: i32, LargeRTT: b, MinBytesReadPerSec: i64, MaxConnectionsPerMin: i32,
 		UseFileTransferForLargeOutput: b, Prompt: s, PromptResponse: s, BMPStationHost: s, BGPSubnetsToCollect: &subnets,
 		HighCPUUsage: f, HighMemoryUsage: f, HighInputUtilization: f, HighOutputUtilization: f,
@@ -211,13 +215,13 @@ func TestClassicDevicePatchNewPropertiesAndClear(t *testing.T) {
 		if _, ok := sent[name]; !ok {
 			t.Errorf("%s not sent", name)
 		}
-		out, err := json.Marshal(ClassicDevicePatch{Clear: []string{name}})
+		out, err := json.Marshal(domain.ClassicDevicePatch{Clear: []string{name}})
 		if err != nil || string(out) != `{"`+name+`":null}` {
 			t.Errorf("Clear %s = %s, %v; want an explicit null", name, out, err)
 		}
 	}
 	empty := []string{}
-	if out, _ := json.Marshal(ClassicDevicePatch{BGPSubnetsToCollect: &empty}); string(out) != `{"bgpSubnetsToCollect":[]}` {
+	if out, _ := json.Marshal(domain.ClassicDevicePatch{BGPSubnetsToCollect: &empty}); string(out) != `{"bgpSubnetsToCollect":[]}` {
 		t.Fatalf("empty subnet list = %s, want [] kept distinct from absent", out)
 	}
 }
@@ -227,12 +231,12 @@ func TestClassicDevicePatchNewPropertiesAndClear(t *testing.T) {
 func TestClassicDevicePatchClearsEveryClearableProperty(t *testing.T) {
 	t.Parallel()
 	for _, name := range strings.Fields("type port collect note collectorId cliCredentialId cliCredential2Id cliCredential3Id httpCredentialId snmpCredentialId jumpServerId enableSnmpCollection collectBgpAdvertisements bgpTableType bgpPeerType bgpAndBmpFailureHandling disableIpv6Collection fullCollectionLog paginationMode terminalWidth largeRtt minBytesReadPerSec maxConnectionsPerMin useFileTransferForLargeOutput prompt promptResponse bmpStationHost bgpSubnetsToCollect highCpuUsage highMemoryUsage highInputUtilization highOutputUtilization mediumCpuUsage mediumMemoryUsage mediumInputUtilization mediumOutputUtilization") {
-		if out, err := json.Marshal(ClassicDevicePatch{Clear: []string{name}}); err != nil || string(out) != `{"`+name+`":null}` {
+		if out, err := json.Marshal(domain.ClassicDevicePatch{Clear: []string{name}}); err != nil || string(out) != `{"`+name+`":null}` {
 			t.Errorf("Clear %s = %s, %v; want an explicit null", name, out, err)
 		}
 	}
 	for _, name := range []string{"name", "host"} {
-		if _, err := json.Marshal(ClassicDevicePatch{Clear: []string{name}}); err == nil {
+		if _, err := json.Marshal(domain.ClassicDevicePatch{Clear: []string{name}}); err == nil {
 			t.Errorf("Clear %s was accepted; Forward answers 400 to a null %s", name, name)
 		}
 	}
@@ -248,10 +252,10 @@ func TestClassicDeviceBMPStationHostOnBatchAndCreate(t *testing.T) {
 		_, _ = w.Write([]byte(`{"name":"r1","host":"10.0.0.1","bmpStationHost":"10.9.9.9"}`))
 	})
 	ctx := context.Background()
-	if _, err := c.ClassicDevices.PutBatch(ctx, "n1", []ClassicDeviceBatchItem{{Name: "r1", Host: "10.0.0.1", BMPStationHost: "10.9.9.9"}, {Name: "r2", Host: "10.0.0.2"}}); err != nil {
+	if _, err := c.ClassicDevices.PutBatch(ctx, "n1", []domain.ClassicDeviceBatchItem{{Name: "r1", Host: "10.0.0.1", BMPStationHost: "10.9.9.9"}, {Name: "r2", Host: "10.0.0.2"}}); err != nil {
 		t.Fatal(err)
 	}
-	dev, _, err := c.ClassicDevices.Create(ctx, "n1", ClassicDeviceRequest{Name: "r1", Host: "10.0.0.1", BMPStationHost: "10.9.9.9"})
+	dev, _, err := c.ClassicDevices.Create(ctx, "n1", domain.ClassicDeviceRequest{Name: "r1", Host: "10.0.0.1", BMPStationHost: "10.9.9.9"})
 	if err != nil {
 		t.Fatal(err)
 	}

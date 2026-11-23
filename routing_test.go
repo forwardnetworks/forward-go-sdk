@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -39,16 +43,16 @@ func TestRoutingReadsPrefixesEndToEnd(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	search, _, err := client.Routing.PrefixSearch(ctx, "N1", "S1", RoutingPrefixSearch{Prefix: "10.0.0.0/8", Outcome: RouteOutcomeInstalled})
-	if err != nil || len(search.Origin) != 1 || search.DevicesByOutcome[RouteOutcomeInstalled][0].Device != "r1" {
+	search, _, err := client.Routing.PrefixSearch(ctx, "N1", "S1", domain.RoutingPrefixSearch{Prefix: "10.0.0.0/8", Outcome: domain.RouteOutcomeInstalled})
+	if err != nil || len(search.Origin) != 1 || search.DevicesByOutcome[domain.RouteOutcomeInstalled][0].Device != "r1" {
 		t.Fatalf("search: %+v %v", search, err)
 	}
-	paths, _, err := client.Routing.PrefixTrace(ctx, "N1", "S1", RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: DeviceVRF{Device: "r1", VRF: "default"}, OriginatedFrom: DeviceVRF{Device: "r2", VRF: "default"}, Outcome: RouteOutcomeInstalled})
+	paths, _, err := client.Routing.PrefixTrace(ctx, "N1", "S1", domain.RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: domain.DeviceVRF{Device: "r1", VRF: "default"}, OriginatedFrom: domain.DeviceVRF{Device: "r2", VRF: "default"}, Outcome: domain.RouteOutcomeInstalled})
 	if err != nil || len(paths) != 1 || len(paths[0]) != 2 || paths[0][1].ASNumber != 4200000000 || paths[0][0].RouteSetID != 3 {
 		t.Fatalf("trace: %+v %v", paths, err)
 	}
 	hop := paths[0]
-	details, _, err := client.Routing.PrefixDetails(ctx, "N1", "S1", RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: hop[1], PreviousNode: &hop[0]})
+	details, _, err := client.Routing.PrefixDetails(ctx, "N1", "S1", domain.RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: hop[1], PreviousNode: &hop[0]})
 	if err != nil || details.Device != "r1" || len(details.Policies["IMPORT"]) == 0 || !strings.Contains(string(details.Attributes), `"asPath":[65002]`) {
 		t.Fatalf("details: %+v %v", details, err)
 	}
@@ -56,7 +60,7 @@ func TestRoutingReadsPrefixesEndToEnd(t *testing.T) {
 	if err != nil || info.Vendor != "CISCO" || info.VRFs[0].RecvAdvertisements[0].OriginatedFrom.Device != "r2" || info.VRFs[0].MoreSpecificInstalledRoutes[0] != "10.1.0.0/16" {
 		t.Fatalf("device info: %+v %v", info, err)
 	}
-	installed, _, err := client.Routing.InstalledPrefixes(ctx, "N1", "S1", RoutingInstalledOptions{Vendors: []string{"cisco_ios", "arista_eos"}, Limit: 50})
+	installed, _, err := client.Routing.InstalledPrefixes(ctx, "N1", "S1", domain.RoutingInstalledOptions{Vendors: []string{"cisco_ios", "arista_eos"}, Limit: 50})
 	if err != nil || installed.TotalPrefixCount != 1 || installed.Nodes[0].Prefixes[0] != "10.0.0.0/8" {
 		t.Fatalf("installed: %+v %v", installed, err)
 	}
@@ -104,19 +108,19 @@ func TestRoutingRefusesBadInputBeforeAnyRequest(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	if _, _, err := client.Routing.PrefixSearch(ctx, "N1", "", RoutingPrefixSearch{Prefix: "10.0.0.0/8"}); err == nil {
+	if _, _, err := client.Routing.PrefixSearch(ctx, "N1", "", domain.RoutingPrefixSearch{Prefix: "10.0.0.0/8"}); err == nil {
 		t.Error("a snapshot is required")
 	}
-	if _, _, err := client.Routing.PrefixSearch(ctx, "N1", "S1", RoutingPrefixSearch{}); err == nil {
+	if _, _, err := client.Routing.PrefixSearch(ctx, "N1", "S1", domain.RoutingPrefixSearch{}); err == nil {
 		t.Error("a prefix is required")
 	}
-	if _, _, err := client.Routing.PrefixSearch(ctx, "N1", "S1", RoutingPrefixSearch{Prefix: "10.0.0.0/8", Outcome: "LOST"}); err == nil {
+	if _, _, err := client.Routing.PrefixSearch(ctx, "N1", "S1", domain.RoutingPrefixSearch{Prefix: "10.0.0.0/8", Outcome: "LOST"}); err == nil {
 		t.Error("an unknown outcome must be refused")
 	}
-	if _, _, err := client.Routing.PrefixTrace(ctx, "N1", "S1", RoutingTraceRequest{Prefix: "10.0.0.0/8"}); err == nil {
+	if _, _, err := client.Routing.PrefixTrace(ctx, "N1", "S1", domain.RoutingTraceRequest{Prefix: "10.0.0.0/8"}); err == nil {
 		t.Error("a trace needs router, origin and outcome")
 	}
-	if _, _, err := client.Routing.InstalledPrefixes(ctx, "N1", "S1", RoutingInstalledOptions{Device: "r1", Vendors: []string{"cisco_ios"}}); err == nil {
+	if _, _, err := client.Routing.InstalledPrefixes(ctx, "N1", "S1", domain.RoutingInstalledOptions{Device: "r1", Vendors: []string{"cisco_ios"}}); err == nil {
 		t.Error("device and vendors cannot be combined")
 	}
 	if hits != 0 {
@@ -134,10 +138,10 @@ func TestRoutingLookupFailureIsAnError(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	if _, _, err := client.Routing.PrefixDetails(ctx, "N1", "S1", RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: "r1"}}); !errors.Is(err, ErrRoutingLookup) {
+	if _, _, err := client.Routing.PrefixDetails(ctx, "N1", "S1", domain.RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: domain.RoutingNode{Device: "r1"}}); !errors.Is(err, domain.ErrRoutingLookup) {
 		t.Errorf("details: %v", err)
 	}
-	if _, _, err := client.Routing.DevicePrefixInfo(ctx, "N1", "S1", "r1", "10.0.0.0/8"); !errors.Is(err, ErrRoutingLookup) {
+	if _, _, err := client.Routing.DevicePrefixInfo(ctx, "N1", "S1", "r1", "10.0.0.0/8"); !errors.Is(err, domain.ErrRoutingLookup) {
 		t.Errorf("device info: %v", err)
 	}
 	// A caller-set key is kept, so another protocol can be asked for.
@@ -148,7 +152,7 @@ func TestRoutingLookupFailureIsAnError(t *testing.T) {
 		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer other.Close()
-	_, _, _ = newTestClient(t, other.URL).Routing.PrefixSearch(ctx, "N1", "S1", RoutingPrefixSearch{Prefix: "10.0.0.0/8", Router: &DeviceVRF{Device: "r1"}, RouterKey: &DeviceVRFProtocol{Device: "r1", Protocol: "OSPF"}})
+	_, _, _ = newTestClient(t, other.URL).Routing.PrefixSearch(ctx, "N1", "S1", domain.RoutingPrefixSearch{Prefix: "10.0.0.0/8", Router: &domain.DeviceVRF{Device: "r1"}, RouterKey: &domain.DeviceVRFProtocol{Device: "r1", Protocol: "OSPF"}})
 	if !strings.Contains(gotBody, `"routerKey":{"device":"r1","protocol":"OSPF"}`) {
 		t.Errorf("an explicit key must win: %s", gotBody)
 	}

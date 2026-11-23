@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 func newTraceCmd() *cobra.Command {
@@ -17,7 +17,7 @@ func newTraceCmd() *cobra.Command {
 		Use:   "trace <snapshot|latest> <src-ip> <dst-ip>",
 		Short: "PREVIEW/UNDOCUMENTED per-hop trace of a flow: headers after each hop, network functions with config lines, every path",
 		Long: "PREVIEW / UNDOCUMENTED. Calls the GUI's own flow-trace routes (trace-facets, then trace for every path it lists,\n" +
-			"alternatives through different devices included, up to " + fmt.Sprint(forward.ExplainLimit) + "). Forward does not document these routes and\n" +
+			"alternatives through different devices included, up to " + fmt.Sprint(ports.ExplainLimit) + "). Forward does not document these routes and\n" +
 			"may change them in any build; the output shape is only as stable as they are. Read-only.\n\n" +
 			"Each hop's headers are the packet's values AFTER that hop; ingressHeaders is the packet entering the first hop. A snapshot\n" +
 			"id from a prediction works the same way as a collected one (not yet run against a predicted snapshot). Pass an empty\n" +
@@ -29,7 +29,7 @@ func newTraceCmd() *cobra.Command {
 			if snapshot == "latest" {
 				snapshot = ""
 			}
-			q := forward.TraceQuery{SrcIP: args[1], DstIP: args[2], From: from, SrcPort: srcPort}
+			q := ports.TraceQuery{SrcIP: args[1], DstIP: args[2], From: from, SrcPort: srcPort}
 			if tcpPort != "" {
 				tcp := 6
 				q.IPProto, q.DstPort = &tcp, tcpPort
@@ -42,7 +42,7 @@ func newTraceCmd() *cobra.Command {
 				return err
 			}
 			if ex.Truncated {
-				fmt.Fprintf(os.Stderr, "fwdctl: more than %d paths; the rest were not traced\n", forward.ExplainLimit)
+				fmt.Fprintf(os.Stderr, "fwdctl: more than %d paths; the rest were not traced\n", ports.ExplainLimit)
 			}
 			out := make([]any, 0, len(ex.Paths))
 			for _, p := range ex.Paths {

@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -22,7 +27,7 @@ func TestChecksListFilters(t *testing.T) {
 	}))
 	defer server.Close()
 
-	checks, _, err := newTestClient(t, server.URL).Checks.List(context.Background(), "snap-1", CheckListOptions{
+	checks, _, err := newTestClient(t, server.URL).Checks.List(context.Background(), "snap-1", domain.CheckListOptions{
 		Types:      []string{"Existential", "  "},
 		Statuses:   []string{"FAIL"},
 		Priorities: []string{"HIGH"},
@@ -64,7 +69,7 @@ func TestChecksListLeavesUnstatedEnabledNil(t *testing.T) {
 func TestChecksGetCreateAndDeactivate(t *testing.T) {
 	t.Parallel()
 
-	var created NewCheck
+	var created domain.NewCheck
 	var persistentQuery string
 	deleted := map[string]bool{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -105,11 +110,11 @@ func TestChecksGetCreateAndDeactivate(t *testing.T) {
 		t.Fatal("detailsIncomplete was dropped, so a sample would read as the whole set")
 	}
 
-	got, _, err := client.Checks.Create(ctx, "snap-1", NewCheck{
+	got, _, err := client.Checks.Create(ctx, "snap-1", domain.NewCheck{
 		Name:       "reach",
 		Definition: map[string]any{"checkType": "Existential"},
-		Enabled:    Ptr(false),
-	}, Ptr(false))
+		Enabled:    domain.Ptr(false),
+	}, domain.Ptr(false))
 	if err != nil {
 		t.Fatalf("Checks.Create() error = %v", err)
 	}
@@ -146,7 +151,7 @@ func TestChecksCreateOmitsUnstatedPersistent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := newTestClient(t, server.URL).Checks.Create(context.Background(), "snap-1", NewCheck{
+	_, _, err := newTestClient(t, server.URL).Checks.Create(context.Background(), "snap-1", domain.NewCheck{
 		Name: "reach", Definition: map[string]any{"checkType": "Existential"},
 	}, nil)
 	if err != nil {
@@ -177,7 +182,7 @@ func TestCloudAccountsGet(t *testing.T) {
 	_, _, err = client.CloudAccounts.Get(context.Background(), "net-1", "absent")
 	// Matchable, because a read that finds nothing means "gone from state"
 	// while a transport failure means "try again".
-	if !errors.Is(err, ErrCloudAccountNotFound) {
+	if !errors.Is(err, domain.ErrCloudAccountNotFound) {
 		t.Fatalf("Get(absent) error = %v, want ErrCloudAccountNotFound", err)
 	}
 }
@@ -231,7 +236,7 @@ func TestSnapshotsForCollectionTaskReportsAbsence(t *testing.T) {
 	defer server.Close()
 
 	_, _, err := newTestClient(t, server.URL).Snapshots.ForCollectionTask(context.Background(), "net-1", "P1021")
-	if !errors.Is(err, ErrSnapshotNotFound) {
+	if !errors.Is(err, domain.ErrSnapshotNotFound) {
 		t.Fatalf("ForCollectionTask() error = %v, want ErrSnapshotNotFound", err)
 	}
 }
@@ -270,7 +275,7 @@ func TestSnapshotsLatestCollectedWithoutOne(t *testing.T) {
 	defer server.Close()
 
 	_, _, err := newTestClient(t, server.URL).Snapshots.LatestCollected(context.Background(), "net-1")
-	if !errors.Is(err, ErrNoSnapshots) {
+	if !errors.Is(err, domain.ErrNoSnapshots) {
 		t.Fatalf("LatestCollected() error = %v, want ErrNoSnapshots", err)
 	}
 }
@@ -294,7 +299,7 @@ func TestSnapshotsOperationWaitsForProcessing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Snapshots.Operation() error = %v", err)
 	}
-	final, _, err := poller.Wait(context.Background(), PollOptions[Snapshot]{Interval: time.Millisecond})
+	final, _, err := poller.Wait(context.Background(), ports.PollOptions[domain.Snapshot]{Interval: time.Millisecond})
 	if err != nil {
 		t.Fatalf("Wait() error = %v", err)
 	}
@@ -323,7 +328,7 @@ func TestSnapshotsOperationFailsOnTerminalFailure(t *testing.T) {
 		t.Fatalf("Snapshots.Operation() error = %v", err)
 	}
 	// A terminal failure must not read as "still waiting" and must not read as success.
-	if _, _, err := poller.Wait(context.Background(), PollOptions[Snapshot]{Interval: time.Millisecond}); err == nil {
+	if _, _, err := poller.Wait(context.Background(), ports.PollOptions[domain.Snapshot]{Interval: time.Millisecond}); err == nil {
 		t.Fatal("Wait() returned no error for a FAILED snapshot")
 	}
 }
@@ -419,7 +424,7 @@ func TestSnapshotsGetReportsAbsence(t *testing.T) {
 	defer server.Close()
 
 	_, _, err := newTestClient(t, server.URL).Snapshots.Get(context.Background(), "net-1", "555")
-	if !errors.Is(err, ErrSnapshotNotFound) {
+	if !errors.Is(err, domain.ErrSnapshotNotFound) {
 		t.Fatalf("Get(absent) error = %v, want ErrSnapshotNotFound", err)
 	}
 }

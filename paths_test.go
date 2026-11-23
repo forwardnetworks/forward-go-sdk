@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -29,9 +33,9 @@ func TestPathSearchIsSnapshotScopedAndCarriesTheFilters(t *testing.T) {
 
 	client := newTestClient(t, server.URL)
 	proto, syn, tags := 6, 1, true
-	result, _, err := client.Networks.Paths(context.Background(), "network-1", PathSearchRequest{
+	result, _, err := client.Networks.Paths(context.Background(), "network-1", domain.PathSearchRequest{
 		SrcIP: "10.0.0.1", DstIP: "10.1.0.1", SnapshotID: "snapshot-9",
-		IPProto: &proto, DstPort: "443", TCPFlags: PathTCPFlags{SYN: &syn},
+		IPProto: &proto, DstPort: "443", TCPFlags: domain.PathTCPFlags{SYN: &syn},
 		IncludeNetworkFunctions: &tags,
 	})
 	if err != nil {
@@ -63,10 +67,10 @@ func TestPathSearchRequiresADestinationAndAStart(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	if _, _, err := client.Networks.Paths(context.Background(), "network-1", PathSearchRequest{SrcIP: "10.0.0.1"}); err == nil {
+	if _, _, err := client.Networks.Paths(context.Background(), "network-1", domain.PathSearchRequest{SrcIP: "10.0.0.1"}); err == nil {
 		t.Fatal("expected a missing destination to be refused")
 	}
-	if _, _, err := client.Networks.Paths(context.Background(), "network-1", PathSearchRequest{DstIP: "10.1.0.1"}); err == nil {
+	if _, _, err := client.Networks.Paths(context.Background(), "network-1", domain.PathSearchRequest{DstIP: "10.1.0.1"}); err == nil {
 		t.Fatal("expected a missing source and start point to be refused")
 	}
 }

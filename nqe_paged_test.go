@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -54,8 +58,8 @@ func pagedServer(t *testing.T, n int, flakyPasses int32, queries *[]string) *htt
 // that never settles is an error, never a partial set.
 func TestRunAllReturnsAConsistentSetOrFailsLoudly(t *testing.T) {
 	ctx := context.Background()
-	query := NQEQueryRequest{Query: "foreach d in network.devices select {name: d.name}"}
-	options := NQEPagedOptions{PageSize: 10, KeyColumn: "name", Attempts: 3}
+	query := domain.NQEQueryRequest{Query: "foreach d in network.devices select {name: d.name}"}
+	options := domain.NQEPagedOptions{PageSize: 10, KeyColumn: "name", Attempts: 3}
 
 	var queries []string
 	steady := pagedServer(t, 25, 0, &queries)
@@ -81,19 +85,19 @@ func TestRunAllReturnsAConsistentSetOrFailsLoudly(t *testing.T) {
 	broken := pagedServer(t, 25, 99, &queries)
 	defer broken.Close()
 	rows, _, err = newTestClient(t, broken.URL).NQE.RunAll(ctx, "net-1", "", query, options)
-	if !errors.Is(err, ErrNQEPagingInconsistent) || rows != nil {
+	if !errors.Is(err, domain.ErrNQEPagingInconsistent) || rows != nil {
 		t.Fatalf("a result that never settles must be an error with no rows: rows=%d, %v", len(rows), err)
 	}
 
-	if _, _, err = newTestClient(t, steady.URL).NQE.RunAll(ctx, "net-1", "", query, NQEPagedOptions{}); err == nil {
+	if _, _, err = newTestClient(t, steady.URL).NQE.RunAll(ctx, "net-1", "", query, domain.NQEPagedOptions{}); err == nil {
 		t.Fatal("no key must be refused before any request")
 	}
 	explicit := query
-	explicit.Options = &NQEOptions{SortBy: &NQESortOrder{ColumnName: "name"}}
-	if _, _, err = newTestClient(t, steady.URL).NQE.RunAll(ctx, "net-1", "", explicit, NQEPagedOptions{PageSize: 100}); err == nil {
+	explicit.Options = &domain.NQEOptions{SortBy: &domain.NQESortOrder{ColumnName: "name"}}
+	if _, _, err = newTestClient(t, steady.URL).NQE.RunAll(ctx, "net-1", "", explicit, domain.NQEPagedOptions{PageSize: 100}); err == nil {
 		t.Fatal("a sort without a key must be refused: only the count could be checked")
 	}
-	if _, _, err = newTestClient(t, steady.URL).NQE.RunAll(ctx, "net-1", "", query, NQEPagedOptions{PageSize: 100, KeyColumn: "nope"}); err == nil || errors.Is(err, ErrNQEPagingInconsistent) {
+	if _, _, err = newTestClient(t, steady.URL).NQE.RunAll(ctx, "net-1", "", query, domain.NQEPagedOptions{PageSize: 100, KeyColumn: "nope"}); err == nil || errors.Is(err, domain.ErrNQEPagingInconsistent) {
 		t.Fatalf("a key the rows do not carry is a hard error, not an inconsistency to retry: %v", err)
 	}
 }
@@ -119,7 +123,7 @@ func TestRunAllAdvancesByRowsReceivedAfterAShortPage(t *testing.T) {
 		_, _ = fmt.Fprintf(w, `{"snapshotId":"s","totalNumItems":10,"items":[%s]}`, strings.Join(items, ","))
 	}))
 	defer server.Close()
-	rows, _, err := newTestClient(t, server.URL).NQE.RunAll(context.Background(), "n", "", NQEQueryRequest{Query: "q"}, NQEPagedOptions{PageSize: 8, KeyColumn: "name"})
+	rows, _, err := newTestClient(t, server.URL).NQE.RunAll(context.Background(), "n", "", domain.NQEQueryRequest{Query: "q"}, domain.NQEPagedOptions{PageSize: 8, KeyColumn: "name"})
 	if err != nil || len(rows) != 10 {
 		t.Fatalf("short pages must not lose rows: %d, %v", len(rows), err)
 	}

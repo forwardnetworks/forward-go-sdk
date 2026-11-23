@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -29,9 +33,9 @@ func TestWebhookPatchSendsOnlyStatedFields(t *testing.T) {
 	client := newTestClient(t, server.URL)
 
 	off := true
-	_, err := client.Webhooks.Update(context.Background(), "ops", WebhookPatch{
+	_, err := client.Webhooks.Update(context.Background(), "ops", domain.WebhookPatch{
 		DisableSSLValidation: &off,
-		Credential:           &WebhookCredentialRequest{Type: "BASIC_AUTH", Username: "u", Password: "p"},
+		Credential:           &domain.WebhookCredentialRequest{Type: "BASIC_AUTH", Username: "u", Password: "p"},
 		Template:             json.RawMessage(`{"body":"x"}`),
 	})
 	if err != nil {
@@ -43,7 +47,7 @@ func TestWebhookPatchSendsOnlyStatedFields(t *testing.T) {
 	if string(got["disableSslValidation"]) != "true" || string(got["template"]) != `{"body":"x"}` {
 		t.Errorf("body = %v", got)
 	}
-	var cred WebhookCredentialRequest
+	var cred domain.WebhookCredentialRequest
 	if err := json.Unmarshal(got["credential"], &cred); err != nil || cred.Username != "u" || cred.Password != "p" || cred.Type != "BASIC_AUTH" {
 		t.Errorf("credential = %s (%v)", got["credential"], err)
 	}

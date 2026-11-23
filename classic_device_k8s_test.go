@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -13,14 +17,14 @@ import (
 // (PRODUCTION and TECH_PREVIEW only) so a caller can warn before onboarding a type that only the DEV parser turns into devices.
 func TestConnTypeInfoExposedFollowsForwardsRule(t *testing.T) {
 	for status, want := range map[string]bool{
-		ConnTypeStatusProduction: true, ConnTypeStatusTechPreview: true,
-		ConnTypeStatusInternal: false, ConnTypeStatusUnderDevelopment: false, ConnTypeStatusNotSupported: false, "": false,
+		domain.ConnTypeStatusProduction: true, domain.ConnTypeStatusTechPreview: true,
+		domain.ConnTypeStatusInternal: false, domain.ConnTypeStatusUnderDevelopment: false, domain.ConnTypeStatusNotSupported: false, "": false,
 	} {
-		if got := (ConnTypeInfo{Status: status}).Exposed(); got != want {
+		if got := (domain.ConnTypeInfo{Status: status}).Exposed(); got != want {
 			t.Errorf("Exposed() for %q = %v, want %v", status, got, want)
 		}
 	}
-	if ConnTypeK8sCniControlPlaneAPI != "k8s_cni_control_plane_api" || ConnTypeK8sCniNodeAPI != "k8s_cni_node_api" || ConnTypeK8sCniPodAPI != "k8s_cni_pod_api" {
+	if domain.ConnTypeK8sCniControlPlaneAPI != "k8s_cni_control_plane_api" || domain.ConnTypeK8sCniNodeAPI != "k8s_cni_node_api" || domain.ConnTypeK8sCniPodAPI != "k8s_cni_pod_api" {
 		t.Error("a k8s type constant does not carry Forward's wire id")
 	}
 }
@@ -65,9 +69,9 @@ func TestCreateWithAPIKeyChainsCredentialIntoDevice(t *testing.T) {
 	defer server.Close()
 	c := newTestClient(t, server.URL)
 	ctx := context.Background()
-	dev := ClassicDeviceRequest{Name: "k8s1", Host: "h", Type: ConnTypeK8sCniControlPlaneAPI}
+	dev := domain.ClassicDeviceRequest{Name: "k8s1", Host: "h", Type: domain.ConnTypeK8sCniControlPlaneAPI}
 
-	out, _, err := c.ClassicDevices.CreateWithAPIKey(ctx, "6272", HTTPCredentialRequest{Name: "k", Password: "tok"}, dev)
+	out, _, err := c.ClassicDevices.CreateWithAPIKey(ctx, "6272", domain.HTTPCredentialRequest{Name: "k", Password: "tok"}, dev)
 	if err != nil || out.Credential.ID != "AK-0" || out.Device.Name != "k8s1" {
 		t.Fatalf("out=%+v err=%v", out, err)
 	}
@@ -79,13 +83,13 @@ func TestCreateWithAPIKeyChainsCredentialIntoDevice(t *testing.T) {
 	}
 
 	failDevice = true
-	out, _, err = c.ClassicDevices.CreateWithAPIKey(ctx, "6272", HTTPCredentialRequest{Name: "k", Password: "tok"}, dev)
+	out, _, err = c.ClassicDevices.CreateWithAPIKey(ctx, "6272", domain.HTTPCredentialRequest{Name: "k", Password: "tok"}, dev)
 	if err == nil || out == nil || out.Credential == nil || out.Credential.ID != "AK-0" {
 		t.Errorf("a failed device create must still return the orphaned credential: out=%+v err=%v", out, err)
 	}
 
 	n := len(paths)
-	if _, _, err := c.ClassicDevices.CreateWithAPIKey(ctx, "6272", HTTPCredentialRequest{Type: "LOGIN", Name: "k", Password: "p"}, dev); err == nil {
+	if _, _, err := c.ClassicDevices.CreateWithAPIKey(ctx, "6272", domain.HTTPCredentialRequest{Type: "LOGIN", Name: "k", Password: "p"}, dev); err == nil {
 		t.Error("a LOGIN credential must be refused")
 	}
 	if len(paths) != n {

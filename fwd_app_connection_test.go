@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -33,7 +38,7 @@ func TestFwdAppConnectionAndCVEIndexUpdate(t *testing.T) {
 		t.Fatalf("sent %s %s body=%q", method, uri, body)
 	}
 	reply = `{"status":"AUTH_FAILED"}`
-	if failed, _, err := client.FwdAppConnection.Test(ctx); err != nil || failed.OK() || failed.Status != FwdAppConnectionAuthFailed {
+	if failed, _, err := client.FwdAppConnection.Test(ctx); err != nil || failed.OK() || failed.Status != domain.FwdAppConnectionAuthFailed {
 		t.Fatalf("an authentication failure is a 200 with a status, not an error: %+v %v", failed, err)
 	}
 
@@ -46,7 +51,7 @@ func TestFwdAppConnectionAndCVEIndexUpdate(t *testing.T) {
 		t.Fatalf("sent %s %s body=%q", method, uri, body)
 	}
 	reply = `{"error":"INSTALL_FAILED"}`
-	if failed, _, err := client.CVEIndex.UpdateFromSoftwareCentral(ctx); err != nil || failed.OK() || failed.Error != CVEIndexUpdateInstallFailed {
+	if failed, _, err := client.CVEIndex.UpdateFromSoftwareCentral(ctx); err != nil || failed.OK() || failed.Error != domain.CVEIndexUpdateInstallFailed {
 		t.Fatalf("a failed update is a 200 with an error name: %+v %v", failed, err)
 	}
 
@@ -73,10 +78,10 @@ func TestFwdAppConnectionNotServedOnSaaS(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	if _, _, err := client.FwdAppConnection.Test(context.Background()); !IsErrorKind(err, ErrorKindEndpointNotServed) {
+	if _, _, err := client.FwdAppConnection.Test(context.Background()); !ports.IsErrorKind(err, domain.ErrorKindEndpointNotServed) {
 		t.Fatalf("err = %v", err)
 	}
-	if _, _, err := client.CVEIndex.UpdateFromSoftwareCentral(context.Background()); !IsErrorKind(err, ErrorKindEndpointNotServed) {
+	if _, _, err := client.CVEIndex.UpdateFromSoftwareCentral(context.Background()); !ports.IsErrorKind(err, domain.ErrorKindEndpointNotServed) {
 		t.Fatalf("err = %v", err)
 	}
 }

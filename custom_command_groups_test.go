@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -36,7 +40,7 @@ func TestCustomCommandGroupsListAndGet(t *testing.T) {
 	if err != nil || one.Name != "Edge Show" {
 		t.Fatalf("get: %v %+v", err, one)
 	}
-	if _, _, err := client.CustomCommandGroups.Get(ctx, "5", "nope"); !errors.Is(err, ErrCustomCommandGroupNotFound) {
+	if _, _, err := client.CustomCommandGroups.Get(ctx, "5", "nope"); !errors.Is(err, domain.ErrCustomCommandGroupNotFound) {
 		t.Fatalf("a missing group must be ErrCustomCommandGroupNotFound, got %v", err)
 	}
 }
@@ -80,12 +84,12 @@ func TestCustomCommandGroupsWrites(t *testing.T) {
 	ctx := context.Background()
 	groups := client.CustomCommandGroups
 
-	if _, err := groups.Create(ctx, "5", NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"cisco_ios_xe_ssh"}, Commands: []string{"show clock"}, Devices: []string{"edge*"}}); err != nil {
+	if _, err := groups.Create(ctx, "5", domain.NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"cisco_ios_xe_ssh"}, Commands: []string{"show clock"}, Devices: []string{"edge*"}}); err != nil {
 		t.Fatal(err)
 	}
 	off := true
 	empty := []string{}
-	if _, err := groups.Update(ctx, "5", "g", CustomCommandGroupUpdate{Disabled: &off, Devices: &empty}); err != nil {
+	if _, err := groups.Update(ctx, "5", "g", domain.CustomCommandGroupUpdate{Disabled: &off, Devices: &empty}); err != nil {
 		t.Fatal(err)
 	}
 	unsupported, _, err := groups.Validate(ctx, "5", []string{"cisco_ios_xe_ssh"}, []string{"conf t"})
@@ -98,7 +102,7 @@ func TestCustomCommandGroupsWrites(t *testing.T) {
 	if _, err := groups.Delete(ctx, "5", "network-checks"); err != nil {
 		t.Fatalf("an absent group named like a network still counts as deleted: %v", err)
 	}
-	if _, err := groups.Delete(ctx, "9", "x"); !errors.Is(err, ErrNetworkNotFound) {
+	if _, err := groups.Delete(ctx, "9", "x"); !errors.Is(err, domain.ErrNetworkNotFound) {
 		t.Fatalf("a missing network must not read as a completed delete: %v", err)
 	}
 	want := []string{
@@ -117,21 +121,21 @@ func TestCustomCommandGroupsWrites(t *testing.T) {
 	}
 
 	sent := len(calls)
-	one := NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"t"}, Commands: []string{"c"}, OIDs: []CustomOID{{Name: "n", OID: "1.2"}}}
+	one := domain.NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"t"}, Commands: []string{"c"}, OIDs: []domain.CustomOID{{Name: "n", OID: "1.2"}}}
 	for name, call := range map[string]func() error{
 		"both kinds": func() error { _, err := groups.Create(ctx, "5", one); return err },
 		"neither": func() error {
-			_, err := groups.Create(ctx, "5", NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"t"}})
+			_, err := groups.Create(ctx, "5", domain.NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"t"}})
 			return err
 		},
 		"no types": func() error {
-			_, err := groups.Create(ctx, "5", NewCustomCommandGroup{Name: "g", Commands: []string{"c"}})
+			_, err := groups.Create(ctx, "5", domain.NewCustomCommandGroup{Name: "g", Commands: []string{"c"}})
 			return err
 		},
-		"no name":  func() error { _, err := groups.Update(ctx, "5", " ", CustomCommandGroupUpdate{}); return err },
+		"no name":  func() error { _, err := groups.Update(ctx, "5", " ", domain.CustomCommandGroupUpdate{}); return err },
 		"dot name": func() error { _, err := groups.Delete(ctx, "5", ".."); return err },
 		"update both": func() error {
-			_, err := groups.Update(ctx, "5", "g", CustomCommandGroupUpdate{Commands: []string{"c"}, OIDs: []CustomOID{{Name: "n", OID: "1"}}})
+			_, err := groups.Update(ctx, "5", "g", domain.CustomCommandGroupUpdate{Commands: []string{"c"}, OIDs: []domain.CustomOID{{Name: "n", OID: "1"}}})
 			return err
 		},
 	} {

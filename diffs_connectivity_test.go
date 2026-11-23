@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"net/http"
@@ -32,7 +37,7 @@ func TestWaitForSubnetConnectivityPollsPastPartialZeros(t *testing.T) {
 	c := newTestClient(t, server.URL)
 
 	got, _, err := c.Diffs.WaitForSubnetConnectivity(context.Background(), "100", "101",
-		ConnectivityWaitOptions{Timeout: 5 * time.Second, PollInterval: 10 * time.Millisecond})
+		domain.ConnectivityWaitOptions{Timeout: 5 * time.Second, PollInterval: 10 * time.Millisecond})
 	if err != nil {
 		t.Fatalf("WaitForSubnetConnectivity: %v", err)
 	}
@@ -55,14 +60,14 @@ func TestWaitForSubnetConnectivityTimesOutWithThePartialResult(t *testing.T) {
 	c := newTestClient(t, server.URL)
 
 	got, _, err := c.Diffs.WaitForSubnetConnectivity(context.Background(), "100", "101",
-		ConnectivityWaitOptions{Timeout: 60 * time.Millisecond, PollInterval: 20 * time.Millisecond})
+		domain.ConnectivityWaitOptions{Timeout: 60 * time.Millisecond, PollInterval: 20 * time.Millisecond})
 	if got != nil {
 		t.Fatalf("a partial comparison was returned as a result: %+v", got)
 	}
-	if !errors.Is(err, ErrConnectivityDiffPartial) {
+	if !errors.Is(err, domain.ErrConnectivityDiffPartial) {
 		t.Fatalf("err = %v, want ErrConnectivityDiffPartial", err)
 	}
-	var partial *ConnectivityDiffPartialError
+	var partial *domain.ConnectivityDiffPartialError
 	if !errors.As(err, &partial) || partial.Partial == nil || partial.Partial.EvaluatedSubnetPairs != 5 {
 		t.Fatalf("partial result not carried: %#v", err)
 	}
@@ -78,7 +83,7 @@ func TestWaitForSubnetConnectivityHonoursCancellationAndErrors(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	_, _, err := newTestClient(t, partial.URL).Diffs.WaitForSubnetConnectivity(ctx, "100", "101",
-		ConnectivityWaitOptions{Timeout: time.Minute, PollInterval: 20 * time.Millisecond})
+		domain.ConnectivityWaitOptions{Timeout: time.Minute, PollInterval: 20 * time.Millisecond})
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("cancelled wait err = %v, want context.DeadlineExceeded", err)
 	}
@@ -91,8 +96,8 @@ func TestWaitForSubnetConnectivityHonoursCancellationAndErrors(t *testing.T) {
 		_, _ = w.Write([]byte(`{"message":"LOCATION_CONNECTIVITY_DIFFS is disabled"}`))
 	}))
 	defer forbidden.Close()
-	_, _, err = newTestClient(t, forbidden.URL).Diffs.WaitForSubnetConnectivity(context.Background(), "100", "101", ConnectivityWaitOptions{})
-	if !IsStatus(err, http.StatusForbidden) || calls.Load() != 1 {
+	_, _, err = newTestClient(t, forbidden.URL).Diffs.WaitForSubnetConnectivity(context.Background(), "100", "101", domain.ConnectivityWaitOptions{})
+	if !ports.IsStatus(err, http.StatusForbidden) || calls.Load() != 1 {
 		t.Fatalf("err = %v after %d calls, want one 403 ErrorResponse", err, calls.Load())
 	}
 	if _, _, err := newTestClient(t, forbidden.URL).Diffs.SubnetConnectivity(context.Background(), "", "101"); err == nil {
@@ -202,7 +207,7 @@ func TestConnectivityDiffLocationPairs(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	counts, _, err := client.Diffs.WaitConnectivityDiffLocationPairs(context.Background(), "1", "2", ConnectivityDiffDeleted, "a", ConnectivityWaitOptions{PollInterval: time.Millisecond})
+	counts, _, err := client.Diffs.WaitConnectivityDiffLocationPairs(context.Background(), "1", "2", domain.ConnectivityDiffDeleted, "a", domain.ConnectivityWaitOptions{PollInterval: time.Millisecond})
 	if err != nil || len(counts) != 1 || counts[0].Count != 3 || counts[0].Dst != "b" {
 		t.Fatalf("counts=%+v err=%v", counts, err)
 	}

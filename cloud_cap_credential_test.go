@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -40,7 +45,7 @@ func TestGetAWSCapCredentialDropsTheClientCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cred.ClientCertificateNotAfterReason != CapClientCertificateNotParsed {
+	if cred.ClientCertificateNotAfterReason != domain.CapClientCertificateNotParsed {
 		t.Fatalf("with no stored password the reason is that the SDK does not parse PKCS#12: %+v", cred)
 	}
 	if cred.ID != "cred/7" || cred.BaseCapServerURL != "https://capAcct.example.mil" || !cred.HasCertificateAuthority {
@@ -74,10 +79,10 @@ func TestGetAWSCapCredentialWithoutCAAndOnRefusal(t *testing.T) {
 		t.Fatalf("a credential with no CA must say so: %+v, %v", cred, err)
 	}
 	_, _, err = client.CloudAccounts.GetAWSCapCredential(ctx, "net-1", "viewer-only")
-	if !errors.Is(err, ErrPermissionDenied) {
+	if !errors.Is(err, domain.ErrPermissionDenied) {
 		t.Fatalf("a caller without VIEW_DEVICE_CREDENTIALS must get the typed 403: %v", err)
 	}
-	if op, ok := MissingPermission(err); !ok || op != "NetworkOperation.VIEW_DEVICE_CREDENTIALS" {
+	if op, ok := ports.MissingPermission(err); !ok || op != "NetworkOperation.VIEW_DEVICE_CREDENTIALS" {
 		t.Fatalf("MissingPermission = %q, %v", op, ok)
 	}
 	if _, _, err := client.CloudAccounts.GetAWSCapCredential(ctx, "net-1", " "); err == nil {
@@ -100,10 +105,10 @@ func TestMissingChildOfANetworkIsNotAMissingNetwork(t *testing.T) {
 		_, _, err := newTestClient(t, server.URL).CloudAccounts.GetAWSCapCredential(context.Background(), "12", "CAP-9")
 		return err
 	}
-	if err := missing(`{"apiUrl":"/api/networks/12/aws-cap-credentials/CAP-9","httpMethod":"GET","message":"AWS CAP credential CAP-9 not found"}`); errors.Is(err, ErrNetworkNotFound) || !IsStatus(err, http.StatusNotFound) {
+	if err := missing(`{"apiUrl":"/api/networks/12/aws-cap-credentials/CAP-9","httpMethod":"GET","message":"AWS CAP credential CAP-9 not found"}`); errors.Is(err, domain.ErrNetworkNotFound) || !ports.IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("a missing credential must be a plain 404, not a missing network: %v", err)
 	}
-	if err := missing(`{"apiUrl":"/api/networks/12/aws-cap-credentials/CAP-9","httpMethod":"GET","message":"Network 12 not found"}`); !errors.Is(err, ErrNetworkNotFound) {
+	if err := missing(`{"apiUrl":"/api/networks/12/aws-cap-credentials/CAP-9","httpMethod":"GET","message":"Network 12 not found"}`); !errors.Is(err, domain.ErrNetworkNotFound) {
 		t.Fatalf("a message naming the network must still classify as a missing network: %v", err)
 	}
 }
@@ -113,11 +118,11 @@ func TestMissingChildOfANetworkIsNotAMissingNetwork(t *testing.T) {
 // (it stays reachable only through Raw), and a plain assume-role account must
 // not read as CAP.
 func TestCloudAccountCarriesTheCAPFields(t *testing.T) {
-	var capAcct, plain CloudAccount
+	var capAcct, plain domain.CloudAccount
 	if err := json.Unmarshal([]byte(`{"type":"AWS","name":"gov","awsCapCredentialId":"cap-1","awsC2SAccountInfos":[{"accountId":"111122223333","accountRole":"Auditor"}]}`), &capAcct); err != nil {
 		t.Fatal(err)
 	}
-	if capAcct.AWSCapCredentialID != "cap-1" || len(capAcct.AWSC2SAccountInfos) != 1 || capAcct.AWSC2SAccountInfos[0] != (AWSC2SAccountInfo{AccountID: "111122223333", AccountRole: "Auditor"}) || !capAcct.HasCAPCredential() {
+	if capAcct.AWSCapCredentialID != "cap-1" || len(capAcct.AWSC2SAccountInfos) != 1 || capAcct.AWSC2SAccountInfos[0] != (domain.AWSC2SAccountInfo{AccountID: "111122223333", AccountRole: "Auditor"}) || !capAcct.HasCAPCredential() {
 		t.Fatalf("CAP account decoded wrong: %+v", capAcct)
 	}
 	if err := json.Unmarshal([]byte(`{"type":"AWS","name":"main","assumeRoleInfos":[{"accountId":"1","enabled":true}]}`), &plain); err != nil {
@@ -126,7 +131,7 @@ func TestCloudAccountCarriesTheCAPFields(t *testing.T) {
 	if plain.HasCAPCredential() || plain.AWSCapCredentialID != "" || plain.AWSC2SAccountInfos != nil {
 		t.Fatalf("an assume-role account must not read as CAP: %+v", plain)
 	}
-	var embedded CloudAccount
+	var embedded domain.CloudAccount
 	if err := json.Unmarshal([]byte(`{"type":"AWS","name":"e","awsCapCredential":{"baseCapServerUrl":"u","clientCertificateBase64":"`+capSecret+`"}}`), &embedded); err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +142,7 @@ func TestCloudAccountCarriesTheCAPFields(t *testing.T) {
 		t.Fatalf("marshalling the account must not emit the embedded certificate: %s", encoded)
 	}
 	for _, empty := range []string{`"awsCapCredential":null`, `"awsCapCredential":{}`} {
-		var account CloudAccount
+		var account domain.CloudAccount
 		if err := json.Unmarshal([]byte(`{"type":"AWS","name":"n",`+empty+`}`), &account); err != nil {
 			t.Fatal(err)
 		}
@@ -159,9 +164,9 @@ func TestPatchSendsTheCAPFilterOnlyWhenSet(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	filter := []AWSC2SAccountInfo{{AccountID: "111122223333", AccountRole: "Auditor"}}
-	empty := []AWSC2SAccountInfo{}
-	for _, patch := range []CloudAccountPatch{
+	filter := []domain.AWSC2SAccountInfo{{AccountID: "111122223333", AccountRole: "Auditor"}}
+	empty := []domain.AWSC2SAccountInfo{}
+	for _, patch := range []domain.CloudAccountPatch{
 		{Type: "AWS"},
 		{Type: "AWS", AWSC2SAccountInfos: &filter},
 		{Type: "AWS", AWSC2SAccountInfos: &empty},
@@ -212,7 +217,7 @@ func TestGetAWSCapCredentialDerivesCAValidityWithoutKeepingBytes(t *testing.T) {
 			_, _ = io.WriteString(w, `{"id":"c","baseCapServerUrl":"https://cap.example.mil","clientCertificateBase64":"`+capSecret+`","clientCertificatePasswordId":"SEC-1","certificateAuthorityBase64":"`+ca+`"}`)
 		}))
 	}
-	read := func(ca string) *AWSCapCredential {
+	read := func(ca string) *domain.AWSCapCredential {
 		server := respond(ca)
 		defer server.Close()
 		cred, _, err := newTestClient(t, server.URL).CloudAccounts.GetAWSCapCredential(context.Background(), "net-1", "c")
@@ -227,7 +232,7 @@ func TestGetAWSCapCredentialDerivesCAValidityWithoutKeepingBytes(t *testing.T) {
 		!cred.CertificateAuthorityNotBefore.Equal(time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)) {
 		t.Fatalf("bundle validity = %+v", cred)
 	}
-	if cred.ClientCertificateNotAfter != (time.Time{}) || cred.ClientCertificateNotAfterReason != CapClientCertificatePasswordRequired {
+	if cred.ClientCertificateNotAfter != (time.Time{}) || cred.ClientCertificateNotAfterReason != domain.CapClientCertificatePasswordRequired {
 		t.Fatalf("with a stored password the .p12 expiry is unreadable and must say why: %+v", cred)
 	}
 	encodedJSON, _ := json.Marshal(cred)

@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,11 +23,11 @@ func TestSecurityRuleKeepsEveryField(t *testing.T) {
 		`"destinationAddresses":{},"sourceUsers":{"identityReferences":["alice"]},` +
 		`"applications":{"dynamicGroups":[{"scopeId":"PREDEFINED","name":"g"}]},"services":{},` +
 		`"schedule":{"scopeId":"LOCAL","name":"work"},"urlObjects":[{"scopeId":"LOCAL","name":"u"}]}`
-	var rule SecurityRuleDefinition
+	var rule domain.SecurityRuleDefinition
 	if err := json.Unmarshal([]byte(in), &rule); err != nil {
 		t.Fatal(err)
 	}
-	if rule.Action != SecurityActionResetClientAndServer || len(rule.SourceAddresses.IPRanges) != 1 || rule.SourceAddresses.IPRanges[0].End != "10.1.0.9" ||
+	if rule.Action != domain.SecurityActionResetClientAndServer || len(rule.SourceAddresses.IPRanges) != 1 || rule.SourceAddresses.IPRanges[0].End != "10.1.0.9" ||
 		rule.SourceAddresses.DynamicAddressObjects[0].Name != "dyn" || rule.SourceAddresses.Regions[0].Name != "US" || !rule.SourceAddresses.Negated ||
 		rule.SourceUsers.IdentityReferences[0] != "alice" || rule.Applications.DynamicGroups[0].Name != "g" ||
 		rule.Schedule == nil || rule.Schedule.Name != "work" || rule.URLObjects[0].Name != "u" {
@@ -42,7 +47,7 @@ func TestSecurityRuleKeepsEveryField(t *testing.T) {
 // The Any helpers stage as every field empty (Forward writes that to the device as "any"); they must stay empty on the wire.
 func TestAnyHelpersAreEmpty(t *testing.T) {
 	t.Parallel()
-	for name, v := range map[string]any{"address": AnyAddress(), "user": AnyUser(), "application": AnyApplication(), "service": AnyService()} {
+	for name, v := range map[string]any{"address": domain.AnyAddress(), "user": domain.AnyUser(), "application": domain.AnyApplication(), "service": domain.AnyService()} {
 		b, _ := json.Marshal(v)
 		if string(b) != "{}" {
 			t.Errorf("%s any = %s", name, b)
@@ -56,33 +61,33 @@ func TestAllowedCommandsFailureAndEmpty(t *testing.T) {
 	t.Parallel()
 	var seen []predictSeen
 	broken := newTestClient(t, predictRecorder(t, 500, `{"message":"boom"}`, &seen).URL)
-	_, _, err := broken.Predict.AllowedCommands(context.Background(), "arista_eos", PredictProtocolBGP)
-	if !errors.Is(err, ErrAllowedCommandsUnavailable) || !IsStatus(err, 500) {
+	_, _, err := broken.Predict.AllowedCommands(context.Background(), "arista_eos", domain.PredictProtocolBGP)
+	if !errors.Is(err, domain.ErrAllowedCommandsUnavailable) || !ports.IsStatus(err, 500) {
 		t.Fatalf("err = %v", err)
 	}
 	empty := newTestClient(t, predictRecorder(t, 200, ``, &seen).URL)
-	if text, _, err := empty.Predict.AllowedCommands(context.Background(), "pan_os", PredictProtocolBGP); err != nil || text != "" {
+	if text, _, err := empty.Predict.AllowedCommands(context.Background(), "pan_os", domain.PredictProtocolBGP); err != nil || text != "" {
 		t.Fatalf("empty = %q, %v", text, err)
 	}
 }
 
 func TestSupportsPredictCommands(t *testing.T) {
 	t.Parallel()
-	if got := PredictCommandOSes(); len(got) != 8 {
+	if got := domain.PredictCommandOSes(); len(got) != 8 {
 		t.Fatalf("command OSes = %v", got)
 	} else {
 		got[0] = "changed" // a caller's copy must not change what is supported
 	}
-	if !SupportsPredictCommands("cisco_ios") {
+	if !domain.SupportsPredictCommands("cisco_ios") {
 		t.Error("the shared list was changed through a returned copy")
 	}
 	for _, os := range []string{"cisco_ios", "ARISTA_EOS", " juniper_srx "} {
-		if !SupportsPredictCommands(os) {
+		if !domain.SupportsPredictCommands(os) {
 			t.Errorf("%s not supported", os)
 		}
 	}
 	for _, os := range []string{"pan_os", "f5_bigip", ""} {
-		if SupportsPredictCommands(os) {
+		if domain.SupportsPredictCommands(os) {
 			t.Errorf("%q supported", os)
 		}
 	}

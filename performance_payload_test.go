@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -9,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/forwardnetworks/forward-go-sdk/perfpayload"
+	"github.com/forwardnetworks/forward-go-sdk/domain/perfpayload"
 )
 
 // The typed upload sends exactly the bytes perfpayload encodes, as the collector, and a payload Forward would drop part of
@@ -49,7 +53,7 @@ func TestUploadPayloadSendsTheEncodedBytesAsTheCollector(t *testing.T) {
 
 	requests = 0
 	payload.Devices[0].CPU = 45 // a percent sent where a fraction belongs
-	_, err = perf.UploadPayloadWithIdentity(ctx, "7", CollectorIdentity{Username: "collector-1", AuthorizationKey: "key"}, payload)
+	_, err = perf.UploadPayloadWithIdentity(ctx, "7", domain.CollectorIdentity{Username: "collector-1", AuthorizationKey: "key"}, payload)
 	if !errors.Is(err, perfpayload.ErrCPUOrMemoryAbove1) || requests != 0 {
 		t.Fatalf("err = %v, requests = %d; want the validation error and no request", err, requests)
 	}

@@ -1,7 +1,7 @@
 // Package forwardtest is a fake Forward appserver for tests of code that uses the forward client. It answers like the real thing
 // where consumers' own fakes tend not to: an unmapped route is Forward's own "No endpoint GET /api/..." 404 (which the client reads as
 // ErrEndpointNotServed), and the error replies below carry the exact bodies the appserver writes, so a fake 429, a feature gate or a
-// permission refusal classifies as the same forward.ErrorKind as the real one.
+// permission refusal classifies as the same domain.ErrorKind as the real one.
 //
 // Typical use:
 //
@@ -281,13 +281,13 @@ func errorReply(status int, method, path, message string, extra map[string]any) 
 }
 
 // EndpointNotServed is what Forward answers for a route this deployment does not map: a 404 whose message is Spring's "No endpoint
-// <METHOD> <URL>." The client reads it as forward.ErrEndpointNotServed, never as a missing network.
+// <METHOD> <URL>." The client reads it as domain.ErrEndpointNotServed, never as a missing network.
 func EndpointNotServed(method, requestURI string) Reply {
 	return errorReply(http.StatusNotFound, method, requestURI, "No endpoint "+method+" "+requestURI+".", nil)
 }
 
 // RateLimited is the per-user limiter's 429 with the remaining lockout in Retry-After (seconds). The client reads it as
-// forward.ErrRateLimited.
+// domain.ErrRateLimited.
 func RateLimited(retryAfterSeconds int) Reply {
 	reply := errorReply(http.StatusTooManyRequests, "", "", "Rate limit exceeded, please try again later", nil)
 	reply.Header = http.Header{"Retry-After": []string{strconv.Itoa(retryAfterSeconds)}}
@@ -295,7 +295,7 @@ func RateLimited(retryAfterSeconds int) Reply {
 }
 
 // FeatureGated is the 403 for a route whose organization or deployment property is not set the way the route needs ("<PROPERTY> is
-// off for your organization"). scope is "organization" or "deployment". The client reads it as forward.ErrFeatureGated.
+// off for your organization"). scope is "organization" or "deployment". The client reads it as domain.ErrFeatureGated.
 func FeatureGated(property string, enabled bool, scope string) Reply {
 	state := "off"
 	if enabled {
@@ -305,30 +305,30 @@ func FeatureGated(property string, enabled bool, scope string) Reply {
 }
 
 // MissingPermission is the 403 AccessEnforcer writes for an operation the user lacks, e.g. MissingPermission("NetworkOperation",
-// "EDIT_CHECKS") for "Missing permission: NetworkOperation.EDIT_CHECKS". The client reads it as forward.ErrPermissionDenied.
+// "EDIT_CHECKS") for "Missing permission: NetworkOperation.EDIT_CHECKS". The client reads it as domain.ErrPermissionDenied.
 func MissingPermission(group, operation string) Reply {
 	return errorReply(http.StatusForbidden, "", "", fmt.Sprintf("Missing permission: %s.%s", group, operation), nil)
 }
 
-// Unauthorized is a 401 for bad credentials; the client reads it as forward.ErrAuthentication.
+// Unauthorized is a 401 for bad credentials; the client reads it as domain.ErrAuthentication.
 func Unauthorized() Reply {
 	return errorReply(http.StatusUnauthorized, "", "", "Bad credentials", nil)
 }
 
 // ActionNotSupported is Spring's 400 for an unmapped ?action= on a route, which an older build answers for a newer action. The client
-// reads it as forward.ErrActionNotSupported.
+// reads it as domain.ErrActionNotSupported.
 func ActionNotSupported(action string) Reply {
 	return errorReply(http.StatusBadRequest, "", "", fmt.Sprintf(`Parameter conditions "action=%s" not met for actual request parameters: action={other}`, action), nil)
 }
 
 // SnapshotNotProcessed is the 409 a snapshot-scoped route answers while the snapshot is still processing (reason SNAPSHOT_UNAVAILABLE).
-// The client reads it as forward.ErrSnapshotNotProcessed.
+// The client reads it as domain.ErrSnapshotNotProcessed.
 func SnapshotNotProcessed() Reply {
 	return errorReply(http.StatusConflict, "", "", "The snapshot is not available yet", map[string]any{"reason": "SNAPSHOT_UNAVAILABLE"})
 }
 
 // ServiceNowAsleep is the 409 Forward answers when the ServiceNow instance is hibernating (seen live on 26.10.6). The client reads it as
-// forward.ErrServiceNowInstanceAsleep.
+// domain.ErrServiceNowInstanceAsleep.
 func ServiceNowAsleep() Reply {
 	return errorReply(http.StatusConflict, "", "", "ServiceNow instance is hibernating", nil)
 }

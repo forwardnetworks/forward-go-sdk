@@ -46,7 +46,7 @@ Diffs. DiffEntry reads diffType, a and b (before v0.4.13 every Diffs.Devices ent
 
 Errors. A Spring "No endpoint ..." 404 (a route this deployment does not serve) is ErrEndpointNotServed and is checked first. Otherwise a 404 on /api/networks/{id} or a collection directly under it reads as ErrNetworkNotFound whatever its message says; deeper (a credential, a device by name) it is ErrNetworkNotFound only when the message itself says network, not and found, else a plain 404. So errors.Is(err, ErrNetworkNotFound) on a 404 from a device or collection route does not by itself prove the network is missing.`},
 
-	{"permissions", "The permissions behind a typed 403", `A refusal arrives as Forward's own typed 403: errors.Is(err, forward.ErrPermissionDenied), and forward.MissingPermission(err) names the operation.
+	{"permissions", "The permissions behind a typed 403", `A refusal arrives as Forward's own typed 403: errors.Is(err, domain.ErrPermissionDenied), and ports.MissingPermission(err) names the operation.
 
   OrgOperation.DEBUG_NQE               NQE.RunMetrics
   OrgOperation.DEBUG_COLLECTORS        Collectors.Metrics

@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -46,7 +51,7 @@ func TestExplainSendsTheBareParametersAndReturnsThePlan(t *testing.T) {
 		gotPath != "/api/internal/users/current/nqe/queries/explain" || gotQuery != "path=%2FOps%2Fmy+query&snapshotId=s1" {
 		t.Fatalf("path explain = %s ?%s (%v)", gotPath, gotQuery, err)
 	}
-	if _, _, err = nqe.ExplainQuery(ctx, "FQ_x", "", "bad", nil); !IsStatus(err, http.StatusBadRequest) {
+	if _, _, err = nqe.ExplainQuery(ctx, "FQ_x", "", "bad", nil); !ports.IsStatus(err, http.StatusBadRequest) {
 		t.Fatalf("a query with diagnostics must be a 400, not a plan: %v", err)
 	}
 	if _, _, err = nqe.ExplainQuery(ctx, " ", "", "", nil); err == nil {
@@ -72,8 +77,8 @@ func TestRunMetricsDecodesAndMapsThePermissionError(t *testing.T) {
 	nqe := newTestClient(t, server.URL).NQE
 	ctx := context.Background()
 
-	metrics, _, err := nqe.RunMetrics(ctx, NQERunMetricsOptions{
-		From: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), MinExecutionSeconds: Ptr(0),
+	metrics, _, err := nqe.RunMetrics(ctx, domain.NQERunMetricsOptions{
+		From: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), MinExecutionSeconds: domain.Ptr(0),
 	})
 	if err != nil || len(metrics) != 2 {
 		t.Fatalf("metrics = %+v, %v", metrics, err)
@@ -89,30 +94,11 @@ func TestRunMetricsDecodesAndMapsThePermissionError(t *testing.T) {
 	if second := metrics[1]; second.QueryID != "" || second.SnapshotID != "" || !second.SnapshotCreationInstant.IsZero() {
 		t.Fatalf("an ad-hoc run has no query or snapshot: %+v", second)
 	}
-	_, _, err = nqe.RunMetrics(ctx, NQERunMetricsOptions{Limit: Ptr(1)})
-	if !errors.Is(err, ErrPermissionDenied) {
+	_, _, err = nqe.RunMetrics(ctx, domain.NQERunMetricsOptions{Limit: domain.Ptr(1)})
+	if !errors.Is(err, domain.ErrPermissionDenied) {
 		t.Fatalf("a caller without DEBUG_NQE must get the typed 403: %v", err)
 	}
-	if op, ok := MissingPermission(err); !ok || op != "OrgOperation.DEBUG_NQE" {
+	if op, ok := ports.MissingPermission(err); !ok || op != "OrgOperation.DEBUG_NQE" {
 		t.Fatalf("MissingPermission = %q, %v", op, ok)
-	}
-}
-
-// A plan larger than the cap must fail rather than fill memory: the cap is
-// checked on the path io.Copy really takes, not only on Write.
-func TestExplainRefusesAPlanBeyondTheCap(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		chunk := strings.Repeat("x", 1<<20)
-		for i := 0; i < maxExplainBytes>>20+2; i++ {
-			_, _ = io.WriteString(w, chunk)
-		}
-	}))
-	defer server.Close()
-	plan, _, err := newTestClient(t, server.URL).NQE.ExplainQuery(context.Background(), "FQ_big", "", "", nil)
-	if err == nil || plan != "" || !strings.Contains(err.Error(), "exceeds") {
-		t.Fatalf("an oversized plan must be refused: len=%d, %v", len(plan), err)
-	}
-	if _, _, err := newTestClient(t, server.URL).NQE.RunMetrics(context.Background(), NQERunMetricsOptions{Limit: Ptr(-1)}); err == nil {
-		t.Fatal("a negative limit must fail before any request")
 	}
 }

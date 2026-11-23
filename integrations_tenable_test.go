@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"testing"
 )
@@ -33,16 +37,16 @@ func TestTenableSCWrites(t *testing.T) {
 	ctx := context.Background()
 	in := client.Integrations
 
-	created, _, err := in.CreateTenableSC(ctx, "7", TenableSourceRequest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5", DisableSSLValidation: true})
+	created, _, err := in.CreateTenableSC(ctx, "7", domain.TenableSourceRequest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5", DisableSSLValidation: true})
 	if err != nil || created.Name != "sc" {
 		t.Fatalf("create = %+v, %v", created, err)
 	}
 	name, off := "sc2", true
-	if _, _, err := in.UpdateTenableSC(ctx, "7", "sc", TenableSourcePatch{Name: &name, CollectionDisabled: &off, ClearMaxPageSize: true, ClearCollector: true}); err != nil {
+	if _, _, err := in.UpdateTenableSC(ctx, "7", "sc", domain.TenableSourcePatch{Name: &name, CollectionDisabled: &off, ClearMaxPageSize: true, ClearCollector: true}); err != nil {
 		t.Fatal(err)
 	}
 	page := 250
-	if _, _, err := in.UpdateTenableSC(ctx, "7", "sc2", TenableSourcePatch{MaxPageSize: &page}); err != nil {
+	if _, _, err := in.UpdateTenableSC(ctx, "7", "sc2", domain.TenableSourcePatch{MaxPageSize: &page}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := in.DeleteTenableSC(ctx, "7", "sc2"); err != nil {
@@ -65,7 +69,7 @@ func TestTenableSCWrites(t *testing.T) {
 
 	var seenOK []predictSeen
 	okClient := newTestClient(t, predictRecorder(t, 200, `{}`, &seenOK).URL)
-	if res, _, err := okClient.Integrations.TestTenableSC(ctx, "7", TenableSourceTest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5"}); err != nil || !res.OK() {
+	if res, _, err := okClient.Integrations.TestTenableSC(ctx, "7", domain.TenableSourceTest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5"}); err != nil || !res.OK() {
 		t.Fatalf("a passing test = %+v, %v", res, err)
 	}
 
@@ -77,7 +81,7 @@ func TestTenableSCWrites(t *testing.T) {
 
 	var seenTest []predictSeen
 	tester := newTestClient(t, predictRecorder(t, 200, `{"error":"401 from Security Center"}`, &seenTest).URL)
-	res, _, err := tester.Integrations.TestTenableSC(ctx, "7", TenableSourceTest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5", CollectorID: "c1"})
+	res, _, err := tester.Integrations.TestTenableSC(ctx, "7", domain.TenableSourceTest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5", CollectorID: "c1"})
 	if err != nil || res.OK() || res.Error == "" {
 		t.Fatalf("test = %+v, %v", res, err)
 	}
@@ -95,30 +99,33 @@ func TestTenableSCRefusals(t *testing.T) {
 	zero := 0
 	for name, err := range map[string]error{
 		"create no credential": func() error {
-			_, _, err := in.CreateTenableSC(ctx, "7", TenableSourceRequest{Name: "a", BaseURL: "https://x"})
+			_, _, err := in.CreateTenableSC(ctx, "7", domain.TenableSourceRequest{Name: "a", BaseURL: "https://x"})
 			return err
 		}(),
 		"create no name": func() error {
-			_, _, err := in.CreateTenableSC(ctx, "7", TenableSourceRequest{BaseURL: "https://x", CredentialID: "1"})
+			_, _, err := in.CreateTenableSC(ctx, "7", domain.TenableSourceRequest{BaseURL: "https://x", CredentialID: "1"})
 			return err
 		}(),
 		"create zero page": func() error {
-			_, _, err := in.CreateTenableSC(ctx, "7", TenableSourceRequest{Name: "a", BaseURL: "https://x", CredentialID: "1", MaxPageSize: &zero})
+			_, _, err := in.CreateTenableSC(ctx, "7", domain.TenableSourceRequest{Name: "a", BaseURL: "https://x", CredentialID: "1", MaxPageSize: &zero})
 			return err
 		}(),
 		"create spaced name": func() error {
-			_, _, err := in.CreateTenableSC(ctx, "7", TenableSourceRequest{Name: "my sc", BaseURL: "https://x", CredentialID: "H-1"})
+			_, _, err := in.CreateTenableSC(ctx, "7", domain.TenableSourceRequest{Name: "my sc", BaseURL: "https://x", CredentialID: "H-1"})
 			return err
 		}(),
-		"update spaced name": func() error { _, _, err := in.UpdateTenableSC(ctx, "7", "a b", TenableSourcePatch{}); return err }(),
+		"update spaced name": func() error {
+			_, _, err := in.UpdateTenableSC(ctx, "7", "a b", domain.TenableSourcePatch{})
+			return err
+		}(),
 		"update zero page": func() error {
-			_, _, err := in.UpdateTenableSC(ctx, "7", "a", TenableSourcePatch{MaxPageSize: &zero})
+			_, _, err := in.UpdateTenableSC(ctx, "7", "a", domain.TenableSourcePatch{MaxPageSize: &zero})
 			return err
 		}(),
-		"update no name": func() error { _, _, err := in.UpdateTenableSC(ctx, "7", " ", TenableSourcePatch{}); return err }(),
+		"update no name": func() error { _, _, err := in.UpdateTenableSC(ctx, "7", " ", domain.TenableSourcePatch{}); return err }(),
 		"delete no name": func() error { _, err := in.DeleteTenableSC(ctx, "7", ""); return err }(),
 		"test no url": func() error {
-			_, _, err := in.TestTenableSC(ctx, "7", TenableSourceTest{Name: "a", CredentialID: "1"})
+			_, _, err := in.TestTenableSC(ctx, "7", domain.TenableSourceTest{Name: "a", CredentialID: "1"})
 			return err
 		}(),
 	} {

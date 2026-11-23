@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"errors"
 	"net/http"
@@ -31,14 +35,14 @@ func TestNetworkPropertySetAndClear(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	out, _, err := client.Properties.SetNetwork(ctx, "5744", NetworkPropertyAdvancedReachabilityAnalysis, AdvancedReachabilityAsync)
+	out, _, err := client.Properties.SetNetwork(ctx, "5744", domain.NetworkPropertyAdvancedReachabilityAnalysis, domain.AdvancedReachabilityAsync)
 	if err != nil || string(out["advanced_reachability_analysis"]) != `"ASYNC"` {
 		t.Fatalf("out=%v err=%v", out, err)
 	}
 	if method != http.MethodPut || uri != "/api/networks/5744/config/advanced_reachability_analysis?value=ASYNC" {
 		t.Fatalf("sent %s %s", method, uri)
 	}
-	if _, err = client.Properties.ClearNetwork(ctx, "5744", NetworkPropertyAdvancedReachabilityAnalysis); err != nil || method != http.MethodDelete {
+	if _, err = client.Properties.ClearNetwork(ctx, "5744", domain.NetworkPropertyAdvancedReachabilityAnalysis); err != nil || method != http.MethodDelete {
 		t.Fatalf("clear: %s err=%v", method, err)
 	}
 	if _, _, err = client.Properties.SetNetwork(ctx, "5744", "", "x"); err == nil {
@@ -47,17 +51,17 @@ func TestNetworkPropertySetAndClear(t *testing.T) {
 
 	status, message = http.StatusBadRequest, "No enum constant com.forwardnetworks.cv.config.NetworkProperty.LOCATION_CONNECTIVITY_DIFFS"
 	_, _, err = client.Properties.SetNetwork(ctx, "5744", "location_connectivity_diffs", "true")
-	if !IsUnknownNetworkProperty(err) || IsUnknownOrgProperty(err) {
+	if !domain.IsUnknownNetworkProperty(err) || domain.IsUnknownOrgProperty(err) {
 		t.Fatalf("an org-only property written per network must read as an unknown network property: %v", err)
 	}
 	status, message = http.StatusForbidden, "Org 7 is not accessible to user 12"
-	_, _, err = client.Properties.Organization(ctx, "7", PropertyFilterOff)
-	if !IsOrgNotAccessible(err) || !errors.Is(err, ErrOrgNotAccessible) {
+	_, _, err = client.Properties.Organization(ctx, "7", domain.PropertyFilterOff)
+	if !domain.IsOrgNotAccessible(err) || !errors.Is(err, domain.ErrOrgNotAccessible) {
 		t.Fatalf("a support key refused an org must read as not accessible: %v", err)
 	}
 	// Only the whole message classifies, and only as a 403.
 	status, message = http.StatusForbidden, "Org 7 is not accessible to user 12, ask an admin"
-	if _, _, err = client.Properties.Organization(ctx, "7", PropertyFilterOff); IsOrgNotAccessible(err) {
+	if _, _, err = client.Properties.Organization(ctx, "7", domain.PropertyFilterOff); domain.IsOrgNotAccessible(err) {
 		t.Fatal("a message that merely contains the sentence must not classify")
 	}
 }

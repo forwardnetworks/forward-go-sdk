@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"context"
 	"encoding/json"
@@ -44,7 +48,7 @@ func TestServiceNowChangeRequests(t *testing.T) {
 	in := newTestClient(t, server.URL).Integrations
 	ctx := context.Background()
 
-	cr, _, err := in.CreateChangeSetChangeRequest(ctx, "7", "3", ServiceNowChangeRequestInput{Summary: "s", Impact: ServiceNowImpactMedium, Priority: ServiceNowPriorityModerate, WorkNotes: "n"})
+	cr, _, err := in.CreateChangeSetChangeRequest(ctx, "7", "3", domain.ServiceNowChangeRequestInput{Summary: "s", Impact: domain.ServiceNowImpactMedium, Priority: domain.ServiceNowPriorityModerate, WorkNotes: "n"})
 	if err != nil || cr.Number != "CHG001" || cr.SysID != "abc" || cr.Impact != "2 - Medium" || cr.State != "Assess" || cr.Attachments[0].FileSysID != "f1" {
 		t.Fatalf("created = %+v, %v", cr, err)
 	}
@@ -78,15 +82,15 @@ func TestServiceNowChangeRequests(t *testing.T) {
 	before := len(seen)
 	for name, err := range map[string]error{
 		"no summary": func() error {
-			_, _, err := in.CreateChangeSetChangeRequest(ctx, "7", "3", ServiceNowChangeRequestInput{Impact: ServiceNowImpactLow})
+			_, _, err := in.CreateChangeSetChangeRequest(ctx, "7", "3", domain.ServiceNowChangeRequestInput{Impact: domain.ServiceNowImpactLow})
 			return err
 		}(),
 		"bad impact": func() error {
-			_, _, err := in.CreateChangeSetChangeRequest(ctx, "7", "3", ServiceNowChangeRequestInput{Summary: "s", Impact: "high"})
+			_, _, err := in.CreateChangeSetChangeRequest(ctx, "7", "3", domain.ServiceNowChangeRequestInput{Summary: "s", Impact: "high"})
 			return err
 		}(),
 		"bad priority": func() error {
-			_, _, err := in.CreateChangeSetChangeRequest(ctx, "7", "3", ServiceNowChangeRequestInput{Summary: "s", Impact: "LOW", Priority: "URGENT"})
+			_, _, err := in.CreateChangeSetChangeRequest(ctx, "7", "3", domain.ServiceNowChangeRequestInput{Summary: "s", Impact: "LOW", Priority: "URGENT"})
 			return err
 		}(),
 		"no sys id": func() error { _, _, err := in.GetChangeSetChangeRequest(ctx, "7", "3", " "); return err }(),
@@ -95,7 +99,7 @@ func TestServiceNowChangeRequests(t *testing.T) {
 			return err
 		}(),
 		"too big": func() error {
-			_, err := in.AttachToChangeSetChangeRequest(ctx, "7", "3", "abc", "a", make([]byte, ServiceNowMaxAttachmentBytes+1))
+			_, err := in.AttachToChangeSetChangeRequest(ctx, "7", "3", "abc", "a", make([]byte, domain.ServiceNowMaxAttachmentBytes+1))
 			return err
 		}(),
 		"no writer": func() error {
@@ -123,7 +127,7 @@ func TestIEntryChecksAndProtocolModelingReads(t *testing.T) {
 	var seen []predictSeen
 	predict := newTestClient(t, predictRecorder(t, 200, `[{"name":"c1","deviceName":"r1","entry":{"x":1},"entryType":"IPv4","checkType":"exists","status":"FAIL","description":"missing"}]`, &seen).URL).Predict
 	ctx := context.Background()
-	results, _, err := predict.RunIEntryChecks(ctx, "s 1", []IEntryCheck{{Name: "c1", DeviceName: "r1", Entry: []byte(`{"x":1}`), EntryType: IEntryTypeIPv4, CheckType: IEntryCheckExists}})
+	results, _, err := predict.RunIEntryChecks(ctx, "s 1", []domain.IEntryCheck{{Name: "c1", DeviceName: "r1", Entry: []byte(`{"x":1}`), EntryType: domain.IEntryTypeIPv4, CheckType: domain.IEntryCheckExists}})
 	if err != nil || len(results) != 1 || results[0].Status != "FAIL" || results[0].Name != "c1" || results[0].Description != "missing" {
 		t.Fatalf("results = %+v, %v", results, err)
 	}
@@ -131,12 +135,12 @@ func TestIEntryChecksAndProtocolModelingReads(t *testing.T) {
 		t.Error("no checks was sent")
 	}
 	// Forward marks any check type but "exists" and "notexists" as PASS, so the SDK must not send one.
-	for _, bad := range []IEntryCheck{
-		{Name: "up", DeviceName: "r1", Entry: []byte(`{}`), EntryType: IEntryTypeIPv4, CheckType: "EXISTS"},
-		{Name: "tbl", DeviceName: "r1", Entry: []byte(`{}`), EntryType: "MPLS", CheckType: IEntryCheckExists},
-		{Name: "dev", Entry: []byte(`{}`), EntryType: IEntryTypeIPv4, CheckType: IEntryCheckExists},
+	for _, bad := range []domain.IEntryCheck{
+		{Name: "up", DeviceName: "r1", Entry: []byte(`{}`), EntryType: domain.IEntryTypeIPv4, CheckType: "EXISTS"},
+		{Name: "tbl", DeviceName: "r1", Entry: []byte(`{}`), EntryType: "MPLS", CheckType: domain.IEntryCheckExists},
+		{Name: "dev", Entry: []byte(`{}`), EntryType: domain.IEntryTypeIPv4, CheckType: domain.IEntryCheckExists},
 	} {
-		if _, _, err := predict.RunIEntryChecks(ctx, "s1", []IEntryCheck{bad}); err == nil {
+		if _, _, err := predict.RunIEntryChecks(ctx, "s1", []domain.IEntryCheck{bad}); err == nil {
 			t.Errorf("check %q was sent", bad.Name)
 		}
 	}
@@ -158,22 +162,22 @@ func TestIEntryChecksAndProtocolModelingReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if overall, ok, err := tv.OverallScore(); err != nil || !ok || overall != (PredictModelScore{Precision: 97.5, Recall: 88.25, F1: 92.64}) {
+	if overall, ok, err := tv.OverallScore(); err != nil || !ok || overall != (domain.PredictModelScore{Precision: 97.5, Recall: 88.25, F1: 92.64}) {
 		t.Fatalf("OverallScore = %+v, %v, %v", overall, ok, err)
 	}
-	if byProto, err := tv.ProtocolScores(); err != nil || byProto["BGP"] != (PredictModelScore{Precision: 100, Recall: 50, F1: 66.67}) || len(byProto) != 1 {
+	if byProto, err := tv.ProtocolScores(); err != nil || byProto["BGP"] != (domain.PredictModelScore{Precision: 100, Recall: 50, F1: 66.67}) || len(byProto) != 1 {
 		t.Fatalf("ProtocolScores = %+v, %v", byProto, err)
 	}
-	if _, ok, err := (&PredictModelVerification{}).OverallScore(); ok || err != nil {
+	if _, ok, err := (&domain.PredictModelVerification{}).OverallScore(); ok || err != nil {
 		t.Fatalf("an empty verification reported a score: %v, %v", ok, err)
 	}
-	if _, ok, err := (&PredictModelVerification{Score: json.RawMessage(`"x"`)}).OverallScore(); ok || err == nil {
+	if _, ok, err := (&domain.PredictModelVerification{Score: json.RawMessage(`"x"`)}).OverallScore(); ok || err == nil {
 		t.Fatalf("a malformed score was accepted: %v, %v", ok, err)
 	}
-	if _, ok, err := (*PredictModelVerification)(nil).OverallScore(); ok || err != nil {
+	if _, ok, err := (*domain.PredictModelVerification)(nil).OverallScore(); ok || err != nil {
 		t.Fatalf("a nil verification reported a score: %v, %v", ok, err)
 	}
-	if _, err := (&PredictModelVerification{ScoresByProtocol: map[string]json.RawMessage{"BGP": json.RawMessage(`"x"`)}}).ProtocolScores(); err == nil {
+	if _, err := (&domain.PredictModelVerification{ScoresByProtocol: map[string]json.RawMessage{"BGP": json.RawMessage(`"x"`)}}).ProtocolScores(); err == nil {
 		t.Fatal("a malformed protocol score was accepted")
 	}
 	if _, _, err := verify.VerifyPredictModeling(ctx, "s1", false); err != nil {
@@ -190,17 +194,17 @@ func TestIEntryChecksAndProtocolModelingReads(t *testing.T) {
 	}
 
 	debug := newTestClient(t, predictRecorder(t, 200, `{"bgp":[]}`, &seen).URL).Predict
-	if raw, _, err := debug.ProtocolSeedRoutes(ctx, "s1", ProtocolModelingQuery{Prefix: "10.0.0.0/8", Device: "r1", VRF: "default"}); err != nil || string(raw) != `{"bgp":[]}` {
+	if raw, _, err := debug.ProtocolSeedRoutes(ctx, "s1", domain.ProtocolModelingQuery{Prefix: "10.0.0.0/8", Device: "r1", VRF: "default"}); err != nil || string(raw) != `{"bgp":[]}` {
 		t.Fatalf("seed routes = %s, %v", raw, err)
 	}
-	if _, _, err := debug.ProtocolPathSelection(ctx, "s1", ProtocolModelingQuery{Prefix: "10.0.0.0/8"}); err != nil {
+	if _, _, err := debug.ProtocolPathSelection(ctx, "s1", domain.ProtocolModelingQuery{Prefix: "10.0.0.0/8"}); err != nil {
 		t.Fatal(err)
 	}
 	before := len(seen)
-	if _, _, err := debug.ProtocolSeedRoutes(ctx, "s1", ProtocolModelingQuery{Prefix: "10.0.0.0/8", VRF: "default"}); err == nil {
+	if _, _, err := debug.ProtocolSeedRoutes(ctx, "s1", domain.ProtocolModelingQuery{Prefix: "10.0.0.0/8", VRF: "default"}); err == nil {
 		t.Error("a VRF without a device was sent")
 	}
-	if _, _, err := debug.ProtocolPathSelection(ctx, "s1", ProtocolModelingQuery{}); err == nil || len(seen) != before {
+	if _, _, err := debug.ProtocolPathSelection(ctx, "s1", domain.ProtocolModelingQuery{}); err == nil || len(seen) != before {
 		t.Error("a query without a prefix was sent")
 	}
 	if got := seen[before-2].uri; got != "/api/internal/snapshots/s1/protocol-modeling?deviceName=r1&prefix=10.0.0.0%2F8&view=seed-routes&vrfName=default" {

@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -53,7 +58,7 @@ func TestTrustedCertificatesAddSendsExactShapeAndValidatesLocally(t *testing.T) 
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write(body)
 	})
-	stored, resp, err := c.TrustedCertificates.Add(context.Background(), NewTrustedCertificateRequest{
+	stored, resp, err := c.TrustedCertificates.Add(context.Background(), domain.NewTrustedCertificateRequest{
 		Name:        "skyforge-cloudproxy-ca",
 		Certificate: "-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----",
 	})
@@ -76,10 +81,10 @@ func TestTrustedCertificatesAddSendsExactShapeAndValidatesLocally(t *testing.T) 
 	unreached := acClient(t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("no request should be sent for an invalid request, got %s %s", r.Method, r.URL.Path)
 	})
-	if _, _, err := unreached.TrustedCertificates.Add(context.Background(), NewTrustedCertificateRequest{Certificate: "x"}); err == nil {
+	if _, _, err := unreached.TrustedCertificates.Add(context.Background(), domain.NewTrustedCertificateRequest{Certificate: "x"}); err == nil {
 		t.Fatal("a blank name must be refused locally")
 	}
-	if _, _, err := unreached.TrustedCertificates.Add(context.Background(), NewTrustedCertificateRequest{Name: "x"}); err == nil {
+	if _, _, err := unreached.TrustedCertificates.Add(context.Background(), domain.NewTrustedCertificateRequest{Name: "x"}); err == nil {
 		t.Fatal("blank certificate content must be refused locally")
 	}
 }
@@ -123,10 +128,10 @@ func TestTrustedCertificatesApplyConflictClassifiesAsInProgress(t *testing.T) {
 	if err == nil {
 		t.Fatal("want an error from a 409")
 	}
-	if !IsTrustedCertificateApplyInProgress(err) {
+	if !domain.IsTrustedCertificateApplyInProgress(err) {
 		t.Fatalf("IsTrustedCertificateApplyInProgress(%v) = false, want true", err)
 	}
-	if !IsErrorKind(err, ErrorKindTrustedCertificateApplyInProgress) {
+	if !ports.IsErrorKind(err, domain.ErrorKindTrustedCertificateApplyInProgress) {
 		t.Fatalf("IsErrorKind = false, want ErrorKindTrustedCertificateApplyInProgress")
 	}
 }
@@ -138,11 +143,11 @@ func TestTrustedCertificatesConflictOnAddIsNotMisclassified(t *testing.T) {
 		w.WriteHeader(http.StatusConflict)
 		_, _ = w.Write([]byte(`{"message":"unrelated conflict"}`))
 	})
-	_, _, err := c.TrustedCertificates.Add(context.Background(), NewTrustedCertificateRequest{Name: "n", Certificate: "c"})
+	_, _, err := c.TrustedCertificates.Add(context.Background(), domain.NewTrustedCertificateRequest{Name: "n", Certificate: "c"})
 	if err == nil {
 		t.Fatal("want an error from a 409")
 	}
-	if IsTrustedCertificateApplyInProgress(err) {
+	if domain.IsTrustedCertificateApplyInProgress(err) {
 		t.Fatal("a 409 on plain Add must not classify as apply-in-progress")
 	}
 }
@@ -176,7 +181,7 @@ func TestTrustedCertificatesApplyOperationsReusesCollectorTaskLookup(t *testing.
 	if err != nil {
 		t.Fatalf("Refresh: %v", err)
 	}
-	if task.Status != CollectorTaskSucceeded {
+	if task.Status != domain.CollectorTaskSucceeded {
 		t.Fatalf("status = %s, want SUCCEEDED", task.Status)
 	}
 	if len(gotTaskPaths) != 1 || gotTaskPaths[0] != "/api/collector-tasks/P123" {

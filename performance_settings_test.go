@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -40,13 +44,13 @@ func TestPerformanceSettingsWire(t *testing.T) {
 	if err != nil || !got.Enabled || got.Interval() != 10 {
 		t.Fatalf("Settings = %#v, %v", got, err)
 	}
-	if (PerformanceSettings{}).Interval() != DefaultPerformanceIntervalMinutes || DefaultPerformanceIntervalMinutes != 5 {
+	if (domain.PerformanceSettings{}).Interval() != domain.DefaultPerformanceIntervalMinutes || domain.DefaultPerformanceIntervalMinutes != 5 {
 		t.Fatal("an unset interval must read as Forward's default of 5 minutes")
 	}
-	if _, _, err := client.Performance.PatchSettings(ctx, "7", PerformanceSettingsPatch{IntervalMinutes: Ptr(15)}); err != nil {
+	if _, _, err := client.Performance.PatchSettings(ctx, "7", domain.PerformanceSettingsPatch{IntervalMinutes: domain.Ptr(15)}); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := client.Performance.PatchSettings(ctx, "7", PerformanceSettingsPatch{Enabled: Ptr(false), ClearInterval: true}); err != nil {
+	if _, _, err := client.Performance.PatchSettings(ctx, "7", domain.PerformanceSettingsPatch{Enabled: domain.Ptr(false), ClearInterval: true}); err != nil {
 		t.Fatal(err)
 	}
 	want := []perfSeen{
@@ -60,11 +64,11 @@ func TestPerformanceSettingsWire(t *testing.T) {
 		}
 	}
 	before := len(*seen)
-	for name, patch := range map[string]PerformanceSettingsPatch{
+	for name, patch := range map[string]domain.PerformanceSettingsPatch{
 		"empty":         {},
-		"interval 0":    {IntervalMinutes: Ptr(0)},
-		"interval 1441": {IntervalMinutes: Ptr(1441)},
-		"set and clear": {IntervalMinutes: Ptr(5), ClearInterval: true},
+		"interval 0":    {IntervalMinutes: domain.Ptr(0)},
+		"interval 1441": {IntervalMinutes: domain.Ptr(1441)},
+		"set and clear": {IntervalMinutes: domain.Ptr(5), ClearInterval: true},
 	} {
 		if _, _, err := client.Performance.PatchSettings(ctx, "7", patch); err == nil {
 			t.Fatalf("%s patch was accepted", name)
@@ -91,7 +95,7 @@ func TestPerformanceReadRoutes(t *testing.T) {
 	})
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	q := MetricQuery{Type: "cpu", Days: 3, Device: "ignored", StartTime: "2026-10-01T00:00:00Z", EndTime: "2026-10-02T00:00:00Z", SnapshotID: "55"}
+	q := domain.MetricQuery{Type: "cpu", Days: 3, Device: "ignored", StartTime: "2026-10-01T00:00:00Z", EndTime: "2026-10-02T00:00:00Z", SnapshotID: "55"}
 
 	names, _, err := client.Performance.DevicesWithData(ctx, "7", q)
 	if err != nil || len(names) != 2 {
@@ -143,7 +147,7 @@ func TestCollectorDevicesUsesTheCollectorIdentity(t *testing.T) {
 	})
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	identity := CollectorIdentity{Username: "collector-1", AuthorizationKey: "secret"}
+	identity := domain.CollectorIdentity{Username: "collector-1", AuthorizationKey: "secret"}
 
 	got, _, err := client.Performance.CollectorDevices(ctx, "7", identity)
 	if err != nil || string(got) != string(reply) {
@@ -153,7 +157,7 @@ func TestCollectorDevicesUsesTheCollectorIdentity(t *testing.T) {
 	if r.method != "GET" || r.uri != "/api/networks/7/performance/devices" || r.user != "collector-1" || r.pass != "secret" || r.accept != "application/octet-stream" {
 		t.Fatalf("request = %#v", r)
 	}
-	if _, _, err := client.Performance.CollectorDevices(ctx, "7", CollectorIdentity{Username: "c"}); err == nil {
+	if _, _, err := client.Performance.CollectorDevices(ctx, "7", domain.CollectorIdentity{Username: "c"}); err == nil {
 		t.Fatal("a collector identity without a key was accepted")
 	}
 	if len(*seen) != 1 {
@@ -165,7 +169,7 @@ func TestCollectorDevicesAcceptsAnEmptyAnswer(t *testing.T) {
 	t.Parallel()
 	server, _ := perfRecordingServer(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	client := newTestClient(t, server.URL)
-	got, _, err := client.Performance.CollectorDevices(context.Background(), "7", CollectorIdentity{Username: "c", AuthorizationKey: "k"})
+	got, _, err := client.Performance.CollectorDevices(context.Background(), "7", domain.CollectorIdentity{Username: "c", AuthorizationKey: "k"})
 	if err != nil || len(got) != 0 {
 		t.Fatalf("CollectorDevices on an empty body = %x, %v", got, err)
 	}
@@ -178,10 +182,10 @@ func TestRawSNMPDataWire(t *testing.T) {
 	server, seen := perfRecordingServer(t, func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"ok":true}`)) })
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	if _, _, err := client.Performance.RawSNMPData(ctx, "7", RawSNMPRequest{Device: "sw 1", CredentialID: "S-1", ParentOIDs: []string{"1.3.6.1.2.1.2", " ", "1.3.6.1.2.1.31"}, InterfaceDataProvider: "BULK_READ_TABLE", DeviceAddressOverride: "10.0.0.9"}); err != nil {
+	if _, _, err := client.Performance.RawSNMPData(ctx, "7", domain.RawSNMPRequest{Device: "sw 1", CredentialID: "S-1", ParentOIDs: []string{"1.3.6.1.2.1.2", " ", "1.3.6.1.2.1.31"}, InterfaceDataProvider: "BULK_READ_TABLE", DeviceAddressOverride: "10.0.0.9"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := client.Performance.RawSNMPData(ctx, "7", RawSNMPRequest{Device: "sw1", CredentialID: "S-1", IncludeDevicePerfData: true}); err != nil {
+	if _, _, err := client.Performance.RawSNMPData(ctx, "7", domain.RawSNMPRequest{Device: "sw1", CredentialID: "S-1", IncludeDevicePerfData: true}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{
@@ -194,7 +198,7 @@ func TestRawSNMPDataWire(t *testing.T) {
 		}
 	}
 	before := len(*seen)
-	for name, r := range map[string]RawSNMPRequest{
+	for name, r := range map[string]domain.RawSNMPRequest{
 		"no OIDs":      {Device: "d", CredentialID: "c"},
 		"no device":    {CredentialID: "c", IncludeDevicePerfData: true},
 		"no cred":      {Device: "d", IncludeDevicePerfData: true},
@@ -214,33 +218,33 @@ func TestRawSNMPDataWire(t *testing.T) {
 // carry community/user/authenticationType/... which Forward never read, so a change made through it did nothing.
 func TestSNMPCredentialPatchUsesForwardsNames(t *testing.T) {
 	t.Parallel()
-	encode := func(p SNMPCredentialPatch) string {
+	encode := func(p domain.SNMPCredentialPatch) string {
 		b, err := json.Marshal(p)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return string(b)
 	}
-	if got := encode(SNMPCredentialPatch{Name: Ptr("n"), CommunityString: Ptr("c"), AutoAssociate: Ptr(false)}); got != `{"autoAssociate":false,"communityString":"c","name":"n"}` {
+	if got := encode(domain.SNMPCredentialPatch{Name: domain.Ptr("n"), CommunityString: domain.Ptr("c"), AutoAssociate: domain.Ptr(false)}); got != `{"autoAssociate":false,"communityString":"c","name":"n"}` {
 		t.Fatalf("V2C patch = %s", got)
 	}
-	v3 := SNMPCredentialPatch{Version: SNMPVersionV3, AuthSettings: &SNMPAuthSettingsPatch{Username: Ptr("u"), Password: Ptr("p"), AuthType: SNMPAuthSHA256, PrivacyProtocol: SNMPPrivacyAES256TDES, PrivacyPassword: Ptr("q")}}
+	v3 := domain.SNMPCredentialPatch{Version: domain.SNMPVersionV3, AuthSettings: &domain.SNMPAuthSettingsPatch{Username: domain.Ptr("u"), Password: domain.Ptr("p"), AuthType: domain.SNMPAuthSHA256, PrivacyProtocol: domain.SNMPPrivacyAES256TDES, PrivacyPassword: domain.Ptr("q")}}
 	if got := encode(v3); got != `{"authSettings":{"authType":"SHA_256","password":"p","privacyPassword":"q","privacyProtocol":"AES_256_TDES","username":"u"},"version":"V3"}` {
 		t.Fatalf("V3 patch = %s", got)
 	}
-	cleared := SNMPCredentialPatch{Clear: []string{"communityString", "port"}, AuthSettings: &SNMPAuthSettingsPatch{Clear: []string{"privacyPassword", "privacyProtocol"}}}
+	cleared := domain.SNMPCredentialPatch{Clear: []string{"communityString", "port"}, AuthSettings: &domain.SNMPAuthSettingsPatch{Clear: []string{"privacyPassword", "privacyProtocol"}}}
 	if got := encode(cleared); got != `{"authSettings":{"privacyPassword":null,"privacyProtocol":null},"communityString":null,"port":null}` {
 		t.Fatalf("clearing patch = %s", got)
 	}
 	// The old field names map onto the wire names instead of being sent as properties Forward ignores.
-	legacy := SNMPCredentialPatch{Community: Ptr("c"), User: Ptr("u"), AuthenticationType: Ptr("SHA"), AuthenticationKey: Ptr("k"), PrivacyType: Ptr("DES"), PrivacyKey: Ptr("x"), ContextName: Ptr("ignored")}
+	legacy := domain.SNMPCredentialPatch{Community: domain.Ptr("c"), User: domain.Ptr("u"), AuthenticationType: domain.Ptr("SHA"), AuthenticationKey: domain.Ptr("k"), PrivacyType: domain.Ptr("DES"), PrivacyKey: domain.Ptr("x"), ContextName: domain.Ptr("ignored")}
 	if got := encode(legacy); got != `{"authSettings":{"authType":"SHA","password":"k","privacyPassword":"x","privacyProtocol":"DES","username":"u"},"communityString":"c"}` {
 		t.Fatalf("legacy patch = %s", got)
 	}
-	for name, p := range map[string]SNMPCredentialPatch{
+	for name, p := range map[string]domain.SNMPCredentialPatch{
 		"clear name":        {Clear: []string{"name"}},
-		"set and clear":     {Port: Ptr(1), Clear: []string{"port"}},
-		"clear auth member": {AuthSettings: &SNMPAuthSettingsPatch{Clear: []string{"username"}}},
+		"set and clear":     {Port: domain.Ptr(1), Clear: []string{"port"}},
+		"clear auth member": {AuthSettings: &domain.SNMPAuthSettingsPatch{Clear: []string{"username"}}},
 	} {
 		if _, err := json.Marshal(p); err == nil {
 			t.Fatalf("%s was encoded", name)
@@ -253,17 +257,17 @@ func TestUpdateSNMPCredentialWire(t *testing.T) {
 	server, seen := perfRecordingServer(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	if _, err := client.Credentials.UpdateSNMPCredential(ctx, "7", "S-1", SNMPCredentialPatch{TimeoutSec: Ptr(10)}); err != nil {
+	if _, err := client.Credentials.UpdateSNMPCredential(ctx, "7", "S-1", domain.SNMPCredentialPatch{TimeoutSec: domain.Ptr(10)}); err != nil {
 		t.Fatal(err)
 	}
 	if r := (*seen)[0]; r.method != "PATCH" || r.uri != "/api/networks/7/snmpCredentials/S-1" || r.body != `{"timeoutSec":10}` {
 		t.Fatalf("request = %#v", r)
 	}
-	for name, p := range map[string]SNMPCredentialPatch{
+	for name, p := range map[string]domain.SNMPCredentialPatch{
 		"bad version": {Version: "V1"},
-		"blank name":  {Name: Ptr(" ")},
-		"timeout 0":   {TimeoutSec: Ptr(0)},
-		"blank user":  {AuthSettings: &SNMPAuthSettingsPatch{Username: Ptr("")}},
+		"blank name":  {Name: domain.Ptr(" ")},
+		"timeout 0":   {TimeoutSec: domain.Ptr(0)},
+		"blank user":  {AuthSettings: &domain.SNMPAuthSettingsPatch{Username: domain.Ptr("")}},
 	} {
 		if _, err := client.Credentials.UpdateSNMPCredential(ctx, "7", "S-1", p); err == nil {
 			t.Fatalf("%s was accepted", name)
@@ -278,12 +282,12 @@ func TestUpdateSNMPCredentialWire(t *testing.T) {
 // the SDK used to drop, leaving no way to tell two V3 credentials apart.
 func TestSNMPCredentialReadShowsTheV3Half(t *testing.T) {
 	t.Parallel()
-	var c SNMPCredential
+	var c domain.SNMPCredential
 	body := `{"id":"S-1","name":"v3","version":"V3","authSettings":{"username":"u","authType":"SHA_256","privacyProtocol":"AES_128","password":"opaque"},"createdBy":"craig","createdAt":"2026-10-01T00:00:00Z"}`
 	if err := json.Unmarshal([]byte(body), &c); err != nil {
 		t.Fatal(err)
 	}
-	if c.AuthSettings == nil || c.AuthSettings.Username != "u" || c.AuthSettings.AuthType != SNMPAuthSHA256 || c.AuthSettings.PrivacyProtocol != SNMPPrivacyAES128 || c.CreatedBy != "craig" {
+	if c.AuthSettings == nil || c.AuthSettings.Username != "u" || c.AuthSettings.AuthType != domain.SNMPAuthSHA256 || c.AuthSettings.PrivacyProtocol != domain.SNMPPrivacyAES128 || c.CreatedBy != "craig" {
 		t.Fatalf("credential = %#v", c)
 	}
 }

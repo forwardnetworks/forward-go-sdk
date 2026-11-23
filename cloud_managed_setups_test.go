@@ -1,10 +1,15 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -22,8 +27,8 @@ func TestCloudManagedSetupsCreateMistSendsForwardsShape(t *testing.T) {
 		_ = json.Unmarshal(b, &gotBody)
 		_, _ = w.Write([]byte(`{"name":"skyforge-mist","type":"MIST","region":"GLOBAL_01","apiKeyId":"H-9"}`))
 	})
-	out, _, err := c.CloudManagedSetups.CreateMist(context.Background(), "net-1", NewMistSetup{
-		Name: "skyforge-mist", Region: MistRegionGlobal01, APIKeyID: "H-9", CollectorID: "col-1",
+	out, _, err := c.CloudManagedSetups.CreateMist(context.Background(), "net-1", domain.NewMistSetup{
+		Name: "skyforge-mist", Region: domain.MistRegionGlobal01, APIKeyID: "H-9", CollectorID: "col-1",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -41,17 +46,17 @@ func TestCloudManagedSetupsCreateMistSendsForwardsShape(t *testing.T) {
 			t.Errorf("body carries %q; Forward derives the org itself and empty optionals must be omitted", absent)
 		}
 	}
-	if out.Name != "skyforge-mist" || out.Region != MistRegionGlobal01 {
+	if out.Name != "skyforge-mist" || out.Region != domain.MistRegionGlobal01 {
 		t.Fatalf("decoded %+v", out)
 	}
 }
 
 func TestCloudManagedSetupsCreateMistRefusesIncompleteInput(t *testing.T) {
 	c := acClient(t, func(w http.ResponseWriter, r *http.Request) { t.Fatal("no request expected") })
-	for name, in := range map[string]NewMistSetup{
-		"no name":   {Region: MistRegionGlobal01, APIKeyID: "H-1"},
+	for name, in := range map[string]domain.NewMistSetup{
+		"no name":   {Region: domain.MistRegionGlobal01, APIKeyID: "H-1"},
 		"no region": {Name: "x", APIKeyID: "H-1"},
-		"no key":    {Name: "x", Region: MistRegionGlobal01},
+		"no key":    {Name: "x", Region: domain.MistRegionGlobal01},
 	} {
 		if _, _, err := c.CloudManagedSetups.CreateMist(context.Background(), "net-1", in); err == nil {
 			t.Errorf("%s: want error", name)
@@ -111,15 +116,32 @@ func TestCloudManagedSetupsListMistAcceptsEnvelopes(t *testing.T) {
 // accepts the discovered-host object shape so a future read-side change
 // cannot break decoding. The verbatim live setup (2026-09-17) is pinned too.
 func TestMistSetupHostsDecodeAsStringsOrObjects(t *testing.T) {
-	var live MistSetup
+	var live domain.MistSetup
 	if err := json.Unmarshal([]byte(`{"name":"skyforge-mist-smoke","apiKeyId":"AK-0","region":"GLOBAL_01","collect":true,"hosts":[],"testResult":{"savedAt":"2026-09-17T11:47:14.021Z","discoveredHosts":[{"name":"0250aa010001","model":"AP43","displayName":"SMOKE-AP-1"}]},"type":"MIST"}`), &live); err != nil || live.TestResult == nil || live.TestResult.SavedAt == "" || len(live.TestResult.DiscoveredHosts) != 1 {
 		t.Fatalf("live setup: %v %+v", err, live)
 	}
-	var a, b MistSetup
+	var a, b domain.MistSetup
 	if err := json.Unmarshal([]byte(`{"name":"m","hosts":["0250aa010001"]}`), &a); err != nil || len(a.Hosts) != 1 || a.Hosts[0].Name != "0250aa010001" {
 		t.Fatalf("strings: %v %+v", err, a.Hosts)
 	}
 	if err := json.Unmarshal([]byte(`{"name":"m","hosts":[{"name":"0250aa010001","model":"AP43","displayName":"SMOKE-AP-1"}]}`), &b); err != nil || len(b.Hosts) != 1 || b.Hosts[0].DisplayName != "SMOKE-AP-1" {
 		t.Fatalf("objects: %v %+v", err, b.Hosts)
+	}
+}
+
+// Forward's setup listing takes no type parameter and answers every cloud-managed setup of the network, so ListMist must keep
+// the Mist ones only: a Meraki setup decoded as a Mist one would look like a Mist setup with no region or hosts.
+func TestListMistKeepsOnlyMistSetupsOutOfAMixedListing(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"name":"wifi","type":"MIST","region":"GLOBAL_01"},{"name":"dash","type":"MERAKI","region":"GLOBAL"},{"name":"sdwan","type":"VELO_CLOUD"}]`))
+	}))
+	defer server.Close()
+	setups, _, err := newTestClient(t, server.URL).CloudManagedSetups.ListMist(context.Background(), "n1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(setups) != 1 || setups[0].Name != "wifi" {
+		t.Fatalf("ListMist = %+v, want only the MIST setup", setups)
 	}
 }

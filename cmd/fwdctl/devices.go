@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 func newDevicesCmd() *cobra.Command {
@@ -17,7 +18,7 @@ func newDevicesCmd() *cobra.Command {
 		Short: "List devices, name/type/collection source, optionally filtered by name",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			list, _, err := client(cmd).Devices.List(cmd.Context(), network(cmd), forward.DeviceListOptions{SnapshotID: snapshotID})
+			list, _, err := client(cmd).Devices.List(cmd.Context(), network(cmd), ports.DeviceListOptions{SnapshotID: snapshotID})
 			if err != nil {
 				return err
 			}
@@ -86,7 +87,7 @@ func newDevicesAddCmd() *cobra.Command {
 			}
 			if credID == "" {
 				created, _, err := c.Credentials.CreateCLI(ctx, net,
-					forward.CLICredentialRequest{Name: credName, Username: user, Password: pass})
+					ports.CLICredentialRequest{Name: credName, Username: user, Password: pass})
 				if err != nil {
 					return err
 				}
@@ -94,7 +95,7 @@ func newDevicesAddCmd() *cobra.Command {
 			}
 
 			collect := true
-			dev, _, err := c.ClassicDevices.Create(ctx, net, forward.ClassicDeviceRequest{
+			dev, _, err := c.ClassicDevices.Create(ctx, net, ports.ClassicDeviceRequest{
 				Name: name, Host: host, Type: kind, CLICredentialID: credID, Collect: &collect, JumpServerID: jumpID,
 			})
 			if err != nil {
@@ -102,7 +103,7 @@ func newDevicesAddCmd() *cobra.Command {
 			}
 			fmt.Printf("added %s (%s) at %s with credential %s\n", dev.Name, dev.Type, dev.Host, credID)
 			if locationID != "" {
-				if _, err := c.Locations.Assign(ctx, net, forward.AtlasPatch{name: locationID}); err != nil {
+				if _, err := c.Locations.Assign(ctx, net, ports.AtlasPatch{name: locationID}); err != nil {
 					return err
 				}
 				fmt.Printf("placed %s at %s\n", name, location)

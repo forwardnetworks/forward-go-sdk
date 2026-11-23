@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"archive/zip"
 	"bytes"
 	"context"
@@ -74,16 +79,16 @@ func TestSnapshotListUploadAndDownload(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 	yes := true
-	snapshots, _, err := client.Snapshots.List(ctx, "network-1", SnapshotListOptions{
+	snapshots, _, err := client.Snapshots.List(ctx, "network-1", ports.SnapshotListOptions{
 		SkipUnprocessed: &yes,
 		ExtraQuery:      url.Values{"futureFlag": []string{"enabled"}},
 	})
 	if err != nil || len(snapshots) != 1 || snapshots[0].ID != "101" {
 		t.Fatalf("Snapshots.List() = %#v, %v", snapshots, err)
 	}
-	uploaded, _, err := client.Snapshots.Upload(ctx, "network-1", []SnapshotUploadFile{{
+	uploaded, _, err := client.Snapshots.Upload(ctx, "network-1", []domain.SnapshotUploadFile{{
 		Name: "unsafe\r\nname.zip", Reader: strings.NewReader("zip bytes"),
-	}}, SnapshotUploadOptions{Note: "import", Async: true, ExcludeFailedDevices: true, SkipSnapshotProcessing: true})
+	}}, ports.SnapshotUploadOptions{Note: "import", Async: true, ExcludeFailedDevices: true, SkipSnapshotProcessing: true})
 	if err != nil || uploaded.ID != "snapshot-2" {
 		t.Fatalf("Snapshots.Upload() = %#v, %v", uploaded, err)
 	}
@@ -123,9 +128,9 @@ func TestPropertiesRoutes(t *testing.T) {
 
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	aiAllowed := OrgProperty("ai_allowed")
-	values, _, err := client.Properties.Organization(ctx, "22", PropertyFilterConfigured)
-	if err != nil || string(values[aiAllowed]) != "true" || string(values[OrgProperty("maximum_devices")]) != "1000" {
+	aiAllowed := domain.OrgProperty("ai_allowed")
+	values, _, err := client.Properties.Organization(ctx, "22", domain.PropertyFilterConfigured)
+	if err != nil || string(values[aiAllowed]) != "true" || string(values[domain.OrgProperty("maximum_devices")]) != "1000" {
 		t.Fatalf("Properties.Organization() = %#v, %v", values, err)
 	}
 	values, _, err = client.Properties.SetOrganization(ctx, "22", aiAllowed, "true")

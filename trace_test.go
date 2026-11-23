@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -47,9 +52,9 @@ func TestTraceSendsFiltersAndSelectionVerbatim(t *testing.T) {
 	defer server.Close()
 	c := newTestClient(t, server.URL)
 	tcp := 6
-	q := TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8", IPProto: &tcp, DstPort: "443"}
+	q := domain.TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8", IPProto: &tcp, DstPort: "443"}
 
-	facets, _, err := c.Trace.Facets(context.Background(), "N1", "S1", q, TraceFacetsOptions{})
+	facets, _, err := c.Trace.Facets(context.Background(), "N1", "S1", q, domain.TraceFacetsOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,20 +115,20 @@ func TestTraceQueryValidation(t *testing.T) {
 	defer server.Close()
 	c := newTestClient(t, server.URL)
 	icmp := 1
-	for name, q := range map[string]TraceQuery{
+	for name, q := range map[string]domain.TraceQuery{
 		"no destination": {SrcIP: "10.0.0.1"},
 		"no source":      {DstIP: "10.0.0.2"},
 		"port on icmp":   {SrcIP: "10.0.0.1", DstIP: "10.0.0.2", IPProto: &icmp, DstPort: "1"},
 		"ipv6":           {SrcIP: "10.0.0.1", DstIP: "2001:db8::1"},
 	} {
-		if _, _, err := c.Trace.Facets(context.Background(), "N1", "", q, TraceFacetsOptions{}); err == nil {
+		if _, _, err := c.Trace.Facets(context.Background(), "N1", "", q, domain.TraceFacetsOptions{}); err == nil {
 			t.Errorf("%s: want an error", name)
 		}
 	}
 	if hits != 0 {
 		t.Fatalf("%d requests reached the server", hits)
 	}
-	loc := TraceQuery{From: "dev1", DstIP: "8.8.8.8"}.filters()["from"].(map[string]any)["location"].(map[string]any)
+	loc := domain.TraceQuery{From: "dev1", DstIP: "8.8.8.8"}.Filters()["from"].(map[string]any)["location"].(map[string]any)
 	if loc["type"] != "DeviceFilter" {
 		t.Fatalf("location: %v", loc)
 	}
@@ -147,7 +152,7 @@ func TestTraceExplainReturnsEveryPathAndKeepsPartialFailures(t *testing.T) {
 	}))
 	defer server.Close()
 	c := newTestClient(t, server.URL)
-	ex, _, err := c.Trace.Explain(context.Background(), "N1", "", TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8"})
+	ex, _, err := c.Trace.Explain(context.Background(), "N1", "", domain.TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +177,7 @@ func manyPathsFacets(n int) string {
 // partial-result signals (a timed-out or capped facets answer) must reach the caller instead
 // of passing for a full list.
 func TestTraceExplainLimitAndPartialSignals(t *testing.T) {
-	for n, wantTruncated := range map[int]bool{ExplainLimit: false, ExplainLimit + 1: true} {
+	for n, wantTruncated := range map[int]bool{domain.ExplainLimit: false, domain.ExplainLimit + 1: true} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(r.URL.Path, "trace-facets") {
 				_, _ = w.Write([]byte(manyPathsFacets(n)))
@@ -181,9 +186,9 @@ func TestTraceExplainLimitAndPartialSignals(t *testing.T) {
 			_, _ = w.Write([]byte(traceBody))
 		}))
 		c := newTestClient(t, server.URL)
-		ex, _, err := c.Trace.Explain(context.Background(), "N1", "", TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8"})
+		ex, _, err := c.Trace.Explain(context.Background(), "N1", "", domain.TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8"})
 		server.Close()
-		if err != nil || len(ex.Paths) != ExplainLimit || ex.Truncated != wantTruncated || !ex.FacetsTimedOut || !ex.ResultsLowerBound {
+		if err != nil || len(ex.Paths) != domain.ExplainLimit || ex.Truncated != wantTruncated || !ex.FacetsTimedOut || !ex.ResultsLowerBound {
 			t.Fatalf("n=%d: %+v %v", n, ex, err)
 		}
 	}
@@ -201,11 +206,11 @@ func TestTraceAmbiguousSourceAndEmptyTrace(t *testing.T) {
 	}))
 	defer server.Close()
 	c := newTestClient(t, server.URL)
-	q := TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8"}
-	if _, _, err := c.Trace.Explain(context.Background(), "N1", "", q); !errors.Is(err, ErrTraceAmbiguousSource) {
+	q := domain.TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8"}
+	if _, _, err := c.Trace.Explain(context.Background(), "N1", "", q); !errors.Is(err, domain.ErrTraceAmbiguousSource) {
 		t.Fatalf("want ErrTraceAmbiguousSource, got %v", err)
 	}
-	if _, _, err := c.Trace.Trace(context.Background(), "N1", "", q, TraceSelection{Path: []string{"a"}, TraceType: "VALID"}); !errors.Is(err, ErrTraceEmpty) {
+	if _, _, err := c.Trace.Trace(context.Background(), "N1", "", q, domain.TraceSelection{Path: []string{"a"}, TraceType: "VALID"}); !errors.Is(err, domain.ErrTraceEmpty) {
 		t.Fatalf("want ErrTraceEmpty, got %v", err)
 	}
 }
@@ -223,7 +228,7 @@ func TestTraceExplainStopsOnErrorsThatHitEveryPath(t *testing.T) {
 	}))
 	defer server.Close()
 	c := newTestClient(t, server.URL)
-	if _, _, err := c.Trace.Explain(context.Background(), "N1", "", TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8"}); !IsStatus(err, http.StatusForbidden) || traces != 1 {
+	if _, _, err := c.Trace.Explain(context.Background(), "N1", "", domain.TraceQuery{SrcIP: "10.0.0.1", DstIP: "8.8.8.8"}); !ports.IsStatus(err, http.StatusForbidden) || traces != 1 {
 		t.Fatalf("err=%v traces=%d", err, traces)
 	}
 }
@@ -240,7 +245,7 @@ func TestTraceFacetsOptionsAndDeviceScopedSource(t *testing.T) {
 	}))
 	defer server.Close()
 	c := newTestClient(t, server.URL)
-	_, _, err := c.Trace.Facets(context.Background(), "N1", "", TraceQuery{SrcIP: "10.0.0.1", From: "dev1", DstIP: "8.8.8.8"}, TraceFacetsOptions{MaxResults: 7, MaxFacetValues: 9})
+	_, _, err := c.Trace.Facets(context.Background(), "N1", "", domain.TraceQuery{SrcIP: "10.0.0.1", From: "dev1", DstIP: "8.8.8.8"}, domain.TraceFacetsOptions{MaxResults: 7, MaxFacetValues: 9})
 	if err != nil {
 		t.Fatal(err)
 	}

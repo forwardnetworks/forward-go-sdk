@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -106,12 +110,12 @@ func TestLicenseDetailsDecodeTheWireShape(t *testing.T) {
 	}
 
 	// A body that does not state replaces leaves it unstated rather than reading as "stacks".
-	var bare License
+	var bare domain.License
 	if err := json.Unmarshal([]byte(`{"id":"1","tier":"NS"}`), &bare); err != nil || bare.Replaces != nil || bare.Stackable {
 		t.Fatalf("bare = %+v, %v", bare, err)
 	}
 	// The signed key is not kept anywhere on the value.
-	var withKey LicenseDetails
+	var withKey domain.LicenseDetails
 	if err := json.Unmarshal([]byte(`{"license":{"id":"1"},"signedLicenseKey":"SECRET"}`), &withKey); err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +153,7 @@ func TestActivateForOrgSendsTheRightForm(t *testing.T) {
 			t.Errorf("request %d = %+v, want %+v", i, seen[i], w)
 		}
 	}
-	if _, _, err := client.Licensing.ActivateForOrg(ctx, " ", "x", ""); !errors.Is(err, ErrLicenseOrgIDRequired) {
+	if _, _, err := client.Licensing.ActivateForOrg(ctx, " ", "x", ""); !errors.Is(err, domain.ErrLicenseOrgIDRequired) {
 		t.Errorf("blank org: %v", err)
 	}
 	if _, _, err := client.Licensing.ActivateForOrg(ctx, "o", " ", ""); err == nil || len(seen) != 2 {

@@ -1,2 +1,8 @@
 /coverage.out
 /forward-go-sdk.test
+
+# a core dump is never committed
+/core.*
+target/
+.env*
+!.env.example

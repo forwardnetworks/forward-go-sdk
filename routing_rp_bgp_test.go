@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"encoding/json"
 	"testing"
 )
@@ -8,7 +12,7 @@ import (
 // The attributes decode as Forward's BgpRouteAttributes names them (source-derived): the AS path is a list of sets and flattens to the
 // collected shape, and a non-BGP node is refused by name instead of decoding as zeros.
 func TestRPPrefixDetailsBGPAttributes(t *testing.T) {
-	var details RPPrefixDetails
+	var details domain.RPPrefixDetails
 	body := `{"prefix":"10.0.0.0/24","attributes":{"protocol":"BGP","asPath":[[65001],[65002,65003]],"localPref":100,"med":0,"bgpNextHopAddr":"192.0.2.1","origin":"IGP","standardCommunities":["65000:1"]}}`
 	if err := json.Unmarshal([]byte(body), &details); err != nil {
 		t.Fatal(err)
@@ -23,12 +27,12 @@ func TestRPPrefixDetailsBGPAttributes(t *testing.T) {
 	if string(attrs.Raw) == "" {
 		t.Fatal("Raw must keep the whole object")
 	}
-	var ospf RPPrefixDetails
+	var ospf domain.RPPrefixDetails
 	_ = json.Unmarshal([]byte(`{"attributes":{"protocol":"OSPF","metric":10}}`), &ospf)
 	if _, err := ospf.BGPAttributes(); err == nil {
 		t.Fatal("an OSPF node must not decode as BGP")
 	}
-	if _, err := (&RPPrefixDetails{}).BGPAttributes(); err == nil {
+	if _, err := (&domain.RPPrefixDetails{}).BGPAttributes(); err == nil {
 		t.Fatal("no attributes must be an error")
 	}
 }

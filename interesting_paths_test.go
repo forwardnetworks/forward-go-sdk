@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/base64"
 	"errors"
@@ -30,7 +34,7 @@ func TestNetworksInterestingPaths(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	found, _, err := client.Networks.InterestingPaths(ctx, "152733", "504440", InterestingPathsFirewall, 0)
+	found, _, err := client.Networks.InterestingPaths(ctx, "152733", "504440", domain.InterestingPathsFirewall, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,10 +45,10 @@ func TestNetworksInterestingPaths(t *testing.T) {
 	if err != nil || string(got) != query {
 		t.Fatalf("PathQuery = %s, %v", got, err)
 	}
-	if _, err := (InterestingPath{SearchPath: "/152733/504440/device/r1"}).PathQuery(); err == nil {
+	if _, err := (domain.InterestingPath{SearchPath: "/152733/504440/device/r1"}).PathQuery(); err == nil {
 		t.Fatal("a link that is not a path search has no path query")
 	}
-	if _, _, err := client.Networks.InterestingPaths(ctx, "152733", "504440", InterestingPathsLoadBalancer, 90); err != nil {
+	if _, _, err := client.Networks.InterestingPaths(ctx, "152733", "504440", domain.InterestingPathsLoadBalancer, 90); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{
@@ -59,11 +63,11 @@ func TestNetworksInterestingPaths(t *testing.T) {
 	for name, call := range map[string]func() error{
 		"unknown type": func() error { _, _, err := client.Networks.InterestingPaths(ctx, "5", "6", "ROUTERS", 0); return err },
 		"no snapshot": func() error {
-			_, _, err := client.Networks.InterestingPaths(ctx, "5", " ", InterestingPathsFirewall, 0)
+			_, _, err := client.Networks.InterestingPaths(ctx, "5", " ", domain.InterestingPathsFirewall, 0)
 			return err
 		},
 		"negative wait": func() error {
-			_, _, err := client.Networks.InterestingPaths(ctx, "5", "6", InterestingPathsFirewall, -1)
+			_, _, err := client.Networks.InterestingPaths(ctx, "5", "6", domain.InterestingPathsFirewall, -1)
 			return err
 		},
 	} {
@@ -83,15 +87,15 @@ func TestInterestingPathsClassifiesAdvancedReachabilityStates(t *testing.T) {
 	t.Parallel()
 
 	for state, want := range map[string]error{
-		"NOT_TRIGGERED": ErrSnapshotNotProcessed, "QUEUED": ErrSnapshotNotProcessed, "COMPUTING": ErrSnapshotNotProcessed,
-		"CANCELED": ErrSnapshotProcessingFailed, "TIMED_OUT": ErrSnapshotProcessingFailed, "FAILED": ErrSnapshotProcessingFailed,
+		"NOT_TRIGGERED": domain.ErrSnapshotNotProcessed, "QUEUED": domain.ErrSnapshotNotProcessed, "COMPUTING": domain.ErrSnapshotNotProcessed,
+		"CANCELED": domain.ErrSnapshotProcessingFailed, "TIMED_OUT": domain.ErrSnapshotProcessingFailed, "FAILED": domain.ErrSnapshotProcessingFailed,
 	} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(`{"apiUrl":"/api/networks/5/interesting-path-queries","httpMethod":"GET","message":"Advanced reachability ` + state + ` for snapshot 6."}`))
 		}))
 		client := newTestClient(t, server.URL)
-		_, _, err := client.Networks.InterestingPaths(context.Background(), "5", "6", InterestingPathsFirewall, 0)
+		_, _, err := client.Networks.InterestingPaths(context.Background(), "5", "6", domain.InterestingPathsFirewall, 0)
 		server.Close()
 		if !errors.Is(err, want) {
 			t.Errorf("%s: got %v, want %v", state, err, want)

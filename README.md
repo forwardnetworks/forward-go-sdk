@@ -30,6 +30,22 @@ The SDK currently provides:
 
 The module has no third-party runtime dependencies.
 
+## Layout
+
+The SDK is built in hexagonal layers under one module path:
+
+- the root package `forward` holds `Client`, `Config` and the constructors, and wires the layers together;
+- `domain` holds the API's value types and the rules about them, with no I/O;
+- `ports` holds one interface per API family (what a `Client` field sends), plus the transport-carrying values such as
+  `Response` and `ErrorResponse`;
+- `usecases` holds one struct per family, embedding its port, plus the composites that combine calls, `Poller` and the
+  resumable operations;
+- the HTTP client and the access-table loaders are internal adapters, which you never import.
+
+A consumer usually imports the root, `domain` for the value types, and `ports` for errors. To fake one API family in a test,
+implement its port and embed the interface. Coming from v0.8.x, see [docs/migrating-to-v0.9.md](docs/migrating-to-v0.9.md):
+`cmd/migrate-v09` rewrites your imports and names.
+
 ## Install
 
 ```sh
@@ -84,16 +100,16 @@ can be stored by a caller before a worker returns:
 operation, _, err := client.CollectorTasks.StartCollectionOperation(
 	ctx,
 	networkID,
-	forward.CollectionStartOptions{},
+	domain.CollectionStartOptions{},
 )
 if err != nil {
 	return err
 }
 
 handle := operation.Handle() // persist this durable value
-snapshot, err := operation.Wait(ctx, forward.CollectionWaitOptions{
+snapshot, err := operation.Wait(ctx, ports.CollectionWaitOptions{
 	PollInterval: 5 * time.Second,
-	OnUpdate: func(update forward.CollectionOperationUpdate) {
+	OnUpdate: func(update ports.CollectionOperationUpdate) {
 		log.Printf("collection %s -> %s", update.Previous.Phase, update.Current.Phase)
 	},
 })
@@ -118,9 +134,9 @@ if err != nil {
 	return err
 }
 
-task, _, err := operation.Wait(ctx, forward.PollOptions[forward.CollectorTask]{
+task, _, err := operation.Wait(ctx, ports.PollOptions[domain.CollectorTask]{
 	Interval: 5 * time.Second,
-	OnUpdate: func(update forward.PollUpdate[forward.CollectorTask]) {
+	OnUpdate: func(update ports.PollUpdate[domain.CollectorTask]) {
 		log.Printf("collection %s -> %s", update.Previous.Status, update.Value.Status)
 	},
 })
@@ -159,7 +175,7 @@ var result json.RawMessage
 resp, err := client.Raw.DoJSON(ctx, "POST", "/api/new-release-feature",
 	map[string]any{"enabled": true}, &result)
 if err != nil {
-	if forward.IsStatus(err, 404) {
+	if ports.IsStatus(err, 404) {
 		// Handle a missing resource.
 	}
 	return err
@@ -219,12 +235,12 @@ the SDK grows a typed field. Typed fields take precedence over duplicate
 
 ```go
 async := true
-snapshots, _, err := client.Snapshots.List(ctx, networkID, forward.SnapshotListOptions{
+snapshots, _, err := client.Snapshots.List(ctx, networkID, ports.SnapshotListOptions{
 	SkipUnprocessed: &async, // Preview
 })
 
 execution, _, err := client.NQE.Start(ctx, networkID, snapshotID,
-	forward.NQEExecutionRequest{QueryID: "FQ_example"})
+	domain.NQEExecutionRequest{QueryID: "FQ_example"})
 
 chat, _, err := client.AI.StartChat(ctx, networkID, snapshotID,
 	"Which devices have critical configuration risks?") // Preview
@@ -244,12 +260,12 @@ client, err := forward.NewClient(forward.Config{
 	BaseURL:   applianceURL,
 	APIToken:  token,
 	NetworkID: tenantNetworkID,
-	Capabilities: forward.CapabilityProfile{
+	Capabilities: domain.CapabilityProfile{
 		Track: "stable",
 		Build: expectedBuild,
-		Features: map[forward.Capability]forward.CapabilitySupport{
-			forward.CapabilityPredict: forward.CapabilitySupported,
-			forward.CapabilityStructuredBGPAdvertisements: forward.CapabilityUnsupported,
+		Features: map[domain.Capability]domain.CapabilitySupport{
+			domain.CapabilityPredict: domain.CapabilitySupported,
+			domain.CapabilityStructuredBGPAdvertisements: domain.CapabilityUnsupported,
 		},
 	},
 })
@@ -280,7 +296,7 @@ routes learned from it, so model a peer loss with a withdrawal.
 `forwardtest` is a fake Forward appserver for your own tests (`import "github.com/forwardnetworks/forward-go-sdk/forwardtest"`). It answers
 an unmapped route with Forward's own "No endpoint" 404, and its canned errors (`RateLimited`, `FeatureGated`, `MissingPermission`,
 `Unauthorized`, `ActionNotSupported`, `SnapshotNotProcessed`) carry the bodies the appserver writes, so they classify as the same
-`forward.ErrorKind` as the real thing. It also scripts Predict BGP staging and diffs, NQE paging, check diffs that are still
+`domain.ErrorKind` as the real thing. It also scripts Predict BGP staging and diffs, NQE paging, check diffs that are still
 PROCESSING, and received BGP advertisements. Replies are served in order (the last repeats), which scripts a flaky call and its recovery
 against `RetryPolicy`.
 
@@ -338,7 +354,7 @@ to 503, which can come after the work started). It wins over `WithIdempotent`.
 
 A `RoundTripper` under `Config.HTTPClient` that refuses a request for good (a
 client-side guard, a policy check) can return an error that wraps
-`forward.ErrPermanent`, or has a `Permanent() bool` method answering true. The
+`domain.ErrPermanent`, or has a `Permanent() bool` method answering true. The
 retry loop then returns it at once for every method instead of backing off;
 `errors.Is` still reaches your own error.
 
@@ -389,3 +405,10 @@ reads that table AT RUN TIME from a local Forward checkout (`FORWARD_SOURCE`) or
 table is Forward's per-operation permission matrix, so this module commits only the parser and the evaluator, never the table; keep the
 JSON copy out of public repositories. With no table every answer is unknown. A yes does not promise success (a licence facet, an org
 property or the object's state can still refuse), which is why the answer reports the facet. `NetworkRoleAtLeast` needs no table.
+
+## License
+
+This module is source-available under the [Fair Core License, Version 1.0, ALv2 Future License](LICENSE) (FCL-1.0-ALv2); it is
+not open source. You may use, copy, modify and redistribute it for any purpose other than a Competing Use, and each release becomes
+available under the Apache License, Version 2.0 on the second anniversary of its release. Releases up to and including v0.8.59 were
+published without a license file. [NOTICE](NOTICE) has the details, including the licenses of the `fwdctl` command's dependencies.

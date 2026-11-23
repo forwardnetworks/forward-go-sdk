@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -84,10 +89,10 @@ func TestNetworkMapsRefusalIsTyped(t *testing.T) {
 	t.Parallel()
 	var uris []string
 	_, _, err := newTestClient(t, mapsServer(t, &uris).URL).NetworkMaps.List(context.Background(), "9")
-	if !errors.Is(err, ErrPermissionDenied) {
+	if !errors.Is(err, domain.ErrPermissionDenied) {
 		t.Fatalf("err = %v, want ErrPermissionDenied", err)
 	}
-	if op, ok := MissingPermission(err); !ok || op != "NetworkOperation.VIEW_NETWORK_MAPS" {
+	if op, ok := ports.MissingPermission(err); !ok || op != "NetworkOperation.VIEW_NETWORK_MAPS" {
 		t.Fatalf("MissingPermission = %q, %v", op, ok)
 	}
 }
@@ -214,7 +219,7 @@ func TestNetworkMapsDirectoriesEmptyAndGated(t *testing.T) {
 		t.Fatalf("Directories on a network with no maps = %+v, %v", dirs, err)
 	}
 	_, _, err = maps.Directories(ctx, "9")
-	if !errors.Is(err, ErrFeatureGated) || errors.Is(err, ErrPermissionDenied) {
+	if !errors.Is(err, domain.ErrFeatureGated) || errors.Is(err, domain.ErrPermissionDenied) {
 		t.Fatalf("err = %v, want ErrFeatureGated and not ErrPermissionDenied", err)
 	}
 }

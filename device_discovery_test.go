@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -32,7 +37,7 @@ func TestDeviceDiscoveryStart(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	task, _, err := client.DeviceDiscovery.Start(ctx, "5", "C2", SubnetScanParams{Subnets: []string{"10.0.0.0/24"}, Protocols: []string{"SSH"}, TryDirectConnection: true})
+	task, _, err := client.DeviceDiscovery.Start(ctx, "5", "C2", domain.SubnetScanParams{Subnets: []string{"10.0.0.0/24"}, Protocols: []string{"SSH"}, TryDirectConnection: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,22 +47,22 @@ func TestDeviceDiscoveryStart(t *testing.T) {
 	if gotBody != `{"protocols":["SSH"],"subnets":["10.0.0.0/24"],"tryDirectConnection":true,"type":"SUBNET_SCAN"}` || strings.Contains(gotBody, "collectorId") {
 		t.Fatalf("body %s", gotBody)
 	}
-	if _, _, err := client.DeviceDiscovery.Start(ctx, "5", "", SeededDiscoveryParams{SeedDevices: []string{"10.0.0.1"}, Recursive: true}); err != nil {
+	if _, _, err := client.DeviceDiscovery.Start(ctx, "5", "", domain.SeededDiscoveryParams{SeedDevices: []string{"10.0.0.1"}, Recursive: true}); err != nil {
 		t.Fatal(err)
 	}
 	if gotURL != "POST /api/networks/5/deviceDiscovery?op=start" || gotBody != `{"recursive":true,"seedDevices":["10.0.0.1"],"type":"SEEDED"}` {
 		t.Fatalf("seeded: %s %s", gotURL, gotBody)
 	}
-	if _, _, err := client.DeviceDiscovery.Start(ctx, "5", "", CloudDiscoveryParams{SetupIDs: []string{"aws1"}}); err != nil || gotBody != `{"setupIds":["aws1"],"type":"CLOUD"}` {
+	if _, _, err := client.DeviceDiscovery.Start(ctx, "5", "", domain.CloudDiscoveryParams{SetupIDs: []string{"aws1"}}); err != nil || gotBody != `{"setupIds":["aws1"],"type":"CLOUD"}` {
 		t.Fatalf("cloud: %v %s", err, gotBody)
 	}
 
-	if _, _, err := client.DeviceDiscovery.Start(ctx, "5", "", DirectDiscoveryParams{}); err != nil || gotBody != `{"type":"DIRECT"}` {
+	if _, _, err := client.DeviceDiscovery.Start(ctx, "5", "", domain.DirectDiscoveryParams{}); err != nil || gotBody != `{"type":"DIRECT"}` {
 		t.Fatalf("direct: %v %s", err, gotBody)
 	}
 	sent := gotURL
 	gotURL = ""
-	for name, bad := range map[string]DiscoveryParams{"empty scan": SubnetScanParams{}, "no seeds": SeededDiscoveryParams{}, "nil": nil} {
+	for name, bad := range map[string]domain.DiscoveryParams{"empty scan": domain.SubnetScanParams{}, "no seeds": domain.SeededDiscoveryParams{}, "nil": nil} {
 		if _, _, err := client.DeviceDiscovery.Start(ctx, "5", "", bad); err == nil {
 			t.Errorf("%s must be refused", name)
 		}
@@ -133,9 +138,9 @@ func TestDeviceDiscoveryScheduled(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	created, _, err := client.DeviceDiscovery.CreateScheduled(ctx, "5", ScheduledDiscoveryDefinition{
-		Name: "nightly", Params: SeededDiscoveryParams{SeedDevices: []string{"10.0.0.1"}, Recursive: true},
-		Schedule: &DiscoverySchedule{DaysOfTheWeek: []int{1, 3}, Times: []string{"02:00"}},
+	created, _, err := client.DeviceDiscovery.CreateScheduled(ctx, "5", domain.ScheduledDiscoveryDefinition{
+		Name: "nightly", Params: domain.SeededDiscoveryParams{SeedDevices: []string{"10.0.0.1"}, Recursive: true},
+		Schedule: &domain.DiscoverySchedule{DaysOfTheWeek: []int{1, 3}, Times: []string{"02:00"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +148,7 @@ func TestDeviceDiscoveryScheduled(t *testing.T) {
 	if gotBody != `{"enabled":false,"name":"nightly","params":{"recursive":true,"seedDevices":["10.0.0.1"],"type":"SEEDED"},"schedule":{"daysOfTheWeek":[1,3],"times":["02:00"]}}` {
 		t.Fatalf("body %s", gotBody)
 	}
-	seeded, ok := created.Params.(SeededDiscoveryParams)
+	seeded, ok := created.Params.(domain.SeededDiscoveryParams)
 	if !ok || created.ID != "7" || !seeded.Recursive || created.Schedule == nil || created.Schedule.Times[0] != "02:00" {
 		t.Fatalf("created %+v", created)
 	}
@@ -151,19 +156,19 @@ func TestDeviceDiscoveryScheduled(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Forward words a missing schedule like a missing network; it must not read as ErrNetworkNotFound.
-	if _, _, err := client.DeviceDiscovery.GetScheduled(ctx, "5", "missing"); err == nil || errors.Is(err, ErrNetworkNotFound) || !IsStatus(err, http.StatusNotFound) {
+	if _, _, err := client.DeviceDiscovery.GetScheduled(ctx, "5", "missing"); err == nil || errors.Is(err, domain.ErrNetworkNotFound) || !ports.IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("a missing scheduled discovery is a plain 404, got %v", err)
 	}
 
 	sent := len(calls)
 	one, two := 1, 2
-	for name, def := range map[string]ScheduledDiscoveryDefinition{
-		"cloud":      {Name: "c", Params: CloudDiscoveryParams{SetupIDs: []string{"a"}}},
-		"no name":    {Params: DirectDiscoveryParams{}},
-		"both forms": {Name: "n", Params: DirectDiscoveryParams{}, Schedule: &DiscoverySchedule{DaysOfTheWeek: []int{1}, Times: []string{"01:00"}, Time: "01:00", DayOfTheWeek: &one, WeekOfTheMonth: &two}},
-		"bad time":   {Name: "n", Params: DirectDiscoveryParams{}, Schedule: &DiscoverySchedule{DaysOfTheWeek: []int{1}, Times: []string{"25:00"}}},
-		"empty scan": {Name: "n", Params: SubnetScanParams{}},
-		"week of 5":  {Name: "n", Params: DirectDiscoveryParams{}, Schedule: &DiscoverySchedule{DayOfTheWeek: &one, WeekOfTheMonth: &[]int{5}[0], Time: "01:00"}},
+	for name, def := range map[string]domain.ScheduledDiscoveryDefinition{
+		"cloud":      {Name: "c", Params: domain.CloudDiscoveryParams{SetupIDs: []string{"a"}}},
+		"no name":    {Params: domain.DirectDiscoveryParams{}},
+		"both forms": {Name: "n", Params: domain.DirectDiscoveryParams{}, Schedule: &domain.DiscoverySchedule{DaysOfTheWeek: []int{1}, Times: []string{"01:00"}, Time: "01:00", DayOfTheWeek: &one, WeekOfTheMonth: &two}},
+		"bad time":   {Name: "n", Params: domain.DirectDiscoveryParams{}, Schedule: &domain.DiscoverySchedule{DaysOfTheWeek: []int{1}, Times: []string{"25:00"}}},
+		"empty scan": {Name: "n", Params: domain.SubnetScanParams{}},
+		"week of 5":  {Name: "n", Params: domain.DirectDiscoveryParams{}, Schedule: &domain.DiscoverySchedule{DayOfTheWeek: &one, WeekOfTheMonth: &[]int{5}[0], Time: "01:00"}},
 	} {
 		if _, _, err := client.DeviceDiscovery.CreateScheduled(ctx, "5", def); err == nil {
 			t.Errorf("%s must be refused", name)

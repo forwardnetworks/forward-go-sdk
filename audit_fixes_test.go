@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -95,8 +99,8 @@ func TestControllerManagedEntriesDoNotSendTheTestResult(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	controllers := []ControllerDevice{{Name: "c1", Host: "10.0.0.1", TestResult: &DeviceTestResult{Error: "x"}}}
-	if _, _, err := client.ControllerManagedSetups.Patch(context.Background(), "7", "s1", ControllerManagedSetupPatch{Controllers: &controllers}); err != nil {
+	controllers := []domain.ControllerDevice{{Name: "c1", Host: "10.0.0.1", TestResult: &domain.DeviceTestResult{Error: "x"}}}
+	if _, _, err := client.ControllerManagedSetups.Patch(context.Background(), "7", "s1", domain.ControllerManagedSetupPatch{Controllers: &controllers}); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(body, "testResult") || !strings.Contains(body, `"c1"`) {
@@ -125,9 +129,9 @@ func TestInputsAreTrimmedBeforeTheyAreSent(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	_, _, _ = client.Devices.Interface(ctx, "7", "sw1", " eth0 ", DeviceInterfaceOptions{})
-	_, _, _ = client.Routing.PrefixTrace(ctx, "7", "s1", RoutingTraceRequest{Prefix: "10.0.0.0/8", Outcome: "INSTALLED", Router: DeviceVRF{Device: " r1 "}, OriginatedFrom: DeviceVRF{Device: " r2 "}})
-	_, _, _ = client.Routing.PrefixDetails(ctx, "7", "s1", RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: " r1 "}})
+	_, _, _ = client.Devices.Interface(ctx, "7", "sw1", " eth0 ", domain.DeviceInterfaceOptions{})
+	_, _, _ = client.Routing.PrefixTrace(ctx, "7", "s1", domain.RoutingTraceRequest{Prefix: "10.0.0.0/8", Outcome: "INSTALLED", Router: domain.DeviceVRF{Device: " r1 "}, OriginatedFrom: domain.DeviceVRF{Device: " r2 "}})
+	_, _, _ = client.Routing.PrefixDetails(ctx, "7", "s1", domain.RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: domain.RoutingNode{Device: " r1 "}})
 	if len(uris) != 3 || !strings.HasSuffix(uris[0], "/interfaces/eth0") {
 		t.Fatalf("requests = %v", uris)
 	}
@@ -141,7 +145,7 @@ func TestInputsAreTrimmedBeforeTheyAreSent(t *testing.T) {
 // TestNewAccessForSessionToleratesNoSession: a nil session must not panic an exported call.
 func TestNewAccessForSessionToleratesNoSession(t *testing.T) {
 	t.Parallel()
-	if NewAccessForSession(nil, nil) == nil {
+	if domain.NewAccessForSession(nil, nil) == nil {
 		t.Fatal("NewAccessForSession(nil, nil) returned nil")
 	}
 }
@@ -150,25 +154,25 @@ func TestNewAccessForSessionToleratesNoSession(t *testing.T) {
 // before: a response object, and Forward's {"error": true, "errorMessage": "..."} object.
 func TestPathBulkResultDecodesBothShapes(t *testing.T) {
 	t.Parallel()
-	var ok PathBulkResult
+	var ok domain.PathBulkResult
 	if err := ok.UnmarshalJSON([]byte(`{"srcIpLocationType":"HOST","dstIpLocationType":"ROUTE","info":{"paths":[]}}`)); err != nil {
 		t.Fatal(err)
 	}
 	if ok.Failed || ok.Response == nil || ok.Response.DstIPLocationType != "ROUTE" {
 		t.Fatalf("response result = %#v", ok)
 	}
-	var failed PathBulkResult
+	var failed domain.PathBulkResult
 	if err := failed.UnmarshalJSON([]byte(`{"error":true,"errorMessage":"no such device"}`)); err != nil {
 		t.Fatal(err)
 	}
 	if !failed.Failed || failed.ErrorMessage != "no such device" || failed.Response != nil {
 		t.Fatalf("error result = %#v", failed)
 	}
-	var exact PathBulkResult
+	var exact domain.PathBulkResult
 	if err := exact.UnmarshalJSON([]byte(`{"srcIpLocationType":"HOST","info":{"paths":[{"hops":[{"deviceName":"error"}]}]}}`)); err != nil || exact.Failed || exact.Response == nil {
 		t.Fatalf("a result with the value \"error\" = %#v, %v", exact, err)
 	}
-	var named PathBulkResult
+	var named domain.PathBulkResult
 	if err := named.UnmarshalJSON([]byte(`{"srcIpLocationType":"HOST","info":{"paths":[{"forwardingOutcome":"DELIVERED","hops":[{"deviceName":"error-gw"}]}]}}`)); err != nil || named.Failed || named.Response == nil {
 		t.Fatalf("a result mentioning \"error\" inside a value = %#v, %v", named, err)
 	}
@@ -185,7 +189,7 @@ func TestExposureDetailsRefuseANegativeAssetID(t *testing.T) {
 	if _, _, err := client.ThreatExposure.DirectExposureDetails(ctx, "7", "d1", "s1", -1); err == nil {
 		t.Fatal("DirectExposureDetails accepted -1")
 	}
-	if _, _, err := client.ThreatExposure.TransitiveExposureDetails(ctx, "7", "d1", "s1", -1, ThreatExposurePaging{}); err == nil {
+	if _, _, err := client.ThreatExposure.TransitiveExposureDetails(ctx, "7", "d1", "s1", -1, domain.ThreatExposurePaging{}); err == nil {
 		t.Fatal("TransitiveExposureDetails accepted -1")
 	}
 	if called {
@@ -221,11 +225,11 @@ func TestClassicDeviceCallsNameTheirOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	device := ClassicDeviceRequest{Name: "sw1", Host: "10.0.0.1"}
+	device := domain.ClassicDeviceRequest{Name: "sw1", Host: "10.0.0.1"}
 	_, _, _ = client.ClassicDevices.Create(ctx, "7", device)
 	_, _, _ = client.ClassicDevices.Get(ctx, "7", "sw1")
 	_, _, _ = client.ClassicDevices.Put(ctx, "7", "sw1", device)
-	_, _, _ = client.ClassicDevices.Patch(ctx, "7", "sw1", ClassicDevicePatch{Note: Ptr("n")})
+	_, _, _ = client.ClassicDevices.Patch(ctx, "7", "sw1", domain.ClassicDevicePatch{Note: domain.Ptr("n")})
 	_, _ = client.ClassicDevices.Delete(ctx, "7", "sw1")
 	want := "ClassicDevices.Create ClassicDevices.Get ClassicDevices.Put ClassicDevices.Patch ClassicDevices.Delete"
 	if got := strings.Join(operations, " "); got != want {

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -27,12 +31,12 @@ func TestSyntheticNodesComputeQueryPerKind(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL).ForNetwork("n1")
 
-	want := map[SyntheticNodeKind]string{
-		SyntheticInternet:        "/api/networks/n1/internet-node",
-		SyntheticIntranet:        "/api/networks/n1/intranet-nodes",
-		SyntheticL3VPN:           "/api/networks/n1/l3-vpns",
-		SyntheticL2VPN:           "/api/networks/n1/l2-vpns",
-		SyntheticAdjacentNetwork: "/api/networks/n1/adjacent-networks",
+	want := map[domain.SyntheticNodeKind]string{
+		domain.SyntheticInternet:        "/api/networks/n1/internet-node",
+		domain.SyntheticIntranet:        "/api/networks/n1/intranet-nodes",
+		domain.SyntheticL3VPN:           "/api/networks/n1/l3-vpns",
+		domain.SyntheticL2VPN:           "/api/networks/n1/l2-vpns",
+		domain.SyntheticAdjacentNetwork: "/api/networks/n1/adjacent-networks",
 	}
 	for kind, path := range want {
 		seen = nil
@@ -41,7 +45,7 @@ func TestSyntheticNodesComputeQueryPerKind(t *testing.T) {
 			t.Errorf("%s: path %v, result %+v, err %v", kind, seen, got, err)
 		}
 	}
-	if _, _, err := client.SyntheticNodes.ComputeQuery(context.Background(), "", SyntheticL3VPN, " "); err == nil {
+	if _, _, err := client.SyntheticNodes.ComputeQuery(context.Background(), "", domain.SyntheticL3VPN, " "); err == nil {
 		t.Fatal("an empty query ID must be refused locally")
 	}
 }
@@ -56,7 +60,7 @@ func TestSyntheticNodesComputeQueryReportsTheQueryError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	got, _, err := newTestClient(t, server.URL).SyntheticNodes.ComputeQuery(context.Background(), "n1", SyntheticL2VPN, "Q_1")
+	got, _, err := newTestClient(t, server.URL).SyntheticNodes.ComputeQuery(context.Background(), "n1", domain.SyntheticL2VPN, "Q_1")
 	if err != nil || got.Error == nil || got.Error.Status != "COLUMN_DATATYPE_MISMATCH" || len(got.Connections) != 0 {
 		t.Fatalf("result = %+v, err = %v", got, err)
 	}
@@ -79,16 +83,16 @@ func TestSyntheticNodesCompatibleQueries(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL).ForNetwork("n1")
 
-	for kind, deviceType := range map[SyntheticNodeKind]string{
-		SyntheticInternet: "INTERNET", SyntheticIntranet: "INTRANET", SyntheticL3VPN: "L3VPN",
-		SyntheticL2VPN: "L2VPN", SyntheticAdjacentNetwork: "ADJACENT_NETWORK",
+	for kind, deviceType := range map[domain.SyntheticNodeKind]string{
+		domain.SyntheticInternet: "INTERNET", domain.SyntheticIntranet: "INTRANET", domain.SyntheticL3VPN: "L3VPN",
+		domain.SyntheticL2VPN: "L2VPN", domain.SyntheticAdjacentNetwork: "ADJACENT_NETWORK",
 	} {
 		got, _, err := client.SyntheticNodes.CompatibleQueries(context.Background(), "", kind)
 		if err != nil || gotType != deviceType || gotNetwork != "n1" || len(got) != 1 || got[0].QueryID != "Q_abc" || got[0].Path != "/synthetic/vpn connections" {
 			t.Errorf("%s: type=%q network=%q got=%+v err=%v", kind, gotType, gotNetwork, got, err)
 		}
 	}
-	if _, _, err := client.SyntheticNodes.CompatibleQueries(context.Background(), "", SyntheticNodeKind("wan-circuit")); err == nil {
+	if _, _, err := client.SyntheticNodes.CompatibleQueries(context.Background(), "", domain.SyntheticNodeKind("wan-circuit")); err == nil {
 		t.Fatal("a kind Forward has no query type for must be refused")
 	}
 }
@@ -106,8 +110,8 @@ func TestSyntheticNodesPutRefusesUnmodelledKinds(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL).ForNetwork("n1")
 
-	for _, kind := range []SyntheticNodeKind{SyntheticL2VPN, SyntheticAdjacentNetwork} {
-		_, err := client.SyntheticNodes.Put(context.Background(), "", kind, "x", SyntheticNode{Name: "x"})
+	for _, kind := range []domain.SyntheticNodeKind{domain.SyntheticL2VPN, domain.SyntheticAdjacentNetwork} {
+		_, err := client.SyntheticNodes.Put(context.Background(), "", kind, "x", domain.SyntheticNode{Name: "x"})
 		if err == nil || !strings.Contains(err.Error(), "SetQuery") {
 			t.Errorf("%s: err = %v, want a refusal pointing at SetQuery", kind, err)
 		}

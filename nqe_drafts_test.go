@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -23,7 +28,7 @@ func TestNQERepositoryEditQuery(t *testing.T) {
 	defer server.Close()
 	repo := newTestClient(t, server.URL).NQERepository
 
-	if _, err := repo.EditQuery(context.Background(), "/L3/MTU check", "foreach d in network.devices select {name: d.name}", NQEDraftBasis{QueryID: " Q_abc ", CommitID: "c42"}); err != nil {
+	if _, err := repo.EditQuery(context.Background(), "/L3/MTU check", "foreach d in network.devices select {name: d.name}", domain.NQEDraftBasis{QueryID: " Q_abc ", CommitID: "c42"}); err != nil {
 		t.Fatal(err)
 	}
 	if method != http.MethodPost || uri != "/api/users/current/nqe/changes?action=editQuery&path=%2FL3%2FMTU+check" {
@@ -32,7 +37,7 @@ func TestNQERepositoryEditQuery(t *testing.T) {
 	if body != `{"sourceCode":"foreach d in network.devices select {name: d.name}","basis":{"queryId":"Q_abc","commitId":"c42"}}` {
 		t.Fatalf("body = %s", body)
 	}
-	for _, basis := range []NQEDraftBasis{{QueryID: "Q_abc"}, {CommitID: "c42"}} {
+	for _, basis := range []domain.NQEDraftBasis{{QueryID: "Q_abc"}, {CommitID: "c42"}} {
 		if _, err := repo.EditQuery(context.Background(), "/q", "x", basis); err == nil {
 			t.Fatalf("basis %+v must be refused locally: Forward requires both fields", basis)
 		}
@@ -70,7 +75,7 @@ func TestNQERepositoryDiscard(t *testing.T) {
 	if _, err := repo.DiscardChange(ctx, "/none"); err != nil {
 		t.Fatalf("no draft to discard must be success: %v", err)
 	}
-	if _, err := repo.DiscardChange(ctx, "/other"); !IsStatus(err, http.StatusConflict) {
+	if _, err := repo.DiscardChange(ctx, "/other"); !ports.IsStatus(err, http.StatusConflict) {
 		t.Fatalf("another conflict must surface: %v", err)
 	}
 	if _, err := repo.DiscardChanges(ctx, []string{"/b", " ", "/a"}); err != nil || calls[3] != `POST /api/users/current/nqe/changes?action=bulkDiscard {"paths":["/a","/b"]}` {

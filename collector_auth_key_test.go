@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -27,7 +31,7 @@ func v3Key(username, password, appURL string) string {
 // the container with the whole blob as both user and password. Token must return
 // the container form either way.
 func TestCollectorRegistrationTokenIsContainerFormForV2AndV3(t *testing.T) {
-	v2 := CollectorRegistration{Username: "collector-f7fc099f", AuthorizationKey: "collector-f7fc099f:41c36fcb9bc348a1be38751ca1dd1b81"}
+	v2 := domain.CollectorRegistration{Username: "collector-f7fc099f", AuthorizationKey: "collector-f7fc099f:41c36fcb9bc348a1be38751ca1dd1b81"}
 	token, err := v2.Token()
 	if err != nil || token != "collector-f7fc099f:41c36fcb9bc348a1be38751ca1dd1b81" {
 		t.Fatalf("V2 Token() = %q, %v", token, err)
@@ -36,7 +40,7 @@ func TestCollectorRegistrationTokenIsContainerFormForV2AndV3(t *testing.T) {
 		t.Fatalf("V2 AppServerURL() = %q, %v; a V2 key carries none", url, err)
 	}
 
-	v3 := CollectorRegistration{AuthorizationKey: v3Key("collector-0a1b2c3d", "deadbeef", "https://fwd.app")}
+	v3 := domain.CollectorRegistration{AuthorizationKey: v3Key("collector-0a1b2c3d", "deadbeef", "https://fwd.app")}
 	token, err = v3.Token()
 	if err != nil || token != "collector-0a1b2c3d:deadbeef" {
 		t.Fatalf("V3 Token() = %q, %v", token, err)
@@ -46,7 +50,7 @@ func TestCollectorRegistrationTokenIsContainerFormForV2AndV3(t *testing.T) {
 	}
 
 	for _, bad := range []string{"", "collector-onlyuser", "not base64 !!"} {
-		if _, err := (CollectorRegistration{AuthorizationKey: bad}).Token(); err == nil {
+		if _, err := (domain.CollectorRegistration{AuthorizationKey: bad}).Token(); err == nil {
 			t.Fatalf("Token() accepted malformed key %q", bad)
 		}
 	}
@@ -57,7 +61,7 @@ func TestCollectorRegistrationTokenIsContainerFormForV2AndV3(t *testing.T) {
 // stored hash, so Identity must decode it.
 func TestCollectorRegistrationIdentityCarriesThePassword(t *testing.T) {
 	for _, key := range []string{"collector-aa:secret", v3Key("collector-aa", "secret", "https://fwd.app")} {
-		id := CollectorRegistration{Username: "collector-aa", AuthorizationKey: key}.Identity()
+		id := domain.CollectorRegistration{Username: "collector-aa", AuthorizationKey: key}.Identity()
 		if id.AuthorizationKey != "secret" {
 			t.Fatalf("Identity() for %q = %#v, want password secret", key, id)
 		}

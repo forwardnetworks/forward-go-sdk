@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -67,7 +71,7 @@ func TestACLDiffDevicesAndEntries(t *testing.T) {
 	}
 	added, deleted := diff.Diffs[0], diff.Diffs[1]
 	if added.Type != "ADDED" || added.Before != nil || added.After.Action != "PERMIT" || added.After.Name != "allow-web" ||
-		added.After.FileLines["fw-1,CONFIG.txt"][0] != (ACLLineRange{Start: 10, End: 12}) {
+		added.After.FileLines["fw-1,CONFIG.txt"][0] != (domain.ACLLineRange{Start: 10, End: 12}) {
 		t.Fatalf("added = %+v", added)
 	}
 	if len(added.After.Matches) != 2 || added.After.Matches[0].Field != "IPV4_SRC" || string(added.After.Matches[0].Values) != `["10.0.0.0/24"]` ||

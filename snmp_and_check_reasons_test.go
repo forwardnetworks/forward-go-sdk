@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -32,7 +36,7 @@ func TestSourceTestStatusSNMPCollectionShapes(t *testing.T) {
 		{name: "older state form", body: `{"name":"r1","snmpCollectionStatus":{"state":"FAILED"}}`, reported: true, status: "FAILED"},
 	}
 	for _, tc := range cases {
-		var got SourceTestStatus
+		var got domain.SourceTestStatus
 		if err := json.Unmarshal([]byte(tc.body), &got); err != nil {
 			t.Fatalf("%s: %v", tc.name, err)
 		}
@@ -48,7 +52,7 @@ func TestSourceTestStatusSNMPCollectionShapes(t *testing.T) {
 func TestClassicDeviceReadsSNMPEnablement(t *testing.T) {
 	t.Parallel()
 
-	var device ClassicDevice
+	var device domain.ClassicDevice
 	if err := json.Unmarshal([]byte(`{"name":"r1","host":"10.0.0.1","enableSnmpCollection":true,"snmpCredentialId":"S1"}`), &device); err != nil {
 		t.Fatal(err)
 	}

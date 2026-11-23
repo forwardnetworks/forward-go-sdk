@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -43,7 +47,7 @@ func TestCollectorUpgradeWire(t *testing.T) {
 // service-installed collector is clear, and each other state names its reason.
 func TestCollectorUpgradeBlocker(t *testing.T) {
 	t.Parallel()
-	ok := Collector{ConnectionStatus: "CONNECTED", UpdateStatus: "OUTDATED", Features: &CollectorFeatures{Latest: 9, Updatable: true}}
+	ok := domain.Collector{ConnectionStatus: "CONNECTED", UpdateStatus: "OUTDATED", Features: &domain.CollectorFeatures{Latest: 9, Updatable: true}}
 	if got := ok.UpgradeBlocker(); got != "" {
 		t.Fatalf("outdated connected collector blocked: %q", got)
 	}
@@ -57,15 +61,15 @@ func TestCollectorUpgradeBlocker(t *testing.T) {
 	if got := queuedAndOffline.UpgradeBlocker(); !strings.Contains(got, "already queued") {
 		t.Fatalf("queued and offline = %q; Forward checks in-progress (409) first", got)
 	}
-	for name, mutate := range map[string]func(*Collector){
-		"queued":      func(c *Collector) { c.CollectorUpdating = true },
-		"never":       func(c *Collector) { c.ConnectionStatus = "NEVER_CONNECTED" },
-		"offline":     func(c *Collector) { c.ConnectionStatus = "DISCONNECTED" },
-		"no features": func(c *Collector) { c.Features = nil },
-		"not service": func(c *Collector) { c.Features = &CollectorFeatures{Latest: 9} },
-		"dev":         func(c *Collector) { c.UpdateStatus = "" },
-		"current":     func(c *Collector) { c.UpdateStatus = "UP_TO_DATE" },
-		"eol":         func(c *Collector) { c.UpdateStatus = "END_OF_LIFE" },
+	for name, mutate := range map[string]func(*domain.Collector){
+		"queued":      func(c *domain.Collector) { c.CollectorUpdating = true },
+		"never":       func(c *domain.Collector) { c.ConnectionStatus = "NEVER_CONNECTED" },
+		"offline":     func(c *domain.Collector) { c.ConnectionStatus = "DISCONNECTED" },
+		"no features": func(c *domain.Collector) { c.Features = nil },
+		"not service": func(c *domain.Collector) { c.Features = &domain.CollectorFeatures{Latest: 9} },
+		"dev":         func(c *domain.Collector) { c.UpdateStatus = "" },
+		"current":     func(c *domain.Collector) { c.UpdateStatus = "UP_TO_DATE" },
+		"eol":         func(c *domain.Collector) { c.UpdateStatus = "END_OF_LIFE" },
 	} {
 		c := ok
 		mutate(&c)

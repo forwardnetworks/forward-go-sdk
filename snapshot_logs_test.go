@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"context"
 	"io"
@@ -31,19 +35,19 @@ func TestSnapshotsLogs(t *testing.T) {
 	ctx := context.Background()
 
 	var buf bytes.Buffer
-	n, truncated, _, err := client.Snapshots.Logs(ctx, "9164", SnapshotLogOptions{DeviceName: "leaf-1", Level: "WARN"}, 100, &buf)
+	n, truncated, _, err := client.Snapshots.Logs(ctx, "9164", domain.SnapshotLogOptions{DeviceName: "leaf-1", Level: "WARN"}, 100, &buf)
 	if err != nil || !truncated || n != 100 || buf.Len() != 100 || query != "deviceName=leaf-1&level=WARN" {
 		t.Fatalf("Logs() = %d, %v, %v; query %q", n, truncated, err, query)
 	}
 	buf.Reset()
-	if _, _, _, err := client.Snapshots.Logs(ctx, "9164", SnapshotLogOptions{DeviceName: "leaf-1", Backfilled: true}, 1<<20, &buf); err != nil || query != "backfilled=true&deviceName=leaf-1" {
+	if _, _, _, err := client.Snapshots.Logs(ctx, "9164", domain.SnapshotLogOptions{DeviceName: "leaf-1", Backfilled: true}, 1<<20, &buf); err != nil || query != "backfilled=true&deviceName=leaf-1" {
 		t.Fatalf("backfilled: query %q, %v", query, err)
 	}
 	before := calls
-	if _, _, _, err := client.Snapshots.Logs(ctx, "9164", SnapshotLogOptions{Backfilled: true}, 100, &buf); err == nil || calls != before {
+	if _, _, _, err := client.Snapshots.Logs(ctx, "9164", domain.SnapshotLogOptions{Backfilled: true}, 100, &buf); err == nil || calls != before {
 		t.Fatalf("a backfill log without a device must be refused locally (err=%v)", err)
 	}
-	if _, _, _, err := client.Snapshots.Logs(ctx, "9164", SnapshotLogOptions{}, 0, &buf); err == nil {
+	if _, _, _, err := client.Snapshots.Logs(ctx, "9164", domain.SnapshotLogOptions{}, 0, &buf); err == nil {
 		t.Fatal("a zero cap must be refused")
 	}
 }
@@ -127,7 +131,7 @@ func TestSnapshotsCollectionExceptions(t *testing.T) {
 	defer server.Close()
 
 	limit, occurrences := int32(50), int32(3)
-	got, _, err := newTestClient(t, server.URL).Snapshots.CollectionExceptions(context.Background(), " 9164 ", CollectionExceptionOptions{Limit: &limit, OccurrencesLimit: &occurrences})
+	got, _, err := newTestClient(t, server.URL).Snapshots.CollectionExceptions(context.Background(), " 9164 ", domain.CollectionExceptionOptions{Limit: &limit, OccurrencesLimit: &occurrences})
 	if err != nil || got.Total != 2 || got.CollectorIDToName["C1"] != "lab-collector" || len(got.Exceptions) != 1 {
 		t.Fatalf("CollectionExceptions() = %+v, %v", got, err)
 	}
@@ -135,7 +139,7 @@ func TestSnapshotsCollectionExceptions(t *testing.T) {
 	if e.TotalOccurrences != 12 || e.CollectorVersion != "26.9.0-18" || len(e.Occurrences) != 2 || e.Occurrences[0].DeviceName != "leaf-1" || e.Occurrences[1].DeviceName != "" {
 		t.Fatalf("exception = %+v", e)
 	}
-	if _, _, err := newTestClient(t, server.URL).Snapshots.CollectionExceptions(context.Background(), "", CollectionExceptionOptions{}); err == nil {
+	if _, _, err := newTestClient(t, server.URL).Snapshots.CollectionExceptions(context.Background(), "", domain.CollectionExceptionOptions{}); err == nil {
 		t.Fatal("an empty snapshot ID must be refused")
 	}
 }

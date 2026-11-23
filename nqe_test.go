@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"context"
 	"encoding/json"
@@ -20,7 +24,7 @@ func TestNQESynchronousAndAsynchronousRoutes(t *testing.T) {
 			if got := r.URL.Query().Get("networkId"); got != "network-1" {
 				t.Errorf("networkId = %q", got)
 			}
-			var body NQEQueryRequest
+			var body domain.NQEQueryRequest
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Query == "" {
 				t.Errorf("query body = %#v, %v", body, err)
 			}
@@ -50,11 +54,11 @@ func TestNQESynchronousAndAsynchronousRoutes(t *testing.T) {
 
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	result, _, err := client.NQE.Run(ctx, "network-1", "", NQEQueryRequest{Query: "foreach d in network.devices select { Name: d.name }"})
+	result, _, err := client.NQE.Run(ctx, "network-1", "", domain.NQEQueryRequest{Query: "foreach d in network.devices select { Name: d.name }"})
 	if err != nil || result.TotalNumItems != 1 || len(result.Items) != 1 {
 		t.Fatalf("NQE.Run() = %#v, %v", result, err)
 	}
-	execution, _, err := client.NQE.Start(ctx, "network-1", "snapshot-1", NQEExecutionRequest{QueryID: "FQ_1"})
+	execution, _, err := client.NQE.Start(ctx, "network-1", "snapshot-1", domain.NQEExecutionRequest{QueryID: "FQ_1"})
 	if err != nil || execution.ExecutionKey != "exec/1" {
 		t.Fatalf("NQE.Start() = %#v, %v", execution, err)
 	}
@@ -63,12 +67,12 @@ func TestNQESynchronousAndAsynchronousRoutes(t *testing.T) {
 		t.Fatalf("NQE.Status() = %#v, %v", execution, err)
 	}
 	offset, limit := int32(2), int32(10)
-	result, _, err = client.NQE.Result(ctx, "network-1", "exec/1", NQEResultOptions{Offset: &offset, Limit: &limit})
+	result, _, err = client.NQE.Result(ctx, "network-1", "exec/1", domain.NQEResultOptions{Offset: &offset, Limit: &limit})
 	if err != nil || result.SnapshotID != "snapshot-1" {
 		t.Fatalf("NQE.Result() = %#v, %v", result, err)
 	}
 	var jsonLines bytes.Buffer
-	if _, err := client.NQE.ResultJSONLines(ctx, "network-1", "exec/1", NQEResultOptions{}, &jsonLines); err != nil {
+	if _, err := client.NQE.ResultJSONLines(ctx, "network-1", "exec/1", domain.NQEResultOptions{}, &jsonLines); err != nil {
 		t.Fatalf("NQE.ResultJSONLines() error = %v", err)
 	}
 	if got := jsonLines.String(); got != "{\"Name\":\"r1\"}\n" {
@@ -100,7 +104,7 @@ func TestNQEDiffAndLibraryRoutes(t *testing.T) {
 	defer server.Close()
 
 	client := newTestClient(t, server.URL)
-	diff, _, err := client.NQE.Diff(context.Background(), "before", "after", NQEDiffRequest{QueryID: "FQ_1"})
+	diff, _, err := client.NQE.Diff(context.Background(), "before", "after", domain.NQEDiffRequest{QueryID: "FQ_1"})
 	if err != nil || diff.TotalNumRows != 1 || diff.Rows[0].After == nil {
 		t.Fatalf("NQE.Diff() = %#v, %v", diff, err)
 	}
@@ -115,7 +119,7 @@ func TestNQEInputValidation(t *testing.T) {
 
 	client := newTestClient(t, "https://fwd.example")
 	ctx := context.Background()
-	for _, request := range []NQEQueryRequest{{}, {Query: "q", QueryID: "id"}} {
+	for _, request := range []domain.NQEQueryRequest{{}, {Query: "q", QueryID: "id"}} {
 		if _, _, err := client.NQE.Run(ctx, "network", "", request); err == nil {
 			t.Fatalf("NQE.Run(%#v) error = nil", request)
 		}
@@ -130,7 +134,7 @@ func TestNQEInputValidation(t *testing.T) {
 func TestNQEResultKeepsLargeIntegersExact(t *testing.T) {
 	t.Parallel()
 
-	var result NQEResult
+	var result domain.NQEResult
 	body := `{"items":[{"bytes":9007199254740993,"max":9223372036854775807,"name":"r1","frac":1.5,"nothing":null,"nested":{"id":9007199254740993},"list":[9007199254740993]}]}`
 	if err := json.Unmarshal([]byte(body), &result); err != nil {
 		t.Fatal(err)
@@ -189,12 +193,12 @@ func TestNQEResultKeepsLargeIntegersExact(t *testing.T) {
 		{`1e3`, 0, true},
 		{`1 2`, 0, true},
 	} {
-		n, ok, err := NQERecord{"n": json.RawMessage(tc.raw)}.Int64("n")
+		n, ok, err := domain.NQERecord{"n": json.RawMessage(tc.raw)}.Int64("n")
 		if tc.wantErr && (ok || err == nil) || !tc.wantErr && (!ok || err != nil || n != tc.want) {
 			t.Fatalf("Int64(%s) = %d, %v, %v", tc.raw, n, ok, err)
 		}
 	}
-	over := NQERecord{"n": json.RawMessage(`9223372036854775808`)}
+	over := domain.NQERecord{"n": json.RawMessage(`9223372036854775808`)}
 	if _, ok, err := over.Int64("n"); ok || err == nil {
 		t.Fatalf("Int64 beyond int64 ok=%v err=%v, want an error", ok, err)
 	}

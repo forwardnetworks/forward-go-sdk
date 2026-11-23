@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -41,7 +45,7 @@ func TestBrowserLoginUsesOnlyLiveRoutes(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "alice", Password: "pw", AuthMode: AuthModeBrowser})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "alice", Password: "pw", AuthMode: domain.AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +99,7 @@ func TestBrowserLoginFallsBackToLoginPageCSRF(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "alice", Password: "pw", AuthMode: AuthModeBrowser})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "alice", Password: "pw", AuthMode: domain.AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}

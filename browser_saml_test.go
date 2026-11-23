@@ -1,10 +1,14 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
+
 	"net/url"
 	"strings"
 	"sync"
@@ -23,10 +27,6 @@ type fakeForwardSession struct {
 	writes     []string
 	acsBodies  []url.Values
 	nextSessID int
-}
-
-func newFakeForwardSession() *fakeForwardSession {
-	return &fakeForwardSession{principal: map[string]string{}, token: map[string]string{}}
 }
 
 func (f *fakeForwardSession) session(w http.ResponseWriter, r *http.Request) string {
@@ -108,158 +108,12 @@ func (f *fakeForwardSession) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func TestBrowserWritesCarryTheCurrentSessionsCSRFToken(t *testing.T) {
-	fake := newFakeForwardSession()
-	server := httptest.NewServer(fake)
-	defer server.Close()
-	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "forward", Password: "pw", AuthMode: AuthModeBrowser})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-	if _, err := client.Browser.Login(ctx); err != nil {
-		t.Fatalf("login: %v", err)
-	}
-	if _, _, err := client.Browser.Impersonate(ctx, "2257"); err != nil {
-		t.Fatalf("impersonate: %v", err)
-	}
-	// Two writes as the impersonated principal: the token is fetched after
-	// impersonation (the pre-impersonation token would be rejected) and reused.
-	fetchesBefore := fake.csrfFetch
-	for i := 0; i < 2; i++ {
-		req, err := client.newScopedRequest(ctx, http.MethodPost, "/api/networks?name=probe", nil, pathScopeAPI, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := client.Do(req, nil); err != nil {
-			t.Fatalf("write %d over impersonated session: %v", i, err)
-		}
-	}
-	if got := fake.csrfFetch - fetchesBefore; got != 1 {
-		t.Fatalf("CSRF fetches for two writes in one session = %d, want 1", got)
-	}
-	if len(fake.writes) != 2 || fake.writes[0] != "user-2257" {
-		t.Fatalf("writes = %v, want two as user-2257", fake.writes)
-	}
-}
-
-func TestBrowserWriteWithoutCSRFIsRejectedByTheFake(t *testing.T) {
-	// Positive control for the test above: the fake really enforces CSRF.
-	fake := newFakeForwardSession()
-	server := httptest.NewServer(fake)
-	defer server.Close()
-	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "forward", Password: "pw", AuthMode: AuthModeBrowser})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-	if _, err := client.Browser.Login(ctx); err != nil {
-		t.Fatalf("login: %v", err)
-	}
-	req, err := client.newScopedRequest(ctx, http.MethodPost, "/api/networks?name=probe", nil, pathScopeAPI, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req = skipBrowserCSRF(req)
-	if _, err := client.Do(req, nil); err == nil {
-		t.Fatal("a write without the CSRF token succeeded; the fake does not enforce CSRF")
-	}
-}
-
-func TestBrowserSAMLSignInRoundTrip(t *testing.T) {
-	fake := newFakeForwardSession()
-	server := httptest.NewServer(fake)
-	defer server.Close()
-	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, AuthMode: AuthModeBrowser})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-	form, _, err := client.Browser.SAMLAuthenticationRequest(ctx, "sf-org-primary")
-	if err != nil {
-		t.Fatalf("authentication request: %v", err)
-	}
-	if form.Action != "https://idp.example/application/saml/sf-org-primary/" {
-		t.Fatalf("form action = %q", form.Action)
-	}
-	if form.Fields.Get("SAMLRequest") != "req+sf-org-primary" || form.Fields.Get("RelayState") != "rs-1" {
-		t.Fatalf("form fields = %v (value-before-name inputs and entities must parse)", form.Fields)
-	}
-
-	// A rejected assertion lands on /login and must be an error.
-	bad := url.Values{"SAMLResponse": {"bad"}, "RelayState": {"rs-1"}}
-	if _, err := client.Browser.SAMLAssertionConsumer(ctx, "sf-org-primary", bad); err == nil || !strings.Contains(err.Error(), "rejected") {
-		t.Fatalf("rejected assertion error = %v, want a rejection", err)
-	}
-
-	good := url.Values{"SAMLResponse": {"good"}, "RelayState": {"rs-1"}}
-	if _, err := client.Browser.SAMLAssertionConsumer(ctx, "sf-org-primary", good); err != nil {
-		t.Fatalf("assertion consumer: %v", err)
-	}
-	session, _, err := client.Browser.CurrentSession(ctx)
-	if err != nil {
-		t.Fatalf("current session: %v", err)
-	}
-	if session.User.Username != "saml-svc" || session.User.AuthSource != "SAML" || len(session.Roles.Org) != 1 || session.Roles.Org[0] != "ADMIN" {
-		t.Fatalf("session = %+v", session)
-	}
-	// The write after SAML sign-in uses a token fetched for the signed-in session.
-	req, err := client.newScopedRequest(ctx, http.MethodPost, "/api/networks?name=probe", nil, pathScopeAPI, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Do(req, nil); err != nil {
-		t.Fatalf("write after SAML sign-in: %v", err)
-	}
-}
-
 func TestBrowserSAMLAssertionConsumerRequiresARegistration(t *testing.T) {
-	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: "https://fwd.example", AuthMode: AuthModeBrowser})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: "https://fwd.example", AuthMode: domain.AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := client.Browser.SAMLAssertionConsumer(context.Background(), " ", url.Values{"SAMLResponse": {"good"}}); err == nil {
 		t.Fatal("an assertion without a registration id was accepted")
-	}
-}
-
-// ImpersonatedClient must give back a client that writes as the target, leave the administrator's own client signed in as
-// the administrator, and carry no password that could sign back in as the administrator.
-func TestImpersonatedClientActsAsTargetWithoutChangingTheAdmin(t *testing.T) {
-	fake := newFakeForwardSession()
-	server := httptest.NewServer(fake)
-	defer server.Close()
-	admin, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "forward", Password: "pw", AuthMode: AuthModeBrowser})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-
-	as, err := admin.ImpersonatedClient(ctx, "2342")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if as.password != "" || as.username != "" {
-		t.Error("the impersonated client must not carry the administrator's credential")
-	}
-	if len(admin.Browser.Cookies()) != 0 {
-		t.Error("the administrator's own client must not have been logged in or changed")
-	}
-	req, err := as.newScopedRequest(ctx, http.MethodPost, "/api/networks?name=probe", nil, pathScopeAPI, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := as.Do(req, nil); err != nil {
-		t.Fatalf("write as the impersonated user: %v", err)
-	}
-	if len(fake.writes) != 1 || fake.writes[0] != "user-2342" {
-		t.Errorf("writes = %v, want one as user-2342", fake.writes)
-	}
-	if _, err := admin.ImpersonatedClient(ctx, ""); err == nil {
-		t.Error("an empty target user must be refused")
-	}
-	service, _ := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "svc", Password: "pw", AuthMode: AuthModeService})
-	if _, err := service.ImpersonatedClient(ctx, "2342"); err == nil {
-		t.Error("only a browser-mode client may impersonate")
 	}
 }

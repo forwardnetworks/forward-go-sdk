@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"bytes"
 	"context"
 	"errors"
@@ -61,7 +66,7 @@ func TestSoftwareCentralListSendsBasicAuthAndTypeFilter(t *testing.T) {
 		t.Fatalf("NewClient: %v", err)
 	}
 
-	artifacts, resp, err := c.SoftwareCentral.ListDeploymentArtifacts(context.Background(), DeploymentTypeVMwareHypervisor)
+	artifacts, resp, err := c.SoftwareCentral.ListDeploymentArtifacts(context.Background(), domain.DeploymentTypeVMwareHypervisor)
 	if err != nil {
 		t.Fatalf("ListDeploymentArtifacts: %v", err)
 	}
@@ -76,17 +81,17 @@ func TestSoftwareCentralListSendsBasicAuthAndTypeFilter(t *testing.T) {
 	}
 
 	install := artifacts[0]
-	if install.ID != "101" || install.Name != "forward-vm" || install.Workflow != DeploymentWorkflowInstallation {
+	if install.ID != "101" || install.Name != "forward-vm" || install.Workflow != domain.DeploymentWorkflowInstallation {
 		t.Errorf("artifact[0] = %#v", install)
 	}
-	if len(install.DeploymentTypes) != 2 || install.DeploymentTypes[0] != DeploymentTypeVMwareHypervisor || install.DeploymentTypes[1] != DeploymentTypeKVMHypervisor {
+	if len(install.DeploymentTypes) != 2 || install.DeploymentTypes[0] != domain.DeploymentTypeVMwareHypervisor || install.DeploymentTypes[1] != domain.DeploymentTypeKVMHypervisor {
 		t.Errorf("artifact[0].DeploymentTypes = %v", install.DeploymentTypes)
 	}
 	if len(install.Versions) != 2 {
 		t.Fatalf("artifact[0] has %d versions, want 2", len(install.Versions))
 	}
 	ova := install.Versions[0]
-	if ova.ID != "5001" || ova.Version != "26.30.0" || ova.FileType != DeploymentArtifactFileTypeOVA ||
+	if ova.ID != "5001" || ova.Version != "26.30.0" || ova.FileType != domain.DeploymentArtifactFileTypeOVA ||
 		ova.SizeInBytes != 3221225472 || ova.SHA256 != "aaaa" || ova.UploadedBy != "release@forwardnetworks.com" {
 		t.Errorf("ova version = %#v", ova)
 	}
@@ -104,11 +109,11 @@ func TestSoftwareCentralListSendsBasicAuthAndTypeFilter(t *testing.T) {
 	}
 
 	upgrade := artifacts[1]
-	if upgrade.ID != "202" || upgrade.Workflow != DeploymentWorkflowAppUpgrade || len(upgrade.Versions) != 1 {
+	if upgrade.ID != "202" || upgrade.Workflow != domain.DeploymentWorkflowAppUpgrade || len(upgrade.Versions) != 1 {
 		t.Fatalf("artifact[1] = %#v", upgrade)
 	}
 	pkg := upgrade.Versions[0]
-	if pkg.BaseVersion != "26.29" || pkg.MinBaseVersion != "26.20.0" || pkg.MaxBaseVersion != "26.29.9" || pkg.FileType != DeploymentArtifactFileTypePackage {
+	if pkg.BaseVersion != "26.29" || pkg.MinBaseVersion != "26.20.0" || pkg.MaxBaseVersion != "26.29.9" || pkg.FileType != domain.DeploymentArtifactFileTypePackage {
 		t.Errorf("upgrade version = %#v", pkg)
 	}
 	if got := upgrade.FileName(pkg); got != "forward-app-upgrade-26.29-26.30.0.package" {
@@ -150,10 +155,10 @@ func TestSoftwareCentralRefusals(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected an error")
 		}
-		if !errors.Is(err, ErrAuthentication) {
+		if !errors.Is(err, domain.ErrAuthentication) {
 			t.Errorf("errors.Is(err, ErrAuthentication) = false; err = %v", err)
 		}
-		if !IsErrorKind(err, ErrorKindAuthentication) {
+		if !ports.IsErrorKind(err, domain.ErrorKindAuthentication) {
 			t.Errorf("IsErrorKind(err, ErrorKindAuthentication) = false; err = %v", err)
 		}
 		if !strings.Contains(err.Error(), "401") {
@@ -169,17 +174,17 @@ func TestSoftwareCentralRefusals(t *testing.T) {
 		}))
 		defer server.Close()
 		c := newTestClient(t, server.URL)
-		_, _, err := c.SoftwareCentral.ListDeploymentArtifacts(context.Background(), DeploymentTypeVMwareHypervisor)
+		_, _, err := c.SoftwareCentral.ListDeploymentArtifacts(context.Background(), domain.DeploymentTypeVMwareHypervisor)
 		if err == nil {
 			t.Fatal("expected an error")
 		}
 		if !strings.Contains(err.Error(), sentence) {
 			t.Errorf("err = %q, want it to contain %q", err.Error(), sentence)
 		}
-		if !IsStatus(err, http.StatusForbidden) {
+		if !ports.IsStatus(err, http.StatusForbidden) {
 			t.Errorf("IsStatus(err, 403) = false; err = %v", err)
 		}
-		if errors.Is(err, ErrAuthentication) {
+		if errors.Is(err, domain.ErrAuthentication) {
 			t.Errorf("an entitlement refusal must not read as an authentication failure; err = %v", err)
 		}
 	})
@@ -288,7 +293,7 @@ func TestSoftwareCentralURLValidation(t *testing.T) {
 	c := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	if _, _, err := c.SoftwareCentral.DeploymentArtifactURL(ctx, " ", "1"); !errors.Is(err, ErrDeploymentArtifactIDRequired) {
+	if _, _, err := c.SoftwareCentral.DeploymentArtifactURL(ctx, " ", "1"); !errors.Is(err, domain.ErrDeploymentArtifactIDRequired) {
 		t.Errorf("blank artifact id: err = %v, want ErrDeploymentArtifactIDRequired", err)
 	}
 	if calls != 0 {
@@ -370,7 +375,7 @@ func TestSoftwareCentralURLRefusesCrossOriginRedirect(t *testing.T) {
 
 	c := newTestClient(t, forward.URL)
 	_, _, err := c.SoftwareCentral.DeploymentArtifactURL(context.Background(), "101", "5001")
-	if err == nil || !IsStatus(err, http.StatusFound) {
+	if err == nil || !ports.IsStatus(err, http.StatusFound) {
 		t.Fatalf("err = %v, want the 302 surfaced as an API error", err)
 	}
 }

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -33,7 +37,7 @@ func TestVulnerabilitiesListSendsV2AndScope(t *testing.T) {
 	defer server.Close()
 
 	yes := true
-	got, _, err := newTestClient(t, server.URL).Vulnerabilities.List(context.Background(), "net-1", VulnerabilityListOptions{
+	got, _, err := newTestClient(t, server.URL).Vulnerabilities.List(context.Background(), "net-1", domain.VulnerabilityListOptions{
 		SnapshotID: "1021", InternetAddressable: &yes, LocationIDs: []string{"atl", " ", "nyc-b"}, Tags: []string{"SEC"},
 	})
 	if err != nil {
@@ -47,11 +51,11 @@ func TestVulnerabilitiesListSendsV2AndScope(t *testing.T) {
 		t.Fatalf("vulnerability = %+v", v)
 	}
 	os := v.OSInfos[0]
-	if os.Severity != VulnerabilitySeverityCritical || os.V3Score == nil || *os.V3Score != 9.8 || os.V2Score != nil ||
+	if os.Severity != domain.VulnerabilitySeverityCritical || os.V3Score == nil || *os.V3Score != 9.8 || os.V2Score != nil ||
 		os.ConfigDependent == nil || !*os.ConfigDependent || os.DeviceCount != 200 {
 		t.Fatalf("os info = %+v", os)
 	}
-	if len(os.ResultCounts) != 2 || os.ResultCounts[0].Result != CVEDetectionVulnerable || os.ResultCounts[0].DeviceCount != 80 {
+	if len(os.ResultCounts) != 2 || os.ResultCounts[0].Result != domain.CVEDetectionVulnerable || os.ResultCounts[0].DeviceCount != 80 {
 		t.Fatalf("result counts = %+v", os.ResultCounts)
 	}
 }
@@ -69,7 +73,7 @@ func TestVulnerabilitiesListUnscoped(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, _, err := newTestClient(t, server.URL).Vulnerabilities.List(context.Background(), "net-1", VulnerabilityListOptions{}); err != nil {
+	if _, _, err := newTestClient(t, server.URL).Vulnerabilities.List(context.Background(), "net-1", domain.VulnerabilityListOptions{}); err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
 }
@@ -101,7 +105,7 @@ func TestVulnerabilitiesGetReturnsPerDeviceVerdicts(t *testing.T) {
 		t.Fatalf("Get() = %+v", got)
 	}
 	confirmed, unconfirmed := got.OSInfos[0].Devices[0], got.OSInfos[0].Devices[1]
-	if confirmed.Result != CVEDetectionVulnerable || confirmed.Status != DeviceVulnerable ||
+	if confirmed.Result != domain.CVEDetectionVulnerable || confirmed.Status != domain.DeviceVulnerable ||
 		confirmed.InternetAddressable == nil || !*confirmed.InternetAddressable {
 		t.Fatalf("confirmed = %+v", confirmed)
 	}
@@ -109,7 +113,7 @@ func TestVulnerabilitiesGetReturnsPerDeviceVerdicts(t *testing.T) {
 	if len(lines) != 1 || lines[0].Start == nil || *lines[0].Start != 286 || *lines[0].End != 291 {
 		t.Fatalf("file ranges = %+v", confirmed.FileRanges)
 	}
-	if unconfirmed.Result != CVEDetectionUnconfirmed || unconfirmed.Status != DevicePotentiallyVulnerable || unconfirmed.InternetAddressable != nil {
+	if unconfirmed.Result != domain.CVEDetectionUnconfirmed || unconfirmed.Status != domain.DevicePotentiallyVulnerable || unconfirmed.InternetAddressable != nil {
 		t.Fatalf("unconfirmed = %+v", unconfirmed)
 	}
 
@@ -138,7 +142,7 @@ func TestVulnerabilitiesListByOSPages(t *testing.T) {
 
 	offset, limit := int32(200), int32(100)
 	got, _, err := newTestClient(t, server.URL).Vulnerabilities.ListByOS(context.Background(), "net-1",
-		VulnerabilityByOSOptions{SnapshotID: "1021", Offset: &offset, Limit: &limit})
+		domain.VulnerabilityByOSOptions{SnapshotID: "1021", Offset: &offset, Limit: &limit})
 	if err != nil {
 		t.Fatalf("ListByOS() error = %v", err)
 	}
@@ -146,7 +150,7 @@ func TestVulnerabilitiesListByOSPages(t *testing.T) {
 		t.Fatalf("ListByOS() = %+v", got)
 	}
 	v := got.Vulnerabilities[0]
-	if v.Severity != VulnerabilitySeverityMedium || v.DetectionMethod != "CONFIG" || v.KnownExploitSource != "CISA" || len(v.DeviceResults) != 2 {
+	if v.Severity != domain.VulnerabilitySeverityMedium || v.DetectionMethod != "CONFIG" || v.KnownExploitSource != "CISA" || len(v.DeviceResults) != 2 {
 		t.Fatalf("vulnerability = %+v", v)
 	}
 	// A result whose analysis errored has no verdict, which is not "not vulnerable".

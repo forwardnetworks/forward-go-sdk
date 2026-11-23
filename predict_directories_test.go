@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -38,19 +43,21 @@ func TestChangeSetDirectoriesWire(t *testing.T) {
 	}
 	seen = nil
 	steps := []struct {
-		call func() (*Response, error)
+		call func() (*ports.Response, error)
 		want string
 		body string
 	}{
-		{func() (*Response, error) { return predict.AddChangeSetDirectory(ctx, "7", "/prod", "wave 1") }, "POST /api/networks/7/change-set-directories/%2Fprod?action=addDir&name=wave+1", ""},
-		{func() (*Response, error) { return predict.RenameChangeSetDirectory(ctx, "7", "/prod/wave 1", "wave-1") }, "POST /api/networks/7/change-set-directories/%2Fprod%2Fwave%201?action=rename&name=wave-1", ""},
-		{func() (*Response, error) { return predict.MoveChangeSetDirectory(ctx, "7", "/prod/wave-1", "/") }, "POST /api/networks/7/change-set-directories/%2Fprod%2Fwave-1?action=move&to=%2F", ""},
-		{func() (*Response, error) { return predict.MoveChangeSetToDirectory(ctx, "7", "/prod", "9") }, "POST /api/networks/7/change-set-directories/%2Fprod?action=moveChangeSetTo&changeSetId=9", ""},
-		{func() (*Response, error) {
+		{func() (*ports.Response, error) { return predict.AddChangeSetDirectory(ctx, "7", "/prod", "wave 1") }, "POST /api/networks/7/change-set-directories/%2Fprod?action=addDir&name=wave+1", ""},
+		{func() (*ports.Response, error) {
+			return predict.RenameChangeSetDirectory(ctx, "7", "/prod/wave 1", "wave-1")
+		}, "POST /api/networks/7/change-set-directories/%2Fprod%2Fwave%201?action=rename&name=wave-1", ""},
+		{func() (*ports.Response, error) { return predict.MoveChangeSetDirectory(ctx, "7", "/prod/wave-1", "/") }, "POST /api/networks/7/change-set-directories/%2Fprod%2Fwave-1?action=move&to=%2F", ""},
+		{func() (*ports.Response, error) { return predict.MoveChangeSetToDirectory(ctx, "7", "/prod", "9") }, "POST /api/networks/7/change-set-directories/%2Fprod?action=moveChangeSetTo&changeSetId=9", ""},
+		{func() (*ports.Response, error) {
 			return predict.MoveChangeSetsToDirectory(ctx, "7", "/", []string{"4", " 5 ", "4", ""})
 		}, "POST /api/networks/7/change-set-directories/%2F?action=moveChangeSetsTo", `{"changeSetIds":["4","5"]}`},
-		{func() (*Response, error) { return predict.DeleteChangeSetDirectory(ctx, "7", "/prod", false) }, "DELETE /api/networks/7/change-set-directories/%2Fprod", ""},
-		{func() (*Response, error) { return predict.DeleteChangeSetDirectory(ctx, "7", "/prod", true) }, "DELETE /api/networks/7/change-set-directories/%2Fprod?retainChangeSets=false", ""},
+		{func() (*ports.Response, error) { return predict.DeleteChangeSetDirectory(ctx, "7", "/prod", false) }, "DELETE /api/networks/7/change-set-directories/%2Fprod", ""},
+		{func() (*ports.Response, error) { return predict.DeleteChangeSetDirectory(ctx, "7", "/prod", true) }, "DELETE /api/networks/7/change-set-directories/%2Fprod?retainChangeSets=false", ""},
 	}
 	for _, step := range steps {
 		seen = nil
@@ -82,11 +89,11 @@ func TestChangeSetDirectoryRefusals(t *testing.T) {
 		"no change sets":     func() error { _, err := predict.MoveChangeSetsToDirectory(ctx, "7", "/a", []string{" "}); return err }(),
 		"bulk delete no ids": func() error { _, err := predict.DeleteChangeSets(ctx, "7", nil); return err }(),
 		"tags no names": func() error {
-			_, err := predict.PatchChangeSetsTags(ctx, "7", []string{"1"}, ChangeSetTagsAdd, nil)
+			_, err := predict.PatchChangeSetsTags(ctx, "7", []string{"1"}, domain.ChangeSetTagsAdd, nil)
 			return err
 		}(),
 		"remove all with name": func() error {
-			_, err := predict.PatchChangeSetsTags(ctx, "7", []string{"1"}, ChangeSetTagsRemoveAll, []string{"x"})
+			_, err := predict.PatchChangeSetsTags(ctx, "7", []string{"1"}, domain.ChangeSetTagsRemoveAll, []string{"x"})
 			return err
 		}(),
 		"unknown tag action": func() error {
@@ -113,13 +120,13 @@ func TestChangeSetBulkAndCreateInDirectoryWire(t *testing.T) {
 	if _, err := predict.DeleteChangeSets(ctx, "7", []string{"1", "2"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := predict.PatchChangeSetsTags(ctx, "7", []string{"1", "2"}, ChangeSetTagsAdd, []string{" wave1 ", "ops"}); err != nil {
+	if _, err := predict.PatchChangeSetsTags(ctx, "7", []string{"1", "2"}, domain.ChangeSetTagsAdd, []string{" wave1 ", "ops"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := predict.PatchChangeSetsTags(ctx, "7", []string{"1"}, ChangeSetTagsRemoveAll, nil); err != nil {
+	if _, err := predict.PatchChangeSetsTags(ctx, "7", []string{"1"}, domain.ChangeSetTagsRemoveAll, nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := predict.CreateChangeSet(ctx, "7", ChangeSetCreateRequest{Name: "n", SnapshotID: "s1", Directory: "/prod/wave 1"}); err != nil {
+	if _, _, err := predict.CreateChangeSet(ctx, "7", domain.ChangeSetCreateRequest{Name: "n", SnapshotID: "s1", Directory: "/prod/wave 1"}); err != nil {
 		t.Fatal(err)
 	}
 	want := []predictSeen{

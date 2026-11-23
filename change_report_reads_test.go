@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -80,9 +84,9 @@ func changeReportServerRequest(t *testing.T, override func(r *http.Request, body
 	}))
 }
 
-func sectionOf(t *testing.T, report *ChangeReport, name string) map[string]any {
+func sectionOf(t *testing.T, report *domain.ChangeReport, name string) map[string]any {
 	t.Helper()
-	return asMap(asMap(report.doc["sections"])[name])
+	return asMap(asMap(reportDoc(report)["sections"])[name])
 }
 
 // Compare reads the default sections of two collected snapshots and assembles them: a check that went PASS to FAIL is a regression, rows come
@@ -93,11 +97,11 @@ func TestChangeReportsCompareCollected(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	created := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{AfterKind: "collected", CreatedAt: created, SectionTimeout: 10 * time.Second})
+	report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{AfterKind: "collected", CreatedAt: created, SectionTimeout: 10 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.Verdict() != ChangeReportRegression {
+	if report.Verdict() != domain.ChangeReportRegression {
 		t.Fatalf("verdict = %s, reasons = %+v", report.Verdict(), report.Reasons())
 	}
 	if reasons := report.Reasons(); len(reasons) != 1 || reasons[0].Code != "check_regressed" || reasons[0].Detail != "C-1" {
@@ -154,7 +158,7 @@ func TestChangeReportsCompareUnavailableSections(t *testing.T) {
 	})
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{AfterKind: "collected", SectionTimeout: 10 * time.Second})
+	report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{AfterKind: "collected", SectionTimeout: 10 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +169,7 @@ func TestChangeReportsCompareUnavailableSections(t *testing.T) {
 			t.Errorf("%s = %+v, want unavailable(%s)", name, section, kind)
 		}
 	}
-	if report.Verdict() != ChangeReportRegression {
+	if report.Verdict() != domain.ChangeReportRegression {
 		t.Fatalf("non-driving unavailable sections must not change the verdict: %s %+v", report.Verdict(), report.Reasons())
 	}
 
@@ -177,11 +181,11 @@ func TestChangeReportsCompareUnavailableSections(t *testing.T) {
 		return 0, "", false
 	})
 	defer denied.Close()
-	incomplete, err := newTestClient(t, denied.URL).ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{AfterKind: "collected", SectionTimeout: 10 * time.Second})
+	incomplete, err := newTestClient(t, denied.URL).ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{AfterKind: "collected", SectionTimeout: 10 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if incomplete.Verdict() != ChangeReportIncomplete {
+	if incomplete.Verdict() != domain.ChangeReportIncomplete {
 		t.Fatalf("verdict = %s, want incomplete", incomplete.Verdict())
 	}
 }
@@ -191,10 +195,10 @@ func TestChangeReportsCompareRefusesWhatCannotBeBuilt(t *testing.T) {
 	server := changeReportServer(t, nil)
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	if _, err := client.ChangeReports.Compare(context.Background(), "n1", "", "2", ChangeReportOptions{}); err == nil {
+	if _, err := client.ChangeReports.Compare(context.Background(), "n1", "", "2", domain.ChangeReportOptions{}); err == nil {
 		t.Fatal("a missing base snapshot must be refused")
 	}
-	if _, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{AfterKind: "future"}); err == nil {
+	if _, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{AfterKind: "future"}); err == nil {
 		t.Fatal("an unknown after kind must be refused")
 	}
 }
@@ -215,10 +219,10 @@ func TestChangeReportsCompareFlows(t *testing.T) {
 	})
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	query := TracePathQuery{From: &TraceEndpoint{Location: TraceDevice("a")}, To: &TraceEndpoint{Location: TraceDevice("b")}}
-	flows := []ChangeReportFlow{{Name: "a to b", Expectation: "valid", Query: query}}
-	compare := func() *ChangeReport {
-		report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{AfterKind: "collected", Flows: flows, SectionTimeout: 10 * time.Second})
+	query := domain.TracePathQuery{From: &domain.TraceEndpoint{Location: domain.TraceDevice("a")}, To: &domain.TraceEndpoint{Location: domain.TraceDevice("b")}}
+	flows := []domain.ChangeReportFlow{{Name: "a to b", Expectation: "valid", Query: query}}
+	compare := func() *domain.ChangeReport {
+		report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{AfterKind: "collected", Flows: flows, SectionTimeout: 10 * time.Second})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -237,13 +241,13 @@ func TestChangeReportsCompareFlows(t *testing.T) {
 	for _, r := range report.Reasons() {
 		lostReason = lostReason || (r.Code == "flow_lost_valid_path" && r.Detail == "a to b")
 	}
-	if report.Verdict() != ChangeReportRegression || !lostReason {
+	if report.Verdict() != domain.ChangeReportRegression || !lostReason {
 		t.Fatalf("verdict %s reasons %+v", report.Verdict(), report.Reasons())
 	}
 
 	flowsBySnapshot["2"] = facetsBody(`[]`, `,"timedOut":true`)
 	timedOut := asMap(asList(sectionOf(t, compare(), "flows")["items"])[0])
-	if asString(timedOut["change"]) != "unavailable" || asString(asMap(timedOut["unavailable"])["kind"]) != "timeout" || compare().Verdict() != ChangeReportIncomplete {
+	if asString(timedOut["change"]) != "unavailable" || asString(asMap(timedOut["unavailable"])["kind"]) != "timeout" || compare().Verdict() != domain.ChangeReportIncomplete {
 		t.Fatalf("a timed-out search must be an unavailable flow and an incomplete report: %+v", timedOut)
 	}
 	flowsBySnapshot["2"] = `{"facets":{"pathGroups":[]},"totalResults":{"value":5000,"type":"LOWER_BOUND"}}`
@@ -275,11 +279,11 @@ func TestChangeReportsComparePredicted(t *testing.T) {
 	})
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{ChangeSetID: "cs1", SectionTimeout: 10 * time.Second})
+	report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{ChangeSetID: "cs1", SectionTimeout: 10 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
-	meta := asMap(report.doc["meta"])
+	meta := asMap(reportDoc(report)["meta"])
 	if asString(meta["after_kind"]) != "predicted" || asString(meta["change_set_id"]) != "cs1" {
 		t.Fatalf("meta = %+v", meta)
 	}
@@ -293,7 +297,7 @@ func TestChangeReportsComparePredicted(t *testing.T) {
 	}
 
 	state = "FAILED"
-	failed, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{SectionTimeout: 10 * time.Second})
+	failed, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{SectionTimeout: 10 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,9 +347,9 @@ func TestChangeReportsCompareState(t *testing.T) {
 	})
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	compare := func(expected ...string) *ChangeReport {
-		report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{
-			AfterKind: "collected", SectionTimeout: 10 * time.Second, State: &ChangeReportState{ExpectedRemoved: expected},
+	compare := func(expected ...string) *domain.ChangeReport {
+		report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{
+			AfterKind: "collected", SectionTimeout: 10 * time.Second, State: &domain.ChangeReportState{ExpectedRemoved: expected},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -373,7 +377,7 @@ func TestChangeReportsCompareState(t *testing.T) {
 			t.Errorf("%s = %q, want %q (all: %v)", key, got[key], change, got)
 		}
 	}
-	stateLost := func(r *ChangeReport) int {
+	stateLost := func(r *domain.ChangeReport) int {
 		n := 0
 		for _, reason := range r.Reasons() {
 			if reason.Code == "state_lost" {
@@ -382,7 +386,7 @@ func TestChangeReportsCompareState(t *testing.T) {
 		}
 		return n
 	}
-	if report.Verdict() != ChangeReportRegression || stateLost(report) != 4 {
+	if report.Verdict() != domain.ChangeReportRegression || stateLost(report) != 4 {
 		t.Fatalf("verdict %s reasons %+v", report.Verdict(), report.Reasons())
 	}
 	expected := compare("bgp_session:core-1|default|192.0.2.9", "bgp_session:core-1|default|192.0.2.1", "lldp_adjacency:core-1|et1|edge-1|et49", "interface_admin:edge-1|et3")
@@ -416,13 +420,13 @@ func TestChangeReportsCompareNotFinishedChecks(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	for _, st := range []string{"NONE", "REQUIRES_ADDITIONAL_SNAPSHOT_PROCESSING"} {
 		status = st
-		report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{AfterKind: "collected", SectionTimeout: 300 * time.Millisecond})
+		report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{AfterKind: "collected", SectionTimeout: 300 * time.Millisecond})
 		if err != nil {
 			t.Fatal(err)
 		}
 		section := sectionOf(t, report, "checks")
 		counts := asMap(section["counts"])
-		if section["status"] != "ok" || asInt(counts["not_evaluated"]) != 1 || asInt(counts["other"]) != 1 || asInt(counts["regressed"]) != 1 || report.Verdict() != ChangeReportIncomplete {
+		if section["status"] != "ok" || asInt(counts["not_evaluated"]) != 1 || asInt(counts["other"]) != 1 || asInt(counts["regressed"]) != 1 || report.Verdict() != domain.ChangeReportIncomplete {
 			t.Errorf("%s: checks = %+v, verdict %s", st, section, report.Verdict())
 		}
 		codes := map[string]string{}
@@ -434,11 +438,11 @@ func TestChangeReportsCompareNotFinishedChecks(t *testing.T) {
 		}
 	}
 	status = "PROCESSING"
-	report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", ChangeReportOptions{AfterKind: "collected", SectionTimeout: 300 * time.Millisecond})
+	report, err := client.ChangeReports.Compare(context.Background(), "n1", "1", "2", domain.ChangeReportOptions{AfterKind: "collected", SectionTimeout: 300 * time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if section := sectionOf(t, report, "checks"); section["status"] != "unavailable" || asString(asMap(section["reason"])["kind"]) != "timeout" || report.Verdict() != ChangeReportIncomplete {
+	if section := sectionOf(t, report, "checks"); section["status"] != "unavailable" || asString(asMap(section["reason"])["kind"]) != "timeout" || report.Verdict() != domain.ChangeReportIncomplete {
 		t.Errorf("PROCESSING past the budget: checks = %+v, verdict %s", section, report.Verdict())
 	}
 }

@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -82,11 +87,11 @@ func orgServer(t *testing.T, failNetwork string) (*httptest.Server, *[]string) {
 func TestDeleteOrgCleanlyOrderAndScope(t *testing.T) {
 	t.Parallel()
 	server, calls := orgServer(t, "")
-	client, err := NewClient(Config{BaseURL: server.URL, AuthMode: AuthModeService, Username: "u", Password: "p", HTTPClient: privateHTTPClient()})
+	client, err := NewClient(Config{BaseURL: server.URL, AuthMode: domain.AuthModeService, Username: "u", Password: "p", HTTPClient: privateHTTPClient()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := client.Organizations.DeleteOrgCleanly(context.Background(), "7", DeleteOrgOptions{})
+	res, err := client.Organizations.DeleteOrgCleanly(context.Background(), "7", domain.DeleteOrgOptions{})
 	if err != nil || res.Org == nil || len(res.Deleted) != 2 || len(res.Failed) != 0 || !res.Disabled {
 		t.Fatalf("result = %+v, %v", res, err)
 	}
@@ -110,7 +115,7 @@ func TestDeleteOrgCleanlyStopsOnFailure(t *testing.T) {
 	t.Parallel()
 	server, calls := orgServer(t, "n2")
 	client := newTestClient(t, server.URL)
-	res, err := client.Organizations.DeleteOrgCleanly(context.Background(), "7", DeleteOrgOptions{Networks: []string{"n1", "n2", "n3"}})
+	res, err := client.Organizations.DeleteOrgCleanly(context.Background(), "7", domain.DeleteOrgOptions{Networks: []string{"n1", "n2", "n3"}})
 	if err == nil || res.Org != nil || len(res.Failed) != 1 || res.Failed["n2"] == nil || !res.Disabled {
 		t.Fatalf("result = %+v, %v", res, err)
 	}
@@ -127,7 +132,7 @@ func TestDeleteOrgCleanlyStopsOnFailure(t *testing.T) {
 	if len(res.Deleted) != 2 {
 		t.Errorf("deleted = %v, want n1 and the already-gone n3", res.Deleted)
 	}
-	var failed *ErrorResponse
+	var failed *ports.ErrorResponse
 	if !errors.As(res.Failed["n2"], &failed) {
 		t.Errorf("the failure lost its error: %v", res.Failed["n2"])
 	}
@@ -151,7 +156,7 @@ func TestDeleteNetworkInOrgAndOrgNetworks(t *testing.T) {
 	if _, err := client.Organizations.DeleteOrgNetworks(ctx, " "); err == nil {
 		t.Error("a blank org was sent")
 	}
-	if _, err := client.Organizations.DeleteOrgCleanly(ctx, " ", DeleteOrgOptions{}); err == nil {
+	if _, err := client.Organizations.DeleteOrgCleanly(ctx, " ", domain.DeleteOrgOptions{}); err == nil {
 		t.Error("a blank org was sent")
 	}
 	if got := strings.Join(*calls, "|"); got != "DELETE /api/orgs/7/networks/n%201|DELETE /api/orgs/7/networks" {
@@ -169,11 +174,11 @@ func TestDeleteOrgCleanlyRefusesAnOrgWithUsers(t *testing.T) {
 		_, _ = io.WriteString(w, `[{"id":"u1","orgId":"7","username":"alice"}]`)
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{BaseURL: server.URL, AuthMode: AuthModeService, Username: "u", Password: "p", HTTPClient: privateHTTPClient()})
+	client, err := NewClient(Config{BaseURL: server.URL, AuthMode: domain.AuthModeService, Username: "u", Password: "p", HTTPClient: privateHTTPClient()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Organizations.DeleteOrgCleanly(context.Background(), "7", DeleteOrgOptions{Networks: []string{"n1"}}); err == nil || !strings.Contains(err.Error(), "still has users") {
+	if _, err := client.Organizations.DeleteOrgCleanly(context.Background(), "7", domain.DeleteOrgOptions{Networks: []string{"n1"}}); err == nil || !strings.Contains(err.Error(), "still has users") {
 		t.Fatalf("err = %v", err)
 	}
 	for _, c := range seen {

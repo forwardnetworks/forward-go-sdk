@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"context"
 	"encoding/json"
@@ -14,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/forwardnetworks/forward-go-sdk/perfpayload"
+	"github.com/forwardnetworks/forward-go-sdk/domain/perfpayload"
 )
 
 // TestCoverageManifestRoutesMatchTheWire calls every manifest symbol against
@@ -34,7 +38,7 @@ import (
 // is declared", which a wrong manifest route cannot survive once the method
 // is exercised. minExercised stops that escape hatch from silently widening.
 func TestCoverageManifestRoutesMatchTheWire(t *testing.T) {
-	const minExercised = 758
+	const minExercised = 765
 
 	symbols := make([]string, 0, len(sdkCoverageCatalog))
 	for symbol := range sdkCoverageCatalog {
@@ -80,55 +84,57 @@ type wireRequest struct{ method, path string }
 // the one value its consumer sends. Keyed by symbol, then argument index
 // (index 0 is the context).
 var wireArgOverrides = map[string]map[int]any{
-	"Performance.PatchSettings":                             {2: PerformanceSettingsPatch{Enabled: Ptr(true)}},
-	"Performance.RawSNMPData":                               {2: RawSNMPRequest{Device: "d1", CredentialID: "c1", IncludeDevicePerfData: true}},
-	"Credentials.UpdateSNMPCredential":                      {3: SNMPCredentialPatch{Port: Ptr(161)}},
-	"Diffs.Count":                                           {3: DiffDevices},
-	"Properties.ClearOrganization":                          {2: OrgProperty("software_central")},
-	"SaseSetups.Create":                                     {2: ZscalerSetup{Name: "z1", BaseURL: "https://x"}},
-	"Decorators.Put":                                        {2: DecoratorPut{Type: DecoratorEntityDevice}},
-	"Decorators.Decorate":                                   {3: DecoratorEntityDevice, 4: DecorateRequest{EntityIDs: []string{"r1"}, DecoratorNames: []string{"d"}}},
-	"Integrations.AddCheckIncident":                         {3: ServiceNowIncidentInput{Summary: "s", Impact: ServiceNowIncidentLevelHigh, Urgency: ServiceNowIncidentLevelLow}},
-	"Integrations.AddCheckIncidents":                        {2: map[string]ServiceNowIncidentInput{"c1": {Summary: "s", Impact: ServiceNowIncidentLevelHigh, Urgency: ServiceNowIncidentLevelLow}}},
-	"Integrations.UpdateServiceNow":                         {1: ServiceNowSettingsUpdate{Enabled: new(bool)}},
+	"CloudManagedSetups.CreateMeraki":                       {2: domain.NewMerakiSetup{Name: "m1", APIKeyID: "k1", CredentialID: "c1", TestResult: &domain.MerakiTestResult{SavedAt: "2026-01-01T00:00:00Z"}}},
+	"CloudManagedSetups.PatchMeraki":                        {3: domain.MerakiSetupPatch{Collect: domain.Ptr(false)}},
+	"Performance.PatchSettings":                             {2: domain.PerformanceSettingsPatch{Enabled: domain.Ptr(true)}},
+	"Performance.RawSNMPData":                               {2: domain.RawSNMPRequest{Device: "d1", CredentialID: "c1", IncludeDevicePerfData: true}},
+	"Credentials.UpdateSNMPCredential":                      {3: domain.SNMPCredentialPatch{Port: domain.Ptr(161)}},
+	"Diffs.Count":                                           {3: domain.DiffDevices},
+	"Properties.ClearOrganization":                          {2: domain.OrgProperty("software_central")},
+	"SaseSetups.Create":                                     {2: domain.ZscalerSetup{Name: "z1", BaseURL: "https://x"}},
+	"Decorators.Put":                                        {2: domain.DecoratorPut{Type: domain.DecoratorEntityDevice}},
+	"Decorators.Decorate":                                   {3: domain.DecoratorEntityDevice, 4: domain.DecorateRequest{EntityIDs: []string{"r1"}, DecoratorNames: []string{"d"}}},
+	"Integrations.AddCheckIncident":                         {3: domain.ServiceNowIncidentInput{Summary: "s", Impact: domain.ServiceNowIncidentLevelHigh, Urgency: domain.ServiceNowIncidentLevelLow}},
+	"Integrations.AddCheckIncidents":                        {2: map[string]domain.ServiceNowIncidentInput{"c1": {Summary: "s", Impact: domain.ServiceNowIncidentLevelHigh, Urgency: domain.ServiceNowIncidentLevelLow}}},
+	"Integrations.UpdateServiceNow":                         {1: domain.ServiceNowSettingsUpdate{Enabled: new(bool)}},
 	"NQERepository.ExportOrgSources":                        {1: []string{"/"}},
 	"NQERepository.ExportForwardSources":                    {1: []string{"/"}},
-	"Trace.Facets":                                          {3: TraceQuery{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}},
-	"Trace.Trace":                                           {3: TraceQuery{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}, 4: TraceSelection{Path: []string{"r1"}, TraceType: "VALID"}},
-	"Trace.Explain":                                         {3: TraceQuery{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}},
+	"Trace.Facets":                                          {3: domain.TraceQuery{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}},
+	"Trace.Trace":                                           {3: domain.TraceQuery{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}, 4: domain.TraceSelection{Path: []string{"r1"}, TraceType: "VALID"}},
+	"Trace.Explain":                                         {3: domain.TraceQuery{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}},
 	"Properties.PatchNetworkOverrides":                      {2: map[string]any{"n1": true}},
-	"Users.SetNetworkRole":                                  {3: NetworkRoleAdmin},
-	"Users.AddNetworkRole":                                  {3: NetworkRoleAdmin},
-	"Users.RemoveNetworkRole":                               {3: NetworkRoleAdmin},
-	"AccessControl.SetGroupNetworkRole":                     {3: NetworkRoleAdmin},
-	"Vulnerabilities.ListDevices":                           {2: DeviceVulnerabilityListOptions{Severity: VulnerabilitySeverityHigh, Age: CVEAgeYear}},
-	"Networks.SetSnapshotRetentionPolicy":                   {2: SnapshotRetentionPolicy{Enabled: true, LastWeek: SnapshotRetainAll, LastMonth: SnapshotRetainPerDay, LastQuarter: SnapshotRetainPerWeek, LastYear: SnapshotRetainPerMonth, Older: SnapshotRetainPerQuarter}},
-	"Endpoints.UpdateProfile":                               {1: "CLI-1", 2: EndpointProfilePatch{Prompt: Ptr("#")}},
-	"DeviceTags.UpdateTag":                                  {3: DeviceTagPatch{Color: Ptr("#00ff00")}},
-	"CollectionSchedules.Create":                            {2: CollectionScheduleDefinition{Enabled: true, DaysOfTheWeek: []int{1}, Times: []string{"02:00"}}},
-	"CollectionSchedules.Replace":                           {3: CollectionScheduleDefinition{Enabled: true, DaysOfTheWeek: []int{1}, Times: []string{"02:00"}}},
-	"Snapshots.Export":                                      {2: SnapshotExportOptions{IncludeDevices: []string{"d1"}}, 3: io.Discard},
+	"Users.SetNetworkRole":                                  {3: domain.NetworkRoleAdmin},
+	"Users.AddNetworkRole":                                  {3: domain.NetworkRoleAdmin},
+	"Users.RemoveNetworkRole":                               {3: domain.NetworkRoleAdmin},
+	"AccessControl.SetGroupNetworkRole":                     {3: domain.NetworkRoleAdmin},
+	"Vulnerabilities.ListDevices":                           {2: domain.DeviceVulnerabilityListOptions{Severity: domain.VulnerabilitySeverityHigh, Age: domain.CVEAgeYear}},
+	"Networks.SetSnapshotRetentionPolicy":                   {2: domain.SnapshotRetentionPolicy{Enabled: true, LastWeek: domain.SnapshotRetainAll, LastMonth: domain.SnapshotRetainPerDay, LastQuarter: domain.SnapshotRetainPerWeek, LastYear: domain.SnapshotRetainPerMonth, Older: domain.SnapshotRetainPerQuarter}},
+	"Endpoints.UpdateProfile":                               {1: "CLI-1", 2: domain.EndpointProfilePatch{Prompt: domain.Ptr("#")}},
+	"DeviceTags.UpdateTag":                                  {3: domain.DeviceTagPatch{Color: domain.Ptr("#00ff00")}},
+	"CollectionSchedules.Create":                            {2: domain.CollectionScheduleDefinition{Enabled: true, DaysOfTheWeek: []int{1}, Times: []string{"02:00"}}},
+	"CollectionSchedules.Replace":                           {3: domain.CollectionScheduleDefinition{Enabled: true, DaysOfTheWeek: []int{1}, Times: []string{"02:00"}}},
+	"Snapshots.Export":                                      {2: domain.SnapshotExportOptions{IncludeDevices: []string{"d1"}}, 3: io.Discard},
 	"Integrations.UpdateInfoblox":                           {1: "7"},
 	"Integrations.DeleteInfoblox":                           {1: "7"},
-	"Webhooks.Update":                                       {2: WebhookPatch{Enabled: Ptr(true)}},
-	"CloudAccounts.Patch":                                   {3: CloudAccountPatch{Type: "AWS"}},
+	"Webhooks.Update":                                       {2: domain.WebhookPatch{Enabled: domain.Ptr(true)}},
+	"CloudAccounts.Patch":                                   {3: domain.CloudAccountPatch{Type: "AWS"}},
 	"Collectors.Metrics":                                    {2: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), 3: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC), 4: 0},
-	"Collectors.PatchOrganizationSettings":                  {1: OrgCollectionSettingsPatch{CommandDelayMS: Ptr(1)}},
-	"ClassicDevices.PatchMany":                              {2: []string{"sw1"}, 3: ClassicDevicePatch{Note: Ptr("v1")}},
+	"Collectors.PatchOrganizationSettings":                  {1: domain.OrgCollectionSettingsPatch{CommandDelayMS: domain.Ptr(1)}},
+	"ClassicDevices.PatchMany":                              {2: []string{"sw1"}, 3: domain.ClassicDevicePatch{Note: domain.Ptr("v1")}},
 	"ClassicDevices.GetMany":                                {2: []string{"sw1"}},
 	"ConnectivityTests.BulkStart":                           {2: []string{"sw1"}},
 	"Performance.UploadPayload":                             {4: perfpayload.Payload{Time: time.Unix(1, 0)}},
 	"Performance.UploadPayloadWithIdentity":                 {3: perfpayload.Payload{Time: time.Unix(1, 0)}},
-	"Integrations.CreateTenableSC":                          {2: TenableSourceRequest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5"}},
-	"Integrations.TestTenableSC":                            {2: TenableSourceTest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5"}},
-	"Predict.CommitWithOptions":                             {3: CommitOptions{Note: "n", AnalysisMode: AnalysisModeConfigOnly}},
-	"Integrations.CreateChangeSetChangeRequest":             {3: ServiceNowChangeRequestInput{Summary: "s", Impact: ServiceNowImpactHigh}},
+	"Integrations.CreateTenableSC":                          {2: domain.TenableSourceRequest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5"}},
+	"Integrations.TestTenableSC":                            {2: domain.TenableSourceTest{Name: "sc", BaseURL: "https://sc.example", CredentialID: "H-5"}},
+	"Predict.CommitWithOptions":                             {3: domain.CommitOptions{Note: "n", AnalysisMode: domain.AnalysisModeConfigOnly}},
+	"Integrations.CreateChangeSetChangeRequest":             {3: domain.ServiceNowChangeRequestInput{Summary: "s", Impact: domain.ServiceNowImpactHigh}},
 	"Integrations.DownloadChangeSetChangeRequestAttachment": {5: io.Discard},
-	"Predict.RunIEntryChecks":                               {2: []IEntryCheck{{Name: "c", DeviceName: "r1", Entry: json.RawMessage(`{}`), EntryType: IEntryTypeIPv4, CheckType: IEntryCheckExists}}},
+	"Predict.RunIEntryChecks":                               {2: []domain.IEntryCheck{{Name: "c", DeviceName: "r1", Entry: json.RawMessage(`{}`), EntryType: domain.IEntryTypeIPv4, CheckType: domain.IEntryCheckExists}}},
 	"Licensing.CCHUsedSince":                                {1: 7},
 	"Licensing.CCHHistory":                                  {1: time.Unix(1, 0), 2: time.Unix(100, 0)},
 	"Licensing.UsageHistory":                                {1: time.Unix(1, 0), 2: time.Unix(100, 0)},
-	"Predict.CreateChangeSet":                               {2: ChangeSetCreateRequest{Name: "n", SnapshotID: "s", Directory: "/a"}},
+	"Predict.CreateChangeSet":                               {2: domain.ChangeSetCreateRequest{Name: "n", SnapshotID: "s", Directory: "/a"}},
 	"Predict.AddChangeSetDirectory":                         {2: "/", 3: "d"},
 	"Predict.RenameChangeSetDirectory":                      {2: "/a", 3: "b"},
 	"Predict.MoveChangeSetDirectory":                        {2: "/a", 3: "/"},
@@ -136,83 +142,94 @@ var wireArgOverrides = map[string]map[int]any{
 	"Predict.MoveChangeSetsToDirectory":                     {2: "/a", 3: []string{"1"}},
 	"Predict.DeleteChangeSetDirectory":                      {2: "/a"},
 	"Predict.DeleteChangeSets":                              {2: []string{"1"}},
-	"Predict.PatchChangeSetsTags":                           {2: []string{"1"}, 3: ChangeSetTagsAdd, 4: []string{"t"}},
-	"Predict.AllowedCommands":                               {2: PredictProtocolBGP},
-	"Predict.FirewallObjects":                               {4: FirewallZones},
+	"Predict.PatchChangeSetsTags":                           {2: []string{"1"}, 3: domain.ChangeSetTagsAdd, 4: []string{"t"}},
+	"Predict.AllowedCommands":                               {2: domain.PredictProtocolBGP},
+	"Predict.FirewallObjects":                               {4: domain.FirewallZones},
 	"Predict.ExportChangeSetZip":                            {3: io.Discard},
 	"Predict.BGPRules":                                      {4: "10.0.0.2"},
 	"Integrations.ListNetworkVulnerabilityScanners":         {1: "n1"},
 	"Integrations.SetNetworkVulnerabilityScannerInclude":    {1: "n1", 2: "tvm", 3: true},
-	"Integrations.CreateVulnerabilityScanner":               {1: NewVulnerabilityScanner{Name: "tvm", CredentialID: "h1", CollectorID: "c1", Schedule: IntervalSchedule{IntervalDays: 1}, AllowedForAllNetworks: true}},
-	"Integrations.UpdateVulnerabilityScanner":               {1: "tvm", 2: VulnerabilityScannerPatch{CollectionEnabled: new(bool)}},
+	"Integrations.CreateVulnerabilityScanner":               {1: domain.NewVulnerabilityScanner{Name: "tvm", CredentialID: "h1", CollectorID: "c1", Schedule: domain.IntervalSchedule{IntervalDays: 1}, AllowedForAllNetworks: true}},
+	"Integrations.UpdateVulnerabilityScanner":               {1: "tvm", 2: domain.VulnerabilityScannerPatch{CollectionEnabled: new(bool)}},
 	"Integrations.DeleteVulnerabilityScanner":               {1: "tvm"},
 	"Integrations.CollectVulnerabilityScanner":              {1: "tvm"},
-	"Integrations.TestVulnerabilityScanner":                 {1: VulnerabilityScannerTest{Name: "tvm", CredentialID: "h1", CollectorID: "c1"}},
-	"Credentials.CreateOrgHTTP":                             {1: HTTPCredentialRequest{Name: "tvm", Username: "AK", Password: "SK"}},
+	"Integrations.TestVulnerabilityScanner":                 {1: domain.VulnerabilityScannerTest{Name: "tvm", CredentialID: "h1", CollectorID: "c1"}},
+	"Credentials.CreateOrgHTTP":                             {1: domain.HTTPCredentialRequest{Name: "tvm", Username: "AK", Password: "SK"}},
 	"Credentials.GetOrgHTTP":                                {1: "H-0"},
 	"Credentials.UpdateOrgHTTP":                             {1: "H-0"},
 	"Credentials.DeleteOrgHTTP":                             {1: "H-0"},
-	"Trace.FacetsQuery":                                     {3: TracePathQuery{From: &TraceEndpoint{Location: TraceDevice("d1")}}},
-	"Routing.PrefixSearch":                                  {3: RoutingPrefixSearch{Prefix: "10.0.0.0/8"}},
-	"Routing.PrefixTrace":                                   {3: RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: DeviceVRF{Device: "r1"}, OriginatedFrom: DeviceVRF{Device: "r2"}, Outcome: RouteOutcomeInstalled}},
-	"Routing.PrefixDetails":                                 {3: RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RoutingNode{Device: "r1"}}},
-	"Routing.RPPrefixSearch":                                {3: RPPrefixSearch{Prefix: "10.0.0.0/8"}},
-	"Routing.RPPrefixTrace":                                 {3: RPPrefixTrace{Prefix: "10.0.0.0/8", Router: DeviceVRFProtocol{Device: "r1", Protocol: "BGP"}, OriginatedFrom: DeviceVRFProtocol{Device: "r2", Protocol: "BGP"}, Outcome: RouteOutcomeInstalled}},
-	"Routing.RPPrefixDetails":                               {3: RPPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RPNodeRef{NodeKey: json.RawMessage(`{"protocol":"BGP","device":"r1"}`)}}},
-	"Routing.InstalledPrefixes":                             {3: RoutingInstalledOptions{Device: "r1"}},
-	"ThreatExposure.CreateDefinition":                       {2: NewThreatExposureDefinition{Name: "d", ExposurePoints: []ExposurePointAndLevel{{ExposurePoint: "edge", Level: ExposureHigh}}, MaxDurationSeconds: 60}},
-	"ThreatExposure.ResolveDefinition":                      {3: NewThreatExposureDefinition{Name: "d", ExposurePoints: []ExposurePointAndLevel{{ExposurePoint: "edge", Level: ExposureHigh}}, MaxDurationSeconds: 60}},
-	"ThreatExposure.UpdateDefinition":                       {3: ThreatExposureDefinitionPatch{Name: Ptr("d")}},
-	"EdgeAssets.SetCriticality":                             {3: CriticalityCrownJewel},
-	"Networks.PathsBulk":                                    {2: []PathQuery{{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}}, 3: PathBulkOptions{}},
-	"Predict.AddChangeSetCheck":                             {3: NewChangeSetCheck{Definition: ChangeSetCheckDefinition{CheckType: ChangeSetCheckNQE, QueryID: "Q_1"}}},
-	"Predict.UpdateChangeSetCheck":                          {4: ChangeSetCheckPatch{ClearName: true}},
-	"Networks.InterestingPaths":                             {3: InterestingPathsFirewall},
-	"Predict.WithdrawBGPAdvertisement":                      {4: BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}},
-	"Predict.WithdrawBGPAdvertisements":                     {4: []BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}}},
-	"Predict.RestoreBGPAdvertisement":                       {4: BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}},
-	"Predict.RestoreBGPAdvertisements":                      {4: []BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}}},
-	"Predict.EditSecurityRule":                              {7: SecurityRuleDefinition{Name: "r"}},
-	"ControllerManagedSetups.Patch":                         {3: ControllerManagedSetupPatch{CollectorID: "C4"}},
-	"CustomCommandGroups.Create":                            {2: NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"cisco_ios_xe_ssh"}, Commands: []string{"show version"}}},
+	"Trace.FacetsQuery":                                     {3: domain.TracePathQuery{From: &domain.TraceEndpoint{Location: domain.TraceDevice("d1")}}},
+	"Routing.PrefixSearch":                                  {3: domain.RoutingPrefixSearch{Prefix: "10.0.0.0/8"}},
+	"Routing.PrefixTrace":                                   {3: domain.RoutingTraceRequest{Prefix: "10.0.0.0/8", Router: domain.DeviceVRF{Device: "r1"}, OriginatedFrom: domain.DeviceVRF{Device: "r2"}, Outcome: domain.RouteOutcomeInstalled}},
+	"Routing.PrefixDetails":                                 {3: domain.RoutingPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: domain.RoutingNode{Device: "r1"}}},
+	"Routing.RPPrefixSearch":                                {3: domain.RPPrefixSearch{Prefix: "10.0.0.0/8"}},
+	"Routing.RPPrefixTrace":                                 {3: domain.RPPrefixTrace{Prefix: "10.0.0.0/8", Router: domain.DeviceVRFProtocol{Device: "r1", Protocol: "BGP"}, OriginatedFrom: domain.DeviceVRFProtocol{Device: "r2", Protocol: "BGP"}, Outcome: domain.RouteOutcomeInstalled}},
+	"Routing.RPPrefixDetails":                               {3: domain.RPPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: domain.RPNodeRef{NodeKey: json.RawMessage(`{"protocol":"BGP","device":"r1"}`)}}},
+	"Routing.InstalledPrefixes":                             {3: domain.RoutingInstalledOptions{Device: "r1"}},
+	"ThreatExposure.CreateDefinition":                       {2: domain.NewThreatExposureDefinition{Name: "d", ExposurePoints: []domain.ExposurePointAndLevel{{ExposurePoint: "edge", Level: domain.ExposureHigh}}, MaxDurationSeconds: 60}},
+	"ThreatExposure.ResolveDefinition":                      {3: domain.NewThreatExposureDefinition{Name: "d", ExposurePoints: []domain.ExposurePointAndLevel{{ExposurePoint: "edge", Level: domain.ExposureHigh}}, MaxDurationSeconds: 60}},
+	"ThreatExposure.UpdateDefinition":                       {3: domain.ThreatExposureDefinitionPatch{Name: domain.Ptr("d")}},
+	"EdgeAssets.SetCriticality":                             {3: domain.CriticalityCrownJewel},
+	"Networks.PathsBulk":                                    {2: []domain.PathQuery{{SrcIP: "10.0.0.1", DstIP: "10.0.0.2"}}, 3: domain.PathBulkOptions{}},
+	"Predict.AddChangeSetCheck":                             {3: domain.NewChangeSetCheck{Definition: domain.ChangeSetCheckDefinition{CheckType: domain.ChangeSetCheckNQE, QueryID: "Q_1"}}},
+	"Predict.UpdateChangeSetCheck":                          {4: domain.ChangeSetCheckPatch{ClearName: true}},
+	"Networks.InterestingPaths":                             {3: domain.InterestingPathsFirewall},
+	"Predict.WithdrawBGPAdvertisement":                      {4: domain.BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}},
+	"Predict.WithdrawBGPAdvertisements":                     {4: []domain.BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}}},
+	"Predict.RestoreBGPAdvertisement":                       {4: domain.BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}},
+	"Predict.RestoreBGPAdvertisements":                      {4: []domain.BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "10.0.0.0/8"}}},
+	"Predict.EditSecurityRule":                              {7: domain.SecurityRuleDefinition{Name: "r"}},
+	"ControllerManagedSetups.Patch":                         {3: domain.ControllerManagedSetupPatch{CollectorID: "C4"}},
+	"CustomCommandGroups.Create":                            {2: domain.NewCustomCommandGroup{Name: "g", DeviceConnTypes: []string{"cisco_ios_xe_ssh"}, Commands: []string{"show version"}}},
 	"CustomCommandGroups.Validate":                          {2: []string{"cisco_ios_xe_ssh"}, 3: []string{"show version"}},
 	"ClassicDevices.ResolveGlobs":                           {2: []string{"edge*"}, 3: []string{"cisco_ios_xe_ssh"}},
 	"ConnectivityTests.BulkStop":                            {2: []string{"sw1"}},
-	"DeviceDiscovery.Start":                                 {3: SubnetScanParams{Subnets: []string{"10.0.0.0/24"}}},
-	"DeviceDiscovery.CreateScheduled":                       {2: ScheduledDiscoveryDefinition{Name: "d", Params: SeededDiscoveryParams{SeedDevices: []string{"10.0.0.1"}}}},
-	"ControllerManagedSetups.Test":                          {3: ControllerAndManagedDeviceSelection{SetupNames: []string{"sdwan"}}},
-	"NQE.RunAll":                                            {3: NQEQueryRequest{Query: "v1"}, 4: NQEPagedOptions{KeyColumn: "name"}},
-	"ClassicDevices.Patch":                                  {3: ClassicDevicePatch{Note: Ptr("v1")}},
-	"ClassicDevices.CreateWithAPIKey":                       {2: HTTPCredentialRequest{Name: "k", Password: "t"}, 3: ClassicDeviceRequest{Name: "k8s1", Host: "h"}},
-	"Snapshots.MergeIntoLatest":                             {2: SnapshotUploadFile{Name: "s.zip", Reader: strings.NewReader("PK")}, 3: SnapshotMergeOptions{}},
-	"ControllerManagedSetups.PatchController":               {4: ClassicDevicePatch{Note: Ptr("v1")}},
-	"ControllerManagedSetups.PatchManagedDevice":            {4: ClassicDevicePatch{Note: Ptr("v1")}},
-	"Backups.DeleteBackup":                                  {1: int64(7), 2: StorageTypeAll},
+	"DeviceDiscovery.Start":                                 {3: domain.SubnetScanParams{Subnets: []string{"10.0.0.0/24"}}},
+	"DeviceDiscovery.CreateScheduled":                       {2: domain.ScheduledDiscoveryDefinition{Name: "d", Params: domain.SeededDiscoveryParams{SeedDevices: []string{"10.0.0.1"}}}},
+	"ControllerManagedSetups.Test":                          {3: domain.ControllerAndManagedDeviceSelection{SetupNames: []string{"sdwan"}}},
+	"NQE.RunAll":                                            {3: domain.NQEQueryRequest{Query: "v1"}, 4: domain.NQEPagedOptions{KeyColumn: "name"}},
+	"ClassicDevices.Patch":                                  {3: domain.ClassicDevicePatch{Note: domain.Ptr("v1")}},
+	"ClassicDevices.CreateWithAPIKey":                       {2: domain.HTTPCredentialRequest{Name: "k", Password: "t"}, 3: domain.ClassicDeviceRequest{Name: "k8s1", Host: "h"}},
+	"Snapshots.MergeIntoLatest":                             {2: wireArgFresh(func() any { return domain.SnapshotUploadFile{Name: "s.zip", Reader: strings.NewReader("PK")} }), 3: domain.SnapshotMergeOptions{}},
+	"ControllerManagedSetups.PatchController":               {4: domain.ClassicDevicePatch{Note: domain.Ptr("v1")}},
+	"ControllerManagedSetups.PatchManagedDevice":            {4: domain.ClassicDevicePatch{Note: domain.Ptr("v1")}},
+	"Backups.DeleteBackup":                                  {1: int64(7), 2: domain.StorageTypeAll},
 	"Scorecards.Trends":                                     {2: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), 3: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), 4: 30},
-	"Checks.ChecksReport":                                   {2: ChecksReportOptions{}, 3: io.Discard},
-	"Checks.CheckCategoryReport":                            {2: "NQE", 3: "", 4: ChecksReportOptions{}, 5: io.Discard},
-	"Aliases.Put":                                           {2: AliasBuilder{Name: "v1", Type: AliasTypeDevices, Values: []string{"d1"}}},
-	"AuditLogs.List":                                        {1: AuditLogListOptions{HTTPMethod: "POST"}},
-	"DataConnectors.Add":                                    {2: NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},
-	"DataConnectors.Update":                                 {3: DataConnectorPatch{Collect: Ptr(true)}},
-	"DataFiles.InferSchema":                                 {3: DataFileCSV},
-	"DataFiles.Add":                                         {1: DataFileCreateRequest{Name: "v1", FileType: DataFileCSV}},
+	"Checks.ChecksReport":                                   {2: domain.ChecksReportOptions{}, 3: io.Discard},
+	"Checks.CheckCategoryReport":                            {2: "NQE", 3: "", 4: domain.ChecksReportOptions{}, 5: io.Discard},
+	"Aliases.Put":                                           {2: domain.AliasBuilder{Name: "v1", Type: domain.AliasTypeDevices, Values: []string{"d1"}}},
+	"AuditLogs.List":                                        {1: domain.AuditLogListOptions{HTTPMethod: "POST"}},
+	"DataConnectors.Add":                                    {2: domain.NewDataConnector{Name: "v1", BaseURL: "https://v1", Endpoints: []domain.HTTPEndpoint{{Name: "v1", Path: "/v1"}}}},
+	"DataConnectors.Update":                                 {3: domain.DataConnectorPatch{Collect: domain.Ptr(true)}},
+	"DataFiles.InferSchema":                                 {3: domain.DataFileCSV},
+	"DataFiles.Add":                                         {1: domain.DataFileCreateRequest{Name: "v1", FileType: domain.DataFileCSV}},
 	// The kind-based synthetic node calls address a different route per
 	// kind; L3 VPN reaches every one of them.
-	"SyntheticNodes.Get":                {2: SyntheticL3VPN},
-	"SyntheticNodes.Put":                {2: SyntheticL3VPN},
-	"SyntheticNodes.Delete":             {2: SyntheticL3VPN},
-	"SyntheticNodes.List":               {2: SyntheticL3VPN},
-	"SyntheticNodes.SetQuery":           {2: SyntheticL3VPN},
-	"SyntheticNodes.ComputeQuery":       {2: SyntheticL3VPN},
-	"SyntheticNodes.CompatibleQueries":  {2: SyntheticL3VPN},
-	"SyntheticNodes.Backdate":           {2: SyntheticL3VPN},
-	"Endpoints.CreateProfileDefinition": {1: EndpointProfile{Name: "v1", Type: "SNMP"}},
+	"SyntheticNodes.Get":                {2: domain.SyntheticL3VPN},
+	"SyntheticNodes.Put":                {2: domain.SyntheticL3VPN},
+	"SyntheticNodes.Delete":             {2: domain.SyntheticL3VPN},
+	"SyntheticNodes.List":               {2: domain.SyntheticL3VPN},
+	"SyntheticNodes.SetQuery":           {2: domain.SyntheticL3VPN},
+	"SyntheticNodes.ComputeQuery":       {2: domain.SyntheticL3VPN},
+	"SyntheticNodes.CompatibleQueries":  {2: domain.SyntheticL3VPN},
+	"SyntheticNodes.Backdate":           {2: domain.SyntheticL3VPN},
+	"Endpoints.CreateProfileDefinition": {1: domain.EndpointProfile{Name: "v1", Type: "SNMP"}},
 	// AddBatch and Patch refuse a field the endpoint type does not have, and
 	// the synthesiser fills every field, so they get a valid type and a
 	// minimal endpoint.
-	"Endpoints.AddBatch": {2: "CLI", 3: []Endpoint{{Name: "v1", Host: "v1"}}},
+	"Endpoints.AddBatch": {2: "CLI", 3: []domain.Endpoint{{Name: "v1", Host: "v1"}}},
 	"Endpoints.Patch":    {3: "CLI"},
+}
+
+// wireArgFresh wraps an override that must be built anew for every call, such as one holding a reader: a shared reader is read
+// once, so every later call (another auth mode, another test) would send an empty body and the result would depend on test order.
+type wireArgFresh func() any
+
+func wireArgValue(override any) any {
+	if fresh, ok := override.(wireArgFresh); ok {
+		return fresh()
+	}
+	return override
 }
 
 // recordRequests invokes symbol and returns every request it sent. Each
@@ -220,7 +237,7 @@ var wireArgOverrides = map[string]map[int]any{
 // method refuses a user client before it reaches the wire.
 func recordRequests(t *testing.T, symbol string) []wireRequest {
 	t.Helper()
-	for _, mode := range []AuthMode{"", AuthModeService, AuthModeBrowser, AuthModeNone} {
+	for _, mode := range []domain.AuthMode{"", domain.AuthModeService, domain.AuthModeBrowser, domain.AuthModeNone} {
 		if sent := recordRequestsAs(t, symbol, mode); len(sent) != 0 {
 			return sent
 		}
@@ -228,7 +245,7 @@ func recordRequests(t *testing.T, symbol string) []wireRequest {
 	return nil
 }
 
-func recordRequestsAs(t *testing.T, symbol string, mode AuthMode) []wireRequest {
+func recordRequestsAs(t *testing.T, symbol string, mode domain.AuthMode) []wireRequest {
 	t.Helper()
 	var mu sync.Mutex
 	var sent []wireRequest
@@ -246,10 +263,10 @@ func recordRequestsAs(t *testing.T, symbol string, mode AuthMode) []wireRequest 
 	// http.DefaultTransport and fail the other parallel subtests' in-flight requests.
 	cfg := Config{BaseURL: server.URL, Username: "user", Password: "pass", NetworkID: "net1", AuthMode: mode, HTTPClient: privateHTTPClient()}
 	switch mode {
-	case AuthModeBrowser:
+	case domain.AuthModeBrowser:
 		cfg.Username, cfg.Password = "", ""
 		cfg.Cookies = []*http.Cookie{{Name: "SESSION", Value: "v1"}, {Name: "XSRF-TOKEN", Value: "v1"}}
-	case AuthModeNone:
+	case domain.AuthModeNone:
 		cfg.Username, cfg.Password = "", ""
 	}
 	client, err := NewClient(cfg)
@@ -274,7 +291,7 @@ func recordRequestsAs(t *testing.T, symbol string, mode AuthMode) []wireRequest 
 		in := method.Type().In(i)
 		switch override, ok := wireArgOverrides[symbol][i]; {
 		case ok:
-			args[i] = reflect.ValueOf(override).Convert(in)
+			args[i] = reflect.ValueOf(wireArgValue(override)).Convert(in)
 		case in == reflect.TypeOf((*context.Context)(nil)).Elem():
 			args[i] = reflect.ValueOf(ctx)
 		default:
@@ -283,7 +300,11 @@ func recordRequestsAs(t *testing.T, symbol string, mode AuthMode) []wireRequest 
 	}
 	func() {
 		defer func() { _ = recover() }() // a synthesised argument may trip a nil path; what was sent still counts
-		method.Call(args)
+		if method.Type().IsVariadic() {
+			method.CallSlice(args) // the synthesiser built the variadic argument as a slice
+		} else {
+			method.Call(args)
+		}
 	}()
 
 	mu.Lock()

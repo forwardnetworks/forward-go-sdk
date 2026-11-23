@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -32,7 +36,7 @@ func TestNetworksCloudObjects(t *testing.T) {
 	networks := newTestClient(t, server.URL).Networks
 	ctx := context.Background()
 
-	page, _, err := networks.CloudObjects(ctx, "N1", CloudObjectListOptions{SnapshotID: "13961", Offset: 20, Limit: 10})
+	page, _, err := networks.CloudObjects(ctx, "N1", domain.CloudObjectListOptions{SnapshotID: "13961", Offset: 20, Limit: 10})
 	if err != nil || uris[0] != "/api/networks/N1/cloud-objects?limit=10&offset=20&snapshotId=13961" {
 		t.Fatalf("CloudObjects: %v %s", err, uris[0])
 	}
@@ -42,25 +46,25 @@ func TestNetworksCloudObjects(t *testing.T) {
 	if string(page.CloudObjects[0].Raw) == "" || !strings.Contains(string(page.CloudObjects[0].Raw), "ipv4Blocks") || !strings.Contains(string(page.CloudObjects[0].Raw), "aws:us-east-1") {
 		t.Fatalf("provider fields and location ids must stay reachable in Raw: %s", page.CloudObjects[0].Raw)
 	}
-	if _, _, err := networks.CloudObjects(ctx, "N1", CloudObjectListOptions{}); err != nil || uris[1] != "/api/networks/N1/cloud-objects" {
+	if _, _, err := networks.CloudObjects(ctx, "N1", domain.CloudObjectListOptions{}); err != nil || uris[1] != "/api/networks/N1/cloud-objects" {
 		t.Fatalf("no options must send no parameter: %v %s", err, uris[1])
 	}
 	info, _, err := networks.CloudObject(ctx, "N1", "rtb-1", "")
 	if err != nil || info.CloudType != "AWS" || string(info.CoveredTopology) != `{"devices":["r1"]}` || info.DeviceInfo == nil {
 		t.Fatalf("CloudObject() = %+v, %v", info, err)
 	}
-	files, _, err := networks.CloudObjectFiles(ctx, "N1", "rtb-1", CloudObjectFilesOptions{AllFiles: true})
+	files, _, err := networks.CloudObjectFiles(ctx, "N1", "rtb-1", domain.CloudObjectFilesOptions{AllFiles: true})
 	if err != nil || len(files) != 1 || files[0].ID != "77" || files[0].FileName != "rtb-1.json" || uris[len(uris)-1] != "/api/networks/N1/cloud-objects/rtb-1/files?generatedOnly=false" {
 		t.Fatalf("CloudObjectFiles() = %+v, %v; %s", files, err, uris[len(uris)-1])
 	}
 	for name, f := range map[string]func() error{
 		"negative offset": func() error {
-			_, _, err := networks.CloudObjects(ctx, "N1", CloudObjectListOptions{Offset: -1})
+			_, _, err := networks.CloudObjects(ctx, "N1", domain.CloudObjectListOptions{Offset: -1})
 			return err
 		},
 		"blank object": func() error { _, _, err := networks.CloudObject(ctx, "N1", " ", ""); return err },
 		"blank files id": func() error {
-			_, _, err := networks.CloudObjectFiles(ctx, "N1", "", CloudObjectFilesOptions{})
+			_, _, err := networks.CloudObjectFiles(ctx, "N1", "", domain.CloudObjectFilesOptions{})
 			return err
 		},
 	} {

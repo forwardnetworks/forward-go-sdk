@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"bytes"
 	"context"
 	"encoding/json"
@@ -47,15 +52,15 @@ func TestServiceNowCheckIncidents(t *testing.T) {
 	}).Integrations
 	ctx := context.Background()
 
-	links, _, err := in.ListCheckIncidents(ctx, "99", []string{CheckTypeNetworkQuery, CheckTypePredefined})
+	links, _, err := in.ListCheckIncidents(ctx, "99", []string{domain.CheckTypeNetworkQuery, domain.CheckTypePredefined})
 	if err != nil || len(links) != 1 || links[0].Number != "INC1" || links[0].StateLastUpdated != 1700000000000 || links[0].State != "New" {
 		t.Fatalf("links = %+v, %v", links, err)
 	}
-	input := ServiceNowIncidentInput{Summary: "down", Details: "d", Impact: ServiceNowIncidentLevelHigh, Urgency: ServiceNowIncidentLevelLow}
+	input := domain.ServiceNowIncidentInput{Summary: "down", Details: "d", Impact: domain.ServiceNowIncidentLevelHigh, Urgency: domain.ServiceNowIncidentLevelLow}
 	if _, _, err := in.AddCheckIncident(ctx, "99", "12", input); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := in.AddCheckIncidents(ctx, "99", map[string]ServiceNowIncidentInput{"12": input}); err != nil {
+	if _, _, err := in.AddCheckIncidents(ctx, "99", map[string]domain.ServiceNowIncidentInput{"12": input}); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := in.LinkCheckIncident(ctx, "99", "12", "INC 1"); err != nil {
@@ -92,8 +97,8 @@ func TestServiceNowCheckIncidents(t *testing.T) {
 	before := len(seen)
 	bad := []error{}
 	_, _, e1 := in.ListCheckIncidents(ctx, "99", nil)
-	_, _, e2 := in.AddCheckIncident(ctx, "99", "12", ServiceNowIncidentInput{Summary: "x", Impact: "HIGH", Urgency: "1"})
-	_, _, e3 := in.AddCheckIncident(ctx, "99", "12", ServiceNowIncidentInput{Impact: "1", Urgency: "1"})
+	_, _, e2 := in.AddCheckIncident(ctx, "99", "12", domain.ServiceNowIncidentInput{Summary: "x", Impact: "HIGH", Urgency: "1"})
+	_, _, e3 := in.AddCheckIncident(ctx, "99", "12", domain.ServiceNowIncidentInput{Impact: "1", Urgency: "1"})
 	_, _, e4 := in.AddCheckIncidents(ctx, "99", nil)
 	_, _, e5 := in.LinkCheckIncident(ctx, "99", "12", " ")
 	_, e6 := in.UnlinkCheckIncident(ctx, "", "12", "INC1")
@@ -121,7 +126,7 @@ func TestServiceNowIncidents(t *testing.T) {
 	ctx := context.Background()
 
 	got, _, err := in.GetServiceNowIncident(ctx, "INC1")
-	if err != nil || got.SysID != "s1" || got.State != "In Progress" || got.Urgency != ServiceNowIncidentLevelMedium {
+	if err != nil || got.SysID != "s1" || got.State != "In Progress" || got.Urgency != domain.ServiceNowIncidentLevelMedium {
 		t.Fatalf("incident = %+v, %v", got, err)
 	}
 	if _, err := in.CloseServiceNowIncident(ctx, "INC1"); err != nil {
@@ -163,7 +168,7 @@ func TestServiceNowSettingsUpdate(t *testing.T) {
 
 	autoCreate := true
 	token := "t0k"
-	got, _, err := in.UpdateServiceNow(ctx, ServiceNowSettingsUpdate{Token: &token, AutoCreate: &autoCreate})
+	got, _, err := in.UpdateServiceNow(ctx, domain.ServiceNowSettingsUpdate{Token: &token, AutoCreate: &autoCreate})
 	if err != nil || got.Token == nil || *got.Token != "" || got.Password != nil || !got.Enabled {
 		t.Fatalf("settings = %+v, %v", got, err)
 	}
@@ -171,11 +176,11 @@ func TestServiceNowSettingsUpdate(t *testing.T) {
 		t.Fatalf("request = %+v", seen)
 	}
 	user := "u"
-	if _, _, err := in.UpdateServiceNow(ctx, ServiceNowSettingsUpdate{Token: &token, Username: &user}); err == nil || len(seen) != 1 {
+	if _, _, err := in.UpdateServiceNow(ctx, domain.ServiceNowSettingsUpdate{Token: &token, Username: &user}); err == nil || len(seen) != 1 {
 		t.Fatalf("token with username reached the wire: err=%v seen=%d", err, len(seen))
 	}
 	// The full-state request leaves the unused credential out so token auth is possible at all.
-	raw, _ := json.Marshal(ServiceNowIntegrationRequest{InstanceURL: "https://i", Token: "t", Enabled: true})
+	raw, _ := json.Marshal(domain.ServiceNowIntegrationRequest{InstanceURL: "https://i", Token: "t", Enabled: true})
 	if body := string(raw); strings.Contains(body, "username") || strings.Contains(body, "password") {
 		t.Errorf("token request carries a username or password: %s", body)
 	}
@@ -210,9 +215,9 @@ func TestServiceNowCMDBRoutes(t *testing.T) {
 	}).Integrations
 	ctx := context.Background()
 
-	conn := ServiceNowConnectionDetails{
+	conn := domain.ServiceNowConnectionDetails{
 		InstanceURL: "https://i.service-now.com", Username: "u", Password: "",
-		ClientID: "cid", ClientSecret: "cs", ProxyConfig: &ServiceNowCMDBProxy{Host: "http://proxy", Port: 3128},
+		ClientID: "cid", ClientSecret: "cs", ProxyConfig: &domain.ServiceNowCMDBProxy{Host: "http://proxy", Port: 3128},
 	}
 	if got, _, err := in.ServiceNowCMDBDiscoverySources(ctx, conn); err != nil || len(got) != 2 {
 		t.Fatalf("sources = %v, %v", got, err)
@@ -232,7 +237,7 @@ func TestServiceNowCMDBRoutes(t *testing.T) {
 		t.Fatalf("history = %+v, %v", hist, err)
 	}
 	st, _, err := in.ServiceNowCMDBStatusReport(ctx)
-	if err != nil || st.Status != ServiceNowCMDBStatusIncorrectMappings || st.MissingClassNames[0] != "cmdb_ci_x" {
+	if err != nil || st.Status != domain.ServiceNowCMDBStatusIncorrectMappings || st.MissingClassNames[0] != "cmdb_ci_x" {
 		t.Fatalf("status = %+v, %v", st, err)
 	}
 	pay, _, err := in.ServiceNowCMDBPayload(ctx, "7")
@@ -246,10 +251,10 @@ func TestServiceNowCMDBRoutes(t *testing.T) {
 	if _, err := in.DownloadServiceNowCMDBSyncReport(ctx, &xlsx); err != nil || xlsx.String() != "PK-xlsx" {
 		t.Fatalf("xlsx = %q, %v", xlsx.String(), err)
 	}
-	for _, call := range []func() (*Response, error){
-		func() (*Response, error) { return in.DisableServiceNowCMDB(ctx) },
-		func() (*Response, error) { return in.PushServiceNowCMDB(ctx) },
-		func() (*Response, error) { return in.DeleteServiceNowCMDBConfiguration(ctx) },
+	for _, call := range []func() (*ports.Response, error){
+		func() (*ports.Response, error) { return in.DisableServiceNowCMDB(ctx) },
+		func() (*ports.Response, error) { return in.PushServiceNowCMDB(ctx) },
+		func() (*ports.Response, error) { return in.DeleteServiceNowCMDBConfiguration(ctx) },
 	} {
 		if _, err := call(); err != nil {
 			t.Fatal(err)

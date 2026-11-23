@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -14,7 +18,7 @@ import (
 // unselected Azure setup (empty subscriptionIds) reads as nil, which Forward
 // defines as "every discovered subscription".
 func TestCloudAccountCarriesSubscriptionAndProjectIDs(t *testing.T) {
-	var azure, gcp CloudAccount
+	var azure, gcp domain.CloudAccount
 	if err := json.Unmarshal([]byte(`{"type":"AZURE","name":"az","discoveredSubscriptionIds":["s1","s2"],"testResults":{"s1":{"testInstant":5}}}`), &azure); err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +45,7 @@ func TestNewlyDiscoveredReadsTheViewAndKeysBySetup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got["aws-gov"]) != 1 || got["aws-gov"][0] != (DiscoveredCloudAccount{ID: "111122223333", Name: "mission-a"}) || got["az"] == nil || len(got["az"]) != 0 {
+	if len(got["aws-gov"]) != 1 || got["aws-gov"][0] != (domain.DiscoveredCloudAccount{ID: "111122223333", Name: "mission-a"}) || got["az"] == nil || len(got["az"]) != 0 {
 		t.Fatalf("got = %+v", got)
 	}
 }

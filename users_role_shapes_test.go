@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -31,14 +35,14 @@ func TestRoleFieldsAcceptListStringAndNull(t *testing.T) {
 	}
 	for _, tc := range cases {
 		session := `{"user":{"username":"u"},"roles":{"org":` + tc.field + `,"system":` + tc.field + `,"network":{"7":"ADMIN"}}}`
-		var got UserSession
+		var got domain.UserSession
 		if err := json.Unmarshal([]byte(session), &got); err != nil {
 			t.Fatalf("%s: UserSession: %v", tc.name, err)
 		}
 		if !sameRoles(got.Roles.Org, tc.want) || !sameRoles(got.Roles.System, tc.want) || got.Roles.Network["7"] != "ADMIN" {
 			t.Errorf("%s: session roles %+v, want %v", tc.name, got.Roles, tc.want)
 		}
-		var roles UserRoles
+		var roles domain.UserRoles
 		if err := json.Unmarshal([]byte(`{"org":`+tc.field+`,"system":`+tc.field+`,"network":{}}`), &roles); err != nil {
 			t.Fatalf("%s: UserRoles: %v", tc.name, err)
 		}
@@ -55,7 +59,7 @@ func sameRoles(got, want []string) bool { return reflect.DeepEqual(got, want) }
 func TestSessionWithBareStringOrgRole(t *testing.T) {
 	t.Parallel()
 
-	var session UserSession
+	var session domain.UserSession
 	if err := json.Unmarshal([]byte(`{"roles":{"org":"ADMIN","network":{}}}`), &session); err != nil {
 		t.Fatal(err)
 	}
@@ -69,11 +73,11 @@ func TestSessionWithBareStringOrgRole(t *testing.T) {
 func TestSessionRolesEdges(t *testing.T) {
 	t.Parallel()
 
-	var empty UserSession
+	var empty domain.UserSession
 	if err := json.Unmarshal([]byte(`{"roles":{}}`), &empty); err != nil || empty.Roles.HasOrgAdmin() || len(empty.Roles.Org) != 0 || empty.Roles.Network != nil {
 		t.Fatalf("empty roles: %v %+v", err, empty.Roles)
 	}
-	var list UserSession
+	var list domain.UserSession
 	if err := json.Unmarshal([]byte(`{"roles":{"org":[],"network":{"7":["OPERATOR"],"8":null}}}`), &list); err != nil || list.Roles.Network["7"] != "OPERATOR" || list.Roles.Network["8"] != "" {
 		t.Fatalf("list-form network role: %v %+v", err, list.Roles)
 	}
@@ -82,7 +86,7 @@ func TestSessionRolesEdges(t *testing.T) {
 		"number org":        `{"roles":{"org":5}}`,
 		"object org":        `{"roles":{"org":{"a":1}}}`,
 	} {
-		var session UserSession
+		var session domain.UserSession
 		err := json.Unmarshal([]byte(body), &session)
 		if err == nil {
 			t.Errorf("%s must fail, got %+v", name, session.Roles)
@@ -96,7 +100,7 @@ func TestSessionRolesEdges(t *testing.T) {
 func TestBrowserSessionRolesAcceptABareStringOrgRole(t *testing.T) {
 	t.Parallel()
 
-	var session BrowserSession
+	var session domain.BrowserSession
 	if err := json.Unmarshal([]byte(`{"user":{"username":"u"},"roles":{"org":"ADMIN","network":{"7":"ADMIN"}}}`), &session); err != nil {
 		t.Fatal(err)
 	}

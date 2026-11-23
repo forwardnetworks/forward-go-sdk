@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,11 +22,11 @@ func TestCommitSendsANoteAndTheMode(t *testing.T) {
 	if _, err := predict.Commit(ctx, "7", "3", "  "); err != nil {
 		t.Fatal(err)
 	}
-	meta, _, err := predict.CommitWithOptions(ctx, "7", "3", CommitOptions{Note: "go live", AnalysisMode: AnalysisModeConfigOnly})
+	meta, _, err := predict.CommitWithOptions(ctx, "7", "3", domain.CommitOptions{Note: "go live", AnalysisMode: domain.AnalysisModeConfigOnly})
 	if err != nil || meta.CommitID != "c1" || meta.CommittedBy != "alice" {
 		t.Fatalf("meta = %+v, %v", meta, err)
 	}
-	if _, _, err := predict.CommitWithOptions(ctx, "7", "3", CommitOptions{AnalysisMode: "FAST"}); err == nil || len(seen) != 2 {
+	if _, _, err := predict.CommitWithOptions(ctx, "7", "3", domain.CommitOptions{AnalysisMode: "FAST"}); err == nil || len(seen) != 2 {
 		t.Fatal("an unknown analysis mode was sent")
 	}
 	if seen[0].method != "POST" || seen[0].uri != "/api/networks/7/change-sets/3/commits?note=Committed+by+forward-go-sdk" {
@@ -37,22 +41,22 @@ func TestCommitSendsANoteAndTheMode(t *testing.T) {
 // predicted snapshot's predictInfo, a command error's applied flag, and a rule's lifecycle data.
 func TestMasterShapesDecode(t *testing.T) {
 	t.Parallel()
-	var cs ChangeSet
+	var cs domain.ChangeSet
 	in := `{"id":"3","name":"n","networkId":"7","snapshotId":"s1","analysisMode":"CONFIG_ONLY","createdById":"u","createdBy":"alice","createdAt":"2026-11-01T00:00:00Z","updatedBy":"bob","modifiedDeviceCount":2,"predictedSnapshots":[{"id":"p2","creationInstant":"2026-11-02T00:00:00Z","networkId":"7"},{"id":"p1"}]}`
-	if err := json.Unmarshal([]byte(in), &cs); err != nil || cs.AnalysisMode != AnalysisModeConfigOnly || cs.CreatedBy != "alice" || cs.UpdatedBy != "bob" ||
+	if err := json.Unmarshal([]byte(in), &cs); err != nil || cs.AnalysisMode != domain.AnalysisModeConfigOnly || cs.CreatedBy != "alice" || cs.UpdatedBy != "bob" ||
 		cs.ModifiedDeviceCount == nil || *cs.ModifiedDeviceCount != 2 || len(cs.PredictedSnapshots) != 2 || cs.PredictedSnapshots[0].ID != "p2" {
 		t.Fatalf("change set = %+v, %v", cs, err)
 	}
-	var snap Snapshot
+	var snap domain.Snapshot
 	if err := json.Unmarshal([]byte(`{"id":"p2","state":"PROCESSED","processingTrigger":"PREDICT","predictInfo":{"baseSnapshot":{"id":"s1","creationInstant":"2026-11-01T00:00:00Z","networkId":"7"},"changeSetId":"3","commitId":"c1","name":"n","modifiedDeviceCount":2,"committedAt":"2026-11-02T00:00:00Z","analysisMode":"BEHAVIORAL"}}`), &snap); err != nil ||
-		snap.PredictInfo == nil || snap.PredictInfo.BaseSnapshot == nil || snap.PredictInfo.BaseSnapshot.ID != "s1" || snap.PredictInfo.CommitID != "c1" || snap.PredictInfo.AnalysisMode != AnalysisModeBehavioral || snap.PredictInfo.ModifiedDeviceCount != 2 {
+		snap.PredictInfo == nil || snap.PredictInfo.BaseSnapshot == nil || snap.PredictInfo.BaseSnapshot.ID != "s1" || snap.PredictInfo.CommitID != "c1" || snap.PredictInfo.AnalysisMode != domain.AnalysisModeBehavioral || snap.PredictInfo.ModifiedDeviceCount != 2 {
 		t.Fatalf("snapshot = %+v, %v", snap, err)
 	}
-	var ce CommandError
+	var ce domain.CommandError
 	if err := json.Unmarshal([]byte(`{"lineNumber":2,"errorType":"UNSUPPORTED","errorMsg":"x","applied":true}`), &ce); err != nil || ce.Applied == nil || !*ce.Applied {
 		t.Fatalf("command error = %+v, %v", ce, err)
 	}
-	var rule ScopedSecurityRule
+	var rule domain.ScopedSecurityRule
 	if err := json.Unmarshal([]byte(`{"scopeId":"LOCAL","rulebaseId":"PRIMARY","rank":1,"definition":{"name":"r"},"createdAt":"2026-01-01T00:00:00Z","lastUsed":"2026-10-01T00:00:00Z","hitCount":5}`), &rule); err != nil ||
 		rule.CreatedAt == "" || rule.LastUsed == "" || rule.HitCount == nil || *rule.HitCount != 5 {
 		t.Fatalf("rule = %+v, %v", rule, err)
@@ -97,7 +101,7 @@ func TestRPPrefixShapes(t *testing.T) {
 	routing := newTestClient(t, predictRecorder(t, 200, trace, &seen).URL).Routing
 	ctx := context.Background()
 
-	paths, _, err := routing.RPPrefixTrace(ctx, "7", "s1", RPPrefixTrace{Prefix: "10.0.0.0/8", Router: DeviceVRFProtocol{Device: "r1", Protocol: "OMP"}, OriginatedFrom: DeviceVRFProtocol{Device: "r2", Protocol: "OMP"}, Outcome: RouteOutcomeInstalled})
+	paths, _, err := routing.RPPrefixTrace(ctx, "7", "s1", domain.RPPrefixTrace{Prefix: "10.0.0.0/8", Router: domain.DeviceVRFProtocol{Device: "r1", Protocol: "OMP"}, OriginatedFrom: domain.DeviceVRFProtocol{Device: "r2", Protocol: "OMP"}, Outcome: domain.RouteOutcomeInstalled})
 	if err != nil || len(paths) != 1 {
 		t.Fatalf("paths = %+v, %v", paths, err)
 	}
@@ -105,17 +109,17 @@ func TestRPPrefixShapes(t *testing.T) {
 	if err != nil || ref.RouteSetID != 4 || !strings.Contains(string(ref.NodeKey), `"OMP"`) {
 		t.Fatalf("ref = %+v, %v", ref, err)
 	}
-	if _, err := (RoutingNode{Device: "r1"}).Ref(); err == nil {
+	if _, err := (domain.RoutingNode{Device: "r1"}).Ref(); err == nil {
 		t.Error("a node without a key made a ref")
 	}
-	if _, _, err := routing.RPPrefixSearch(ctx, "7", "s1", RPPrefixSearch{Prefix: "10.0.0.0/8", Router: &DeviceVRFProtocol{Device: "r1"}}); err == nil {
+	if _, _, err := routing.RPPrefixSearch(ctx, "7", "s1", domain.RPPrefixSearch{Prefix: "10.0.0.0/8", Router: &domain.DeviceVRFProtocol{Device: "r1"}}); err == nil {
 		t.Error("a router without a protocol was sent")
 	}
-	if _, _, err := routing.RPPrefixDetails(ctx, "7", "s1", RPPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: RPNodeRef{RouteSetID: 1}}); err == nil {
+	if _, _, err := routing.RPPrefixDetails(ctx, "7", "s1", domain.RPPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: domain.RPNodeRef{RouteSetID: 1}}); err == nil {
 		t.Error("a node without a key was sent")
 	}
 	searcher := newTestClient(t, predictRecorder(t, 200, `{"origin":[],"devicesByOutcome":{}}`, &seen).URL).Routing
-	if _, _, err := searcher.RPPrefixSearch(ctx, "7", "s1", RPPrefixSearch{Prefix: "10.0.0.0/8", Router: &DeviceVRFProtocol{Device: "r1", Protocol: "IS_IS"}, Outcome: RouteOutcomeInstalled}); err != nil {
+	if _, _, err := searcher.RPPrefixSearch(ctx, "7", "s1", domain.RPPrefixSearch{Prefix: "10.0.0.0/8", Router: &domain.DeviceVRFProtocol{Device: "r1", Protocol: "IS_IS"}, Outcome: domain.RouteOutcomeInstalled}); err != nil {
 		t.Fatal(err)
 	}
 	if len(seen) != 2 {
@@ -129,7 +133,7 @@ func TestRPPrefixShapes(t *testing.T) {
 	}
 
 	detail := newTestClient(t, predictRecorder(t, 200, `{"prefix":"10.0.0.0/8","nodeKey":{"protocol":"OMP","device":"r1"},"attributes":{"protocol":"OMP"},"policies":{"IMPORT":[]}}`, &seen).URL).Routing
-	d, _, err := detail.RPPrefixDetails(ctx, "7", "s1", RPPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: ref})
+	d, _, err := detail.RPPrefixDetails(ctx, "7", "s1", domain.RPPrefixDetailsRequest{Prefix: "10.0.0.0/8", Node: ref})
 	if err != nil || !strings.Contains(string(d.NodeKey), "r1") || d.Policies["IMPORT"] == nil {
 		t.Fatalf("details = %+v, %v", d, err)
 	}
@@ -153,10 +157,10 @@ func TestRPDevicePrefixInfoDetectsAnUnservedView(t *testing.T) {
 	t.Parallel()
 	var seen []predictSeen
 	routing := newTestClient(t, predictRecorder(t, 200, `{"name":"r1","vendor":"cisco_ios","interfaces":[]}`, &seen).URL).Routing
-	if _, _, err := routing.RPDevicePrefixInfo(context.Background(), "7", "s1", "r1", "10.0.0.0/8"); !errors.Is(err, ErrEndpointNotServed) {
+	if _, _, err := routing.RPDevicePrefixInfo(context.Background(), "7", "s1", "r1", "10.0.0.0/8"); !errors.Is(err, domain.ErrEndpointNotServed) {
 		t.Fatalf("err = %v, want ErrEndpointNotServed", err)
 	}
-	var info SnapshotPredictInfo
+	var info domain.SnapshotPredictInfo
 	if err := json.Unmarshal([]byte(`{"baseSnapshot":"s1","changeSetId":"3"}`), &info); err != nil || info.BaseSnapshot == nil || info.BaseSnapshot.ID != "s1" {
 		t.Fatalf("info = %+v, %v", info, err)
 	}

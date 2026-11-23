@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"strings"
 	"testing"
@@ -110,7 +114,7 @@ func TestLicenseAdminUsageDecoding(t *testing.T) {
 	if seen[0].uri != "/api/admin/platform-usage" || seen2[0].uri != "/api/admin/licenses?view=saas" {
 		t.Fatalf("uris %q %q", seen[0].uri, seen2[0].uri)
 	}
-	if f := infos[0].Facets(); len(f) != 3 || f[2] != LicenseFacetPredict {
+	if f := infos[0].Facets(); len(f) != 3 || f[2] != domain.LicenseFacetPredict {
 		t.Fatalf("NP facets = %v", f)
 	}
 }
@@ -118,10 +122,10 @@ func TestLicenseAdminUsageDecoding(t *testing.T) {
 // CCH arithmetic: over is debt, remaining is what is left, never negative; a history's last value is the newest cumulative figure.
 func TestCCHUsageArithmeticAndHistory(t *testing.T) {
 	t.Parallel()
-	if u := (CCHUsage{CCHUsed: 130, CCHLicensed: 100}); u.Over() != 30 || u.Remaining() != 0 {
+	if u := (domain.CCHUsage{CCHUsed: 130, CCHLicensed: 100}); u.Over() != 30 || u.Remaining() != 0 {
 		t.Errorf("over: %d %d", u.Over(), u.Remaining())
 	}
-	if u := (CCHUsage{CCHUsed: 40, CCHLicensed: 100}); u.Over() != 0 || u.Remaining() != 60 {
+	if u := (domain.CCHUsage{CCHUsed: 40, CCHLicensed: 100}); u.Over() != 0 || u.Remaining() != 60 {
 		t.Errorf("within: %d %d", u.Over(), u.Remaining())
 	}
 	var seen []predictSeen
@@ -135,7 +139,7 @@ func TestCCHUsageArithmeticAndHistory(t *testing.T) {
 // A tier licence keeps its licence metadata and its tier names the facets it covers; an unknown tier covers none rather than guessing.
 func TestLicenseTierFacetsAndMeta(t *testing.T) {
 	t.Parallel()
-	var l License
+	var l domain.License
 	if err := l.UnmarshalJSON([]byte(`{"id":"9","type":"TIER","tier":"NSP","createdAt":"2026-01-01T00:00:00Z","licensedTo":"Acme","purchaseOrder":"PO-1","supportEndsOn":"2027-06-30","replaces":false,"cloudCreditHours":50}`)); err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +153,7 @@ func TestLicenseTierFacetsAndMeta(t *testing.T) {
 	if strings.Join(got, ",") != "BASE,NETWORK,SECURITY,PREDICT" {
 		t.Fatalf("NSP facets = %v", got)
 	}
-	if TierFacets("X") != nil || TierFacets("") != nil {
+	if domain.TierFacets("X") != nil || domain.TierFacets("") != nil {
 		t.Fatal("an unknown tier named facets")
 	}
 }
@@ -162,7 +166,7 @@ func TestOwnOrgUsageDecoding(t *testing.T) {
 	var seen []predictSeen
 	c := newTestClient(t, predictRecorder(t, 200, `{"standardDeviceCount":40,"liteDeviceCount":5,"standardUnlicensedDeviceCount":2,"liteUnlicensedDeviceCount":1,"standardDeviceCap":50,"liteDeviceCap":9}`, &seen).URL)
 	d, _, err := c.Licensing.DeviceCounts(ctx)
-	if err != nil || *d != (DeviceCounts{40, 5, 2, 1, 50, 9}) {
+	if err != nil || *d != (domain.DeviceCounts{StandardDeviceCount: 40, LiteDeviceCount: 5, StandardUnlicensedDeviceCount: 2, LiteUnlicensedDeviceCount: 1, StandardDeviceCap: 50, LiteDeviceCap: 9}) {
 		t.Fatalf("device counts = %+v, %v", d, err)
 	}
 	c = newTestClient(t, predictRecorder(t, 200, `{"cchUsed":120,"cchLicensed":100,"instant":"2026-10-28T00:00:00Z","gracePeriodEndTime":"2026-11-30T00:00:00Z"}`, &seen).URL)
@@ -172,7 +176,7 @@ func TestOwnOrgUsageDecoding(t *testing.T) {
 	}
 	c = newTestClient(t, predictRecorder(t, 200, `{"edgeAssetCount":9,"unlicensedEdgeAssetCount":3,"edgeAssetCap":10}`, &seen).URL)
 	e, _, err := c.Licensing.EdgeAssetCounts(ctx)
-	if err != nil || *e != (EdgeAssetCounts{9, 3, 10}) || seen[len(seen)-1].uri != "/api/licensed-edge-assets?view=count" {
+	if err != nil || *e != (domain.EdgeAssetCounts{EdgeAssetCount: 9, UnlicensedEdgeAssetCount: 3, EdgeAssetCap: 10}) || seen[len(seen)-1].uri != "/api/licensed-edge-assets?view=count" {
 		t.Fatalf("edge = %+v, %v, %v", e, err, seen)
 	}
 	c = newTestClient(t, predictRecorder(t, 200, `{"devices":[{"names":["a"],"networkIds":[7],"lite":true}],"unlicensedDevices":[],"networkNames":{"7":"n"},"currentTime":"2026-10-28T00:00:00Z"}`, &seen).URL)

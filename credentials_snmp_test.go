@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -22,8 +26,8 @@ func TestSNMPCredentialVersionDecidesTheLegalHalf(t *testing.T) {
 	})
 	ctx := context.Background()
 
-	got, _, err := c.Credentials.CreateSNMPCredential(ctx, "net-1", SNMPCredentialRequest{
-		Name: "Skyforge SNMPv2", Version: SNMPVersionV2C, CommunityString: "skyforge",
+	got, _, err := c.Credentials.CreateSNMPCredential(ctx, "net-1", domain.SNMPCredentialRequest{
+		Name: "Skyforge SNMPv2", Version: domain.SNMPVersionV2C, CommunityString: "skyforge",
 	})
 	if err != nil {
 		t.Fatalf("V2C with a community string must be accepted: %v", err)
@@ -38,11 +42,11 @@ func TestSNMPCredentialVersionDecidesTheLegalHalf(t *testing.T) {
 		t.Fatal("authSettings must be omitted for V2C")
 	}
 
-	for name, req := range map[string]SNMPCredentialRequest{
-		"V2C with authSettings":    {Version: SNMPVersionV2C, AuthSettings: &SNMPAuthSettings{Username: "u"}},
-		"V3 with communityString":  {Version: SNMPVersionV3, CommunityString: "x", AuthSettings: &SNMPAuthSettings{Username: "u"}},
-		"V3 without authSettings":  {Version: SNMPVersionV3},
-		"V3 with a blank username": {Version: SNMPVersionV3, AuthSettings: &SNMPAuthSettings{Username: "  "}},
+	for name, req := range map[string]domain.SNMPCredentialRequest{
+		"V2C with authSettings":    {Version: domain.SNMPVersionV2C, AuthSettings: &domain.SNMPAuthSettings{Username: "u"}},
+		"V3 with communityString":  {Version: domain.SNMPVersionV3, CommunityString: "x", AuthSettings: &domain.SNMPAuthSettings{Username: "u"}},
+		"V3 without authSettings":  {Version: domain.SNMPVersionV3},
+		"V3 with a blank username": {Version: domain.SNMPVersionV3, AuthSettings: &domain.SNMPAuthSettings{Username: "  "}},
 		"no version at all":        {Name: "n"},
 		"a version Forward lacks":  {Version: "V1"},
 	} {
@@ -53,11 +57,11 @@ func TestSNMPCredentialVersionDecidesTheLegalHalf(t *testing.T) {
 
 	// V3 done properly still travels, privacy fields included.
 	body = nil
-	if _, _, err := c.Credentials.CreateSNMPCredential(ctx, "net-1", SNMPCredentialRequest{
-		Version: SNMPVersionV3,
-		AuthSettings: &SNMPAuthSettings{
-			Username: "netops", Password: "p", AuthType: SNMPAuthSHA256,
-			PrivacyProtocol: SNMPPrivacyAES256, PrivacyPassword: "pp",
+	if _, _, err := c.Credentials.CreateSNMPCredential(ctx, "net-1", domain.SNMPCredentialRequest{
+		Version: domain.SNMPVersionV3,
+		AuthSettings: &domain.SNMPAuthSettings{
+			Username: "netops", Password: "p", AuthType: domain.SNMPAuthSHA256,
+			PrivacyProtocol: domain.SNMPPrivacyAES256, PrivacyPassword: "pp",
 		},
 	}); err != nil {
 		t.Fatalf("valid V3: %v", err)

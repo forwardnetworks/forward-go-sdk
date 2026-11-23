@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -28,10 +32,10 @@ func TestOrgCollectionSettingsPatchSetsAndClears(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	patches := []OrgCollectionSettingsPatch{
-		{CollectionRetryDelayMillis: Ptr(30000), PerDeviceSNMPConcurrency: Ptr(1), CollectionRetries: Ptr(0), CollectionMaxRetryDelayMillis: Ptr(90000)},
+	patches := []domain.OrgCollectionSettingsPatch{
+		{CollectionRetryDelayMillis: domain.Ptr(30000), PerDeviceSNMPConcurrency: domain.Ptr(1), CollectionRetries: domain.Ptr(0), CollectionMaxRetryDelayMillis: domain.Ptr(90000)},
 		{Clear: []string{"collectionRetryDelayMillis", "perDeviceSnmpConcurrency"}},
-		{CommandDelayMS: Ptr(5), Clear: []string{"collectionRetries"}},
+		{CommandDelayMS: domain.Ptr(5), Clear: []string{"collectionRetries"}},
 	}
 	for _, patch := range patches {
 		if _, err := client.Collectors.PatchOrganizationSettings(ctx, patch); err != nil {
@@ -53,10 +57,10 @@ func TestOrgCollectionSettingsPatchSetsAndClears(t *testing.T) {
 	}
 
 	sent := len(bodies)
-	for _, bad := range []OrgCollectionSettingsPatch{
+	for _, bad := range []domain.OrgCollectionSettingsPatch{
 		{Clear: []string{"disabledCommands"}},
 		{Clear: []string{"nonsense"}},
-		{CollectionRetries: Ptr(1), Clear: []string{"collectionRetries"}},
+		{CollectionRetries: domain.Ptr(1), Clear: []string{"collectionRetries"}},
 	} {
 		if _, err := client.Collectors.PatchOrganizationSettings(ctx, bad); err == nil {
 			t.Errorf("%+v must be refused", bad)

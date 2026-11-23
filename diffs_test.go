@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -51,7 +55,7 @@ func TestDiffsMaterialSummaryIgnoresSuperficialFileChurn(t *testing.T) {
 		t.Fatalf("incomplete=%v", sum.Incomplete)
 	}
 	// Only churn => not material.
-	sum2 := MaterialDiffSummary{Counts: map[string]int64{}, Files: map[string]int64{}}
+	sum2 := domain.MaterialDiffSummary{Counts: map[string]int64{}, Files: map[string]int64{}}
 	if sum2.Material() {
 		t.Fatal("empty summary must not be material")
 	}

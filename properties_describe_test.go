@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -11,22 +16,22 @@ import (
 
 func TestPropertyKindOf(t *testing.T) {
 	t.Parallel()
-	cases := map[string]PropertyKind{
-		`true`:           PropertyKindBoolean,
-		`false`:          PropertyKindBoolean,
-		`1000`:           PropertyKindInteger,
-		`-3`:             PropertyKindInteger,
-		`0.5`:            PropertyKindNumber,
-		`1e3`:            PropertyKindNumber,
-		`"LOW_PRIORITY"`: PropertyKindString,
-		`["a","b"]`:      PropertyKindList,
-		`{"k":1}`:        PropertyKindObject,
-		`null`:           PropertyKindNull,
-		``:               PropertyKindNull,
-		"  true \n":      PropertyKindBoolean,
+	cases := map[string]domain.PropertyKind{
+		`true`:           domain.PropertyKindBoolean,
+		`false`:          domain.PropertyKindBoolean,
+		`1000`:           domain.PropertyKindInteger,
+		`-3`:             domain.PropertyKindInteger,
+		`0.5`:            domain.PropertyKindNumber,
+		`1e3`:            domain.PropertyKindNumber,
+		`"LOW_PRIORITY"`: domain.PropertyKindString,
+		`["a","b"]`:      domain.PropertyKindList,
+		`{"k":1}`:        domain.PropertyKindObject,
+		`null`:           domain.PropertyKindNull,
+		``:               domain.PropertyKindNull,
+		"  true \n":      domain.PropertyKindBoolean,
 	}
 	for raw, want := range cases {
-		if got := PropertyKindOf(json.RawMessage(raw)); got != want {
+		if got := domain.PropertyKindOf(json.RawMessage(raw)); got != want {
 			t.Errorf("PropertyKindOf(%q) = %q, want %q", raw, got, want)
 		}
 	}
@@ -43,12 +48,12 @@ func TestPropertyValueString(t *testing.T) {
 		`null`:           "",
 	}
 	for raw, want := range cases {
-		if got := PropertyValueString(json.RawMessage(raw)); got != want {
+		if got := domain.PropertyValueString(json.RawMessage(raw)); got != want {
 			t.Errorf("PropertyValueString(%q) = %q, want %q", raw, got, want)
 		}
 	}
 	// "no value" must never read as false.
-	if PropertyValueString(json.RawMessage(`null`)) == "false" {
+	if domain.PropertyValueString(json.RawMessage(`null`)) == "false" {
 		t.Fatal("null rendered as false")
 	}
 }
@@ -97,33 +102,33 @@ func TestDescribeOrganizationJoinsEffectiveConfiguredAndDefaults(t *testing.T) {
 	if len(catalog.Properties) != 6 {
 		t.Fatalf("got %d properties, want 6: %+v", len(catalog.Properties), catalog.Properties)
 	}
-	by := map[OrgProperty]PropertyDescription{}
+	by := map[domain.OrgProperty]domain.PropertyDescription{}
 	for i, p := range catalog.Properties {
 		by[p.Name] = p
 		if i > 0 && catalog.Properties[i-1].Name >= p.Name {
 			t.Errorf("not sorted at %d: %s >= %s", i, catalog.Properties[i-1].Name, p.Name)
 		}
 	}
-	want := map[OrgProperty]PropertyDescription{
-		"AI_ALLOWED":                    {Kind: PropertyKindBoolean, Value: "true", HasDefault: true, Default: "true"},
-		"MAXIMUM_DEVICES":               {Kind: PropertyKindInteger, Value: "500", HasDefault: true, Default: "500"},
-		"BACKGROUND_SNAPSHOT_REPROCESS": {Kind: PropertyKindString, Value: "LOW_PRIORITY", Configured: true, ConfiguredValue: "LOW_PRIORITY", HasDefault: true, Default: "NORMAL"},
-		"BRAND_NEW_FLAG":                {Kind: PropertyKindBoolean, Value: "false", HasDefault: true, Default: "false"},
+	want := map[domain.OrgProperty]domain.PropertyDescription{
+		"AI_ALLOWED":                    {Kind: domain.PropertyKindBoolean, Value: "true", HasDefault: true, Default: "true"},
+		"MAXIMUM_DEVICES":               {Kind: domain.PropertyKindInteger, Value: "500", HasDefault: true, Default: "500"},
+		"BACKGROUND_SNAPSHOT_REPROCESS": {Kind: domain.PropertyKindString, Value: "LOW_PRIORITY", Configured: true, ConfiguredValue: "LOW_PRIORITY", HasDefault: true, Default: "NORMAL"},
+		"BRAND_NEW_FLAG":                {Kind: domain.PropertyKindBoolean, Value: "false", HasDefault: true, Default: "false"},
 		// null effective value: the kind is observed from the default.
-		"OPAQUE": {Kind: PropertyKindInteger, Value: "", HasDefault: true, Default: "7"},
-		"HOSTS":  {Kind: PropertyKindList, Value: `["a"]`, HasDefault: true, Default: `[]`},
+		"OPAQUE": {Kind: domain.PropertyKindInteger, Value: "", HasDefault: true, Default: "7"},
+		"HOSTS":  {Kind: domain.PropertyKindList, Value: `["a"]`, HasDefault: true, Default: `[]`},
 	}
 	// Where each value comes from: an org row wins, then a global default override, else Forward's built-in default.
-	layers := map[OrgProperty]struct {
+	layers := map[domain.OrgProperty]struct {
 		layer      string
 		global     bool
 		nonDefault bool
 		compiled   string
 	}{
-		"AI_ALLOWED":                    {PropertyLayerCompiled, false, false, "true"},
-		"MAXIMUM_DEVICES":               {PropertyLayerGlobal, true, true, ""},
-		"BACKGROUND_SNAPSHOT_REPROCESS": {PropertyLayerOrg, true, true, ""},
-		"HOSTS":                         {PropertyLayerCompiled, false, false, "[]"},
+		"AI_ALLOWED":                    {domain.PropertyLayerCompiled, false, false, "true"},
+		"MAXIMUM_DEVICES":               {domain.PropertyLayerGlobal, true, true, ""},
+		"BACKGROUND_SNAPSHOT_REPROCESS": {domain.PropertyLayerOrg, true, true, ""},
+		"HOSTS":                         {domain.PropertyLayerCompiled, false, false, "[]"},
 	}
 	if catalog.LayersErr != nil {
 		t.Fatalf("LayersErr = %v", catalog.LayersErr)
@@ -197,14 +202,14 @@ func TestUnknownOrgPropertyIsClassified(t *testing.T) {
 	client := newTestClient(t, server.URL)
 
 	_, _, err := client.Properties.SetOrganization(context.Background(), "22", "retired_flag", "false")
-	if !IsUnknownOrgProperty(err) {
+	if !domain.IsUnknownOrgProperty(err) {
 		t.Fatalf("IsUnknownOrgProperty(%v) = false, want true", err)
 	}
 	_, _, err = client.Properties.SetOrganization(context.Background(), "22", "ai_allowed", "maybe")
-	if err == nil || IsUnknownOrgProperty(err) {
+	if err == nil || domain.IsUnknownOrgProperty(err) {
 		t.Fatalf("a bad VALUE classified as an unknown property: %v", err)
 	}
-	if !IsStatus(err, http.StatusBadRequest) {
+	if !ports.IsStatus(err, http.StatusBadRequest) {
 		t.Fatalf("IsStatus(400) = false for %v", err)
 	}
 }
@@ -229,8 +234,8 @@ func TestPropertiesOperationsAreMarked(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	_, _, _ = client.Properties.Organization(ctx, "1", PropertyFilterOff)
-	_, _, _ = client.Properties.Global(ctx, PropertyFilterOff)
+	_, _, _ = client.Properties.Organization(ctx, "1", domain.PropertyFilterOff)
+	_, _, _ = client.Properties.Global(ctx, domain.PropertyFilterOff)
 	_, _, _ = client.Properties.SetOrganization(ctx, "1", "x", "true")
 	_, _ = client.Properties.ClearOrganization(ctx, "1", "x")
 	_, _, _ = client.Properties.SetGlobal(ctx, "x", "true")

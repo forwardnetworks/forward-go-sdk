@@ -29,7 +29,7 @@ type endpoint struct {
 
 func main() {
 	manifestPath := flag.String("manifest", "coverage_manifest.json", "coverage manifest")
-	catalogPath := flag.String("catalog", "coverage_catalog_gen.go", "generated Go catalog")
+	catalogPath := flag.String("catalog", "coverage_catalog_gen_test.go", "generated Go catalog (a test file: only the tests read it)")
 	markdownPath := flag.String("markdown", "COVERAGE.md", "generated coverage matrix")
 	flag.Parse()
 

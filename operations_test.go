@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -51,7 +56,7 @@ func TestCollectionOperationWaitsForNewProcessedSnapshot(t *testing.T) {
 	defer server.Close()
 
 	client := newTestClient(t, server.URL)
-	operation, _, err := client.CollectorTasks.StartCollectionOperation(context.Background(), "network-1", CollectionStartOptions{})
+	operation, _, err := client.CollectorTasks.StartCollectionOperation(context.Background(), "network-1", domain.CollectionStartOptions{})
 	if err != nil {
 		t.Fatalf("StartCollectionOperation() error = %v", err)
 	}
@@ -59,23 +64,23 @@ func TestCollectionOperationWaitsForNewProcessedSnapshot(t *testing.T) {
 		t.Fatalf("baseline snapshot = %q", got)
 	}
 
-	var phases []OperationPhase
-	snapshot, err := operation.Wait(context.Background(), CollectionWaitOptions{
+	var phases []domain.OperationPhase
+	snapshot, err := operation.Wait(context.Background(), ports.CollectionWaitOptions{
 		PollInterval:              time.Millisecond,
 		SnapshotAppearanceTimeout: time.Second,
 		SnapshotProcessingTimeout: time.Second,
-		OnUpdate: func(update CollectionOperationUpdate) {
+		OnUpdate: func(update ports.CollectionOperationUpdate) {
 			phases = append(phases, update.Current.Phase)
 		},
 	})
 	if err != nil || snapshot == nil || snapshot.ID != "new" || snapshot.State != "PROCESSED" {
 		t.Fatalf("Wait() = %#v, %v", snapshot, err)
 	}
-	if operation.Handle().SnapshotID != "new" || operation.Current().Phase != OperationPhaseSucceeded {
+	if operation.Handle().SnapshotID != "new" || operation.Current().Phase != domain.OperationPhaseSucceeded {
 		t.Fatalf("final state = %#v", operation.Current())
 	}
-	if !containsPhase(phases, OperationPhaseCollecting) || !containsPhase(phases, OperationPhaseWaitingForSnapshot) ||
-		!containsPhase(phases, OperationPhaseProcessingSnapshot) || !containsPhase(phases, OperationPhaseSucceeded) {
+	if !containsPhase(phases, domain.OperationPhaseCollecting) || !containsPhase(phases, domain.OperationPhaseWaitingForSnapshot) ||
+		!containsPhase(phases, domain.OperationPhaseProcessingSnapshot) || !containsPhase(phases, domain.OperationPhaseSucceeded) {
 		t.Fatalf("callback phases = %#v", phases)
 	}
 
@@ -83,7 +88,7 @@ func TestCollectionOperationWaitsForNewProcessedSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var durable CollectionOperationHandle
+	var durable domain.CollectionOperationHandle
 	if err := json.Unmarshal(encoded, &durable); err != nil {
 		t.Fatal(err)
 	}
@@ -102,16 +107,16 @@ func TestCollectionOperationTerminalAndDisappearanceErrors(t *testing.T) {
 		}))
 		defer server.Close()
 		client := newTestClient(t, server.URL)
-		operation, err := client.CollectorTasks.ResumeCollectionOperation(CollectionOperationHandle{
+		operation, err := client.CollectorTasks.ResumeCollectionOperation(domain.CollectionOperationHandle{
 			NetworkID: "network-1", TaskID: "P200", StartedAt: time.Now().UTC(),
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := operation.Wait(context.Background(), CollectionWaitOptions{PollInterval: time.Millisecond}); err == nil || !strings.Contains(err.Error(), "CANCELED") {
+		if _, err := operation.Wait(context.Background(), ports.CollectionWaitOptions{PollInterval: time.Millisecond}); err == nil || !strings.Contains(err.Error(), "CANCELED") {
 			t.Fatalf("Wait() error = %v", err)
 		}
-		if operation.Current().Phase != OperationPhaseFailed {
+		if operation.Current().Phase != domain.OperationPhaseFailed {
 			t.Fatalf("phase = %q", operation.Current().Phase)
 		}
 	})
@@ -122,16 +127,16 @@ func TestCollectionOperationTerminalAndDisappearanceErrors(t *testing.T) {
 		}))
 		defer server.Close()
 		client := newTestClient(t, server.URL)
-		operation, err := client.CollectorTasks.ResumeCollectionOperation(CollectionOperationHandle{
+		operation, err := client.CollectorTasks.ResumeCollectionOperation(domain.CollectionOperationHandle{
 			NetworkID: "network-1", TaskID: "P201", SnapshotID: "missing", StartedAt: time.Now().UTC(),
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = operation.Wait(context.Background(), CollectionWaitOptions{
+		_, err = operation.Wait(context.Background(), ports.CollectionWaitOptions{
 			PollInterval: time.Millisecond, SnapshotProcessingTimeout: time.Second, MissingSnapshotThreshold: 2,
 		})
-		if !errors.Is(err, ErrSnapshotDisappeared) {
+		if !errors.Is(err, domain.ErrSnapshotDisappeared) {
 			t.Fatalf("Wait() error = %v", err)
 		}
 	})
@@ -152,16 +157,16 @@ func TestCollectionOperationSnapshotAppearanceTimeout(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	operation, err := client.CollectorTasks.ResumeCollectionOperation(CollectionOperationHandle{
+	operation, err := client.CollectorTasks.ResumeCollectionOperation(domain.CollectionOperationHandle{
 		NetworkID: "network-1", TaskID: "P300", StartedAt: time.Now().UTC(),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = operation.Wait(context.Background(), CollectionWaitOptions{
+	_, err = operation.Wait(context.Background(), ports.CollectionWaitOptions{
 		PollInterval: time.Millisecond, SnapshotAppearanceTimeout: 3 * time.Millisecond,
 	})
-	if !errors.Is(err, ErrSnapshotAppearanceTimeout) {
+	if !errors.Is(err, domain.ErrSnapshotAppearanceTimeout) {
 		t.Fatalf("Wait() error = %v", err)
 	}
 }
@@ -188,13 +193,13 @@ func TestCollectionOperationCorrelatesWhenBaselineWasDeleted(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	operation, err := client.CollectorTasks.ResumeCollectionOperation(CollectionOperationHandle{
+	operation, err := client.CollectorTasks.ResumeCollectionOperation(domain.CollectionOperationHandle{
 		NetworkID: "network-1", TaskID: "P400", BaselineSnapshotID: "deleted", StartedAt: startedAt,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot, err := operation.Wait(context.Background(), CollectionWaitOptions{
+	snapshot, err := operation.Wait(context.Background(), ports.CollectionWaitOptions{
 		PollInterval: time.Millisecond, SnapshotAppearanceTimeout: time.Second,
 	})
 	if err != nil || snapshot == nil || snapshot.ID != "current" {
@@ -231,13 +236,13 @@ func TestUploadOperationForcesAsyncAndResumes(t *testing.T) {
 	operation, _, err := client.Snapshots.StartUploadOperation(
 		context.Background(),
 		"network-1",
-		[]SnapshotUploadFile{{Name: "snapshot.zip", Reader: strings.NewReader("zip")}},
-		SnapshotUploadOptions{},
+		[]domain.SnapshotUploadFile{{Name: "snapshot.zip", Reader: strings.NewReader("zip")}},
+		ports.SnapshotUploadOptions{},
 	)
 	if err != nil {
 		t.Fatalf("StartUploadOperation() error = %v", err)
 	}
-	snapshot, err := operation.Wait(context.Background(), SnapshotWaitOptions{
+	snapshot, err := operation.Wait(context.Background(), ports.SnapshotWaitOptions{
 		PollInterval: time.Millisecond, ProcessingTimeout: time.Second, MissingSnapshotThreshold: 2,
 	})
 	if err != nil || snapshot == nil || snapshot.State != "PROCESSED" {
@@ -247,7 +252,7 @@ func TestUploadOperationForcesAsyncAndResumes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot, err = resumed.Wait(context.Background(), SnapshotWaitOptions{PollInterval: time.Millisecond})
+	snapshot, err = resumed.Wait(context.Background(), ports.SnapshotWaitOptions{PollInterval: time.Millisecond})
 	if err != nil || snapshot == nil || snapshot.ID != "uploaded" {
 		t.Fatalf("resumed Wait() = %#v, %v", snapshot, err)
 	}
@@ -261,13 +266,13 @@ func TestSnapshotOperationHonorsContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	operation, err := client.Snapshots.ResumeOperation(SnapshotOperationHandle{NetworkID: "network-1", SnapshotID: "future"})
+	operation, err := client.Snapshots.ResumeOperation(domain.SnapshotOperationHandle{NetworkID: "network-1", SnapshotID: "future"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := operation.Wait(ctx, SnapshotWaitOptions{PollInterval: time.Second}); !errors.Is(err, context.Canceled) {
+	if _, err := operation.Wait(ctx, ports.SnapshotWaitOptions{PollInterval: time.Second}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("Wait() error = %v", err)
 	}
 }
@@ -281,21 +286,21 @@ func TestSnapshotOperationProcessingDeadlineSurvivesResume(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	old := time.Now().Add(-time.Hour).UTC()
-	operation, err := client.Snapshots.ResumeOperation(SnapshotOperationHandle{
+	operation, err := client.Snapshots.ResumeOperation(domain.SnapshotOperationHandle{
 		NetworkID: "network-1", SnapshotID: "slow", StartedAt: old, AppearedAt: old,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = operation.Wait(context.Background(), SnapshotWaitOptions{
+	_, err = operation.Wait(context.Background(), ports.SnapshotWaitOptions{
 		PollInterval: time.Millisecond, ProcessingTimeout: time.Minute,
 	})
-	if !errors.Is(err, ErrSnapshotProcessingTimeout) {
+	if !errors.Is(err, domain.ErrSnapshotProcessingTimeout) {
 		t.Fatalf("Wait() error = %v", err)
 	}
 }
 
-func containsPhase(phases []OperationPhase, phase OperationPhase) bool {
+func containsPhase(phases []domain.OperationPhase, phase domain.OperationPhase) bool {
 	for _, value := range phases {
 		if value == phase {
 			return true

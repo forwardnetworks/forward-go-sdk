@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -31,7 +35,7 @@ func TestControllerManagedCreateMigratingClassicSendsActionMigrate(t *testing.T)
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	setup := NewControllerManagedSetup{Name: "sdwan", Controllers: []ControllerDevice{{Name: "vs1"}}}
+	setup := domain.NewControllerManagedSetup{Name: "sdwan", Controllers: []domain.ControllerDevice{{Name: "vs1"}}}
 	if _, _, err := client.ControllerManagedSetups.CreateMigratingClassic(context.Background(), "5", setup); err != nil {
 		t.Fatal(err)
 	}
@@ -68,29 +72,29 @@ func TestControllerManagedTestSelection(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	if _, err := client.ControllerManagedSetups.Test(ctx, "5", "", ControllerAndManagedDeviceSelection{SetupNames: []string{"sdwan"}}); err != nil {
+	if _, err := client.ControllerManagedSetups.Test(ctx, "5", "", domain.ControllerAndManagedDeviceSelection{SetupNames: []string{"sdwan"}}); err != nil {
 		t.Fatal(err)
 	}
 	if gotQuery != "action=test" || gotBody != `{"setupNames":["sdwan"]}` {
 		t.Fatalf("got ?%s %s", gotQuery, gotBody)
 	}
-	if _, err := client.ControllerManagedSetups.Test(ctx, "5", "C1", ControllerAndManagedDeviceSelection{Names: []string{"vs1"}}); err != nil {
+	if _, err := client.ControllerManagedSetups.Test(ctx, "5", "C1", domain.ControllerAndManagedDeviceSelection{Names: []string{"vs1"}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.ControllerManagedSetups.Test(ctx, "5", "", ControllerAndManagedDeviceSelection{SetupNames: []string{" SDWAN "}}); err != nil {
+	if _, err := client.ControllerManagedSetups.Test(ctx, "5", "", domain.ControllerAndManagedDeviceSelection{SetupNames: []string{" SDWAN "}}); err != nil {
 		t.Fatal(err)
 	}
 	if gotBody != `{"setupNames":["sdwan"]}` {
 		t.Fatalf("setup names must be folded to the stored lowercase form, got %s", gotBody)
 	}
-	if _, err := client.ControllerManagedSetups.Test(ctx, "5", "C1", ControllerAndManagedDeviceSelection{Names: []string{"vs1"}}); err != nil {
+	if _, err := client.ControllerManagedSetups.Test(ctx, "5", "C1", domain.ControllerAndManagedDeviceSelection{Names: []string{"vs1"}}); err != nil {
 		t.Fatal(err)
 	}
 	if gotQuery != "action=test&collectorId=C1" {
 		t.Fatalf("got ?%s", gotQuery)
 	}
 	gotQuery = "untouched"
-	for _, bad := range []ControllerAndManagedDeviceSelection{{}, {Names: []string{"a"}, SetupNames: []string{"b"}}} {
+	for _, bad := range []domain.ControllerAndManagedDeviceSelection{{}, {Names: []string{"a"}, SetupNames: []string{"b"}}} {
 		if _, err := client.ControllerManagedSetups.Test(ctx, "5", "", bad); err == nil {
 			t.Fatalf("%+v must be refused", bad)
 		}
@@ -155,7 +159,7 @@ func TestControllerManagedCreateSendsCollectorID(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	setup := NewControllerManagedSetup{Name: "sdwan", Controllers: []ControllerDevice{{Name: "vs1"}}, CollectorID: "C3"}
+	setup := domain.NewControllerManagedSetup{Name: "sdwan", Controllers: []domain.ControllerDevice{{Name: "vs1"}}, CollectorID: "C3"}
 	for name, call := range map[string]func() error{
 		"Create": func() error { _, _, err := client.ControllerManagedSetups.Create(ctx, "5", setup); return err },
 		"CreateMigratingClassic": func() error {
@@ -187,7 +191,7 @@ func TestDeviceTestResultRoundTrips(t *testing.T) {
 	t.Parallel()
 
 	in := []byte(`{"error":"AUTHENTICATION_FAILED","errorPhase":"AUTHENTICATION","hostIps":["10.0.0.1"],"unauthorizedCommands":["show run"],"managedDevices":[{"name":"edge1","ipAddress":"10.0.1.1"}],"discoveredCliCredentialId":"L-3","discoveredHttpCredentialId":"H-4","discoveredSnmpCredentialId":"S-5","discoveredType":"cisco_sdwan_vsmart_ssh","controllerInfos":[{"name":"vs1","ipAddress":"10.0.2.1"}],"nameAliases":["vs1.example"],"dependentNameAndAliases":["edge1"],"startTime":"2026-10-16T00:59:00Z","savedAt":"2026-10-16T01:00:01Z","endTime":"2026-10-16T01:00:00Z"}`)
-	var first DeviceTestResult
+	var first domain.DeviceTestResult
 	if err := json.Unmarshal(in, &first); err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +210,7 @@ func TestDeviceTestResultRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var second DeviceTestResult
+	var second domain.DeviceTestResult
 	if err := json.Unmarshal(out, &second); err != nil {
 		t.Fatal(err)
 	}

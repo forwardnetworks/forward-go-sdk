@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -38,7 +42,7 @@ func TestDecoratorsWirePaths(t *testing.T) {
 	if got, _, err := c.Decorators.Get(ctx, "nope"); err != nil || got != nil {
 		t.Fatalf("a missing decorator is nil without an error: %v %+v", err, got)
 	}
-	if _, _, err := c.Decorators.Put(ctx, "my dec", DecoratorPut{Type: DecoratorEntityDevice, QueryID: "Q_1", DeviceColName: "device", MetadataColNames: &[]string{}}); err != nil {
+	if _, _, err := c.Decorators.Put(ctx, "my dec", domain.DecoratorPut{Type: domain.DecoratorEntityDevice, QueryID: "Q_1", DeviceColName: "device", MetadataColNames: &[]string{}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := c.Decorators.Delete(ctx, "my dec"); err != nil {
@@ -47,11 +51,11 @@ func TestDecoratorsWirePaths(t *testing.T) {
 	if _, err := c.Decorators.SetManagedEnabled(ctx, "fwd-Path MTU", true); err != nil {
 		t.Fatal(err)
 	}
-	dec, _, err := c.Decorators.Decorate(ctx, "n1", "", DecoratorEntityDevice, DecorateRequest{EntityIDs: []string{"r1", "r2"}, DecoratorNames: []string{"Owner"}})
-	if err != nil || len(dec) != 2 || dec[0].Status != DecorationSuccess || len(dec[0].Rows) != 1 || dec[1].Status != DecorationInvalidDecorator || len(dec[1].Rows) != 0 {
+	dec, _, err := c.Decorators.Decorate(ctx, "n1", "", domain.DecoratorEntityDevice, domain.DecorateRequest{EntityIDs: []string{"r1", "r2"}, DecoratorNames: []string{"Owner"}})
+	if err != nil || len(dec) != 2 || dec[0].Status != domain.DecorationSuccess || len(dec[0].Rows) != 1 || dec[1].Status != domain.DecorationInvalidDecorator || len(dec[1].Rows) != 0 {
 		t.Fatalf("decorate: %v %+v", err, dec)
 	}
-	if _, _, err := c.Decorators.Decorate(ctx, "n1", "s9", DecoratorEntityPath, DecorateRequest{EntityIDs: []string{"p"}, DecoratorNames: []string{"d"}}); err != nil {
+	if _, _, err := c.Decorators.Decorate(ctx, "n1", "s9", domain.DecoratorEntityPath, domain.DecorateRequest{EntityIDs: []string{"p"}, DecoratorNames: []string{"d"}}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{
@@ -81,10 +85,10 @@ func TestDecoratorPutBodyOmitsUnsetFields(t *testing.T) {
 	})
 	ctx := context.Background()
 	all := []string{}
-	if _, _, err := c.Decorators.Put(ctx, "d", DecoratorPut{Type: DecoratorEntityHost}); err != nil {
+	if _, _, err := c.Decorators.Put(ctx, "d", domain.DecoratorPut{Type: domain.DecoratorEntityHost}); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := c.Decorators.Put(ctx, "d", DecoratorPut{Type: DecoratorEntityHost, IPAddressColName: "ip", MACAddressColName: "mac", MetadataColNames: &all, Enabled: Ptr(true)}); err != nil {
+	if _, _, err := c.Decorators.Put(ctx, "d", domain.DecoratorPut{Type: domain.DecoratorEntityHost, IPAddressColName: "ip", MACAddressColName: "mac", MetadataColNames: &all, Enabled: domain.Ptr(true)}); err != nil {
 		t.Fatal(err)
 	}
 	// A new decorator takes its name from the body, so the path name is sent as the body name; nothing else is.
@@ -128,16 +132,16 @@ func TestDecoratorsDeleteAndValidation(t *testing.T) {
 	requests = 0
 	for name, err := range map[string]error{
 		"put no name": func() error {
-			_, _, e := c.Decorators.Put(ctx, " ", DecoratorPut{Type: DecoratorEntityDevice})
+			_, _, e := c.Decorators.Put(ctx, " ", domain.DecoratorPut{Type: domain.DecoratorEntityDevice})
 			return e
 		}(),
-		"put bad type": func() error { _, _, e := c.Decorators.Put(ctx, "d", DecoratorPut{Type: "ROUTER"}); return e }(),
+		"put bad type": func() error { _, _, e := c.Decorators.Put(ctx, "d", domain.DecoratorPut{Type: "ROUTER"}); return e }(),
 		"decorate no entities": func() error {
-			_, _, e := c.Decorators.Decorate(ctx, "n1", "", DecoratorEntityDevice, DecorateRequest{DecoratorNames: []string{"d"}})
+			_, _, e := c.Decorators.Decorate(ctx, "n1", "", domain.DecoratorEntityDevice, domain.DecorateRequest{DecoratorNames: []string{"d"}})
 			return e
 		}(),
 		"decorate no type": func() error {
-			_, _, e := c.Decorators.Decorate(ctx, "n1", "", "", DecorateRequest{EntityIDs: []string{"a"}, DecoratorNames: []string{"d"}})
+			_, _, e := c.Decorators.Decorate(ctx, "n1", "", "", domain.DecorateRequest{EntityIDs: []string{"a"}, DecoratorNames: []string{"d"}})
 			return e
 		}(),
 		"managed no name": func() error { _, e := c.Decorators.SetManagedEnabled(ctx, "", true); return e }(),

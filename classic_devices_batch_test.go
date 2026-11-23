@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -25,7 +29,7 @@ func TestPatchManySendsOneRequestForManyDevices(t *testing.T) {
 	devices := newTestClient(t, server.URL).ClassicDevices
 	ctx := context.Background()
 
-	_, err := devices.PatchMany(ctx, "net-1", []string{"sw1", " sw2 "}, ClassicDevicePatch{CLICredential2ID: Ptr("PM-2"), Clear: []string{"collectorId"}})
+	_, err := devices.PatchMany(ctx, "net-1", []string{"sw1", " sw2 "}, domain.ClassicDevicePatch{CLICredential2ID: domain.Ptr("PM-2"), Clear: []string{"collectorId"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +38,7 @@ func TestPatchManySendsOneRequestForManyDevices(t *testing.T) {
 		t.Fatalf("request = %s %s %s", method, path, body)
 	}
 	for name, names := range map[string][]string{"no names": nil, "blank name": {"sw1", " "}} {
-		if _, err := devices.PatchMany(ctx, "net-1", names, ClassicDevicePatch{}); err == nil || requests != 1 {
+		if _, err := devices.PatchMany(ctx, "net-1", names, domain.ClassicDevicePatch{}); err == nil || requests != 1 {
 			t.Errorf("%s must fail before any request (err=%v, requests=%d)", name, err, requests)
 		}
 	}

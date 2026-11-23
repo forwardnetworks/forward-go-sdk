@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -41,13 +45,13 @@ func TestNQECheckResult(t *testing.T) {
 		Empty  []string `json:"Empty"`
 		Bytes  int64    `json:"Bytes"`
 	}
-	rows, err := DecodeNQE[row](result.Items)
+	rows, err := domain.DecodeNQE[row](result.Items)
 	if err != nil || rows[0].Device != "a" || rows[0].OS != "NXOS" || len(rows[0].Peers) != 2 || rows[0].Peers[1] != "10.0.2.3" || len(rows[0].Empty) != 0 || rows[0].Bytes != 9007199254740993 {
 		t.Fatalf("rows=%+v err=%v", rows, err)
 	}
 
 	limit := int32(2)
-	if _, _, err = client.NQE.CheckResult(context.Background(), "9", "abc123", &NQEOptions{Limit: &limit, ItemFormat: "JSON"}); err != nil || gotBody != `{"limit":2}` {
+	if _, _, err = client.NQE.CheckResult(context.Background(), "9", "abc123", &domain.NQEOptions{Limit: &limit, ItemFormat: "JSON"}); err != nil || gotBody != `{"limit":2}` {
 		t.Fatalf("ItemFormat must not be sent: body=%q err=%v", gotBody, err)
 	}
 	if _, _, err = client.NQE.CheckResult(context.Background(), "9", " ", nil); err == nil {

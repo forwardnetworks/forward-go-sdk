@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -41,7 +45,7 @@ func TestStateReads(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	sessions, _, err := client.NQE.BGPSessions(ctx, "n1", "9", StateReadOptions{})
+	sessions, _, err := client.NQE.BGPSessions(ctx, "n1", "9", domain.StateReadOptions{})
 	if err != nil || len(sessions) != 2 || !sessions[0].Established() || sessions[0].RemoteAS != "65001" || sessions[1].Established() || sessions[1].VRF != "mgmt" {
 		t.Fatalf("sessions = %+v err = %v", sessions, err)
 	}
@@ -50,7 +54,7 @@ func TestStateReads(t *testing.T) {
 		t.Fatal("VRF must be part of the key")
 	}
 
-	adj, _, err := client.NQE.LLDPAdjacencies(ctx, "n1", "9", LLDPOptions{Devices: []string{"bb1", "bb2"}, SkipInterfaces: []string{"ma0"}})
+	adj, _, err := client.NQE.LLDPAdjacencies(ctx, "n1", "9", domain.LLDPOptions{Devices: []string{"bb1", "bb2"}, SkipInterfaces: []string{"ma0"}})
 	if err != nil || len(adj) != 1 || adj[0].Key() != [4]string{"a", "Et1", "b", "Et2"} {
 		t.Fatalf("adj = %+v err = %v", adj, err)
 	}
@@ -59,7 +63,7 @@ func TestStateReads(t *testing.T) {
 		t.Fatalf("query = %q", queries[1])
 	}
 	n := len(queries)
-	if _, _, err = client.NQE.LLDPAdjacencies(ctx, "n1", "9", LLDPOptions{Devices: []string{`x" || true || device.name == "y`}}); err == nil || len(queries) != n {
+	if _, _, err = client.NQE.LLDPAdjacencies(ctx, "n1", "9", domain.LLDPOptions{Devices: []string{`x" || true || device.name == "y`}}); err == nil || len(queries) != n {
 		t.Fatal("a name that breaks the literal must be refused before any request")
 	}
 }
@@ -72,12 +76,12 @@ func TestRunAllCompositeKey(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	opts := NQEPagedOptions{KeyColumns: []string{"A", "B"}, Attempts: 1}
-	if got, _, err := client.NQE.RunAll(context.Background(), "n1", "9", NQEQueryRequest{Query: "select {A: 1}"}, opts); err != nil || len(got) != 2 {
+	opts := domain.NQEPagedOptions{KeyColumns: []string{"A", "B"}, Attempts: 1}
+	if got, _, err := client.NQE.RunAll(context.Background(), "n1", "9", domain.NQEQueryRequest{Query: "select {A: 1}"}, opts); err != nil || len(got) != 2 {
 		t.Fatalf("got %d rows, err %v", len(got), err)
 	}
 	rows = `[{"A":"x","B":"1"},{"A":"x","B":"1"}]`
-	if _, _, err := client.NQE.RunAll(context.Background(), "n1", "9", NQEQueryRequest{Query: "select {A: 1}"}, opts); err == nil {
+	if _, _, err := client.NQE.RunAll(context.Background(), "n1", "9", domain.NQEQueryRequest{Query: "select {A: 1}"}, opts); err == nil {
 		t.Fatal("an identical key tuple must be reported")
 	}
 }
@@ -106,12 +110,12 @@ func TestInterfaceAdminAndACLReads(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	ifaces, _, err := client.NQE.InterfaceAdmin(ctx, "n1", "9", StateReadOptions{})
+	ifaces, _, err := client.NQE.InterfaceAdmin(ctx, "n1", "9", domain.StateReadOptions{})
 	if err != nil || len(ifaces) != 2 || !ifaces[0].Up() || ifaces[1].Up() || ifaces[0].Key() != [2]string{"a", "Et1"} {
 		t.Fatalf("ifaces = %+v err = %v", ifaces, err)
 	}
-	counts, _, err := client.NQE.ACLCounts(ctx, "n1", "9", StateReadOptions{})
-	if err != nil || counts[ACLKey{"a", "edge-in"}] != 2 || counts[ACLKey{"b", "edge-in"}] != 1 || len(counts) != 2 {
+	counts, _, err := client.NQE.ACLCounts(ctx, "n1", "9", domain.StateReadOptions{})
+	if err != nil || counts[domain.ACLKey{Device: "a", AclName: "edge-in"}] != 2 || counts[domain.ACLKey{Device: "b", AclName: "edge-in"}] != 1 || len(counts) != 2 {
 		t.Fatalf("counts = %v err = %v", counts, err)
 	}
 }
@@ -126,7 +130,7 @@ func TestACLEntriesWithKey(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	options := ACLReadOptions{StateReadOptions: StateReadOptions{Attempts: 1}, Query: "select {Device: 1}", KeyColumns: []string{"Device", "AclName", "UUID"}}
+	options := domain.ACLReadOptions{StateReadOptions: domain.StateReadOptions{Attempts: 1}, Query: "select {Device: 1}", KeyColumns: []string{"Device", "AclName", "UUID"}}
 	got, _, err := client.NQE.ACLEntriesWith(ctx, "n1", "9", options)
 	if err != nil || len(got) != 2 || got[0].Key() != [3]string{"a", "r", "u1"} || got[0].Key() == got[1].Key() {
 		t.Fatalf("got=%+v err=%v", got, err)
@@ -139,7 +143,7 @@ func TestACLEntriesWithKey(t *testing.T) {
 	if _, _, err = client.NQE.ACLEntriesWith(ctx, "n1", "9", options); err == nil {
 		t.Fatal("a repeated identifying key must be reported")
 	}
-	if _, _, err = client.NQE.ACLEntriesWith(ctx, "n1", "9", ACLReadOptions{KeyColumns: []string{"UUID"}}); err == nil {
+	if _, _, err = client.NQE.ACLEntriesWith(ctx, "n1", "9", domain.ACLReadOptions{KeyColumns: []string{"UUID"}}); err == nil {
 		t.Fatal("KeyColumns with the default query must be refused")
 	}
 }

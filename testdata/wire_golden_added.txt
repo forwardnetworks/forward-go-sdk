@@ -1,0 +1,35 @@
+== CloudManagedSetups.CreateMeraki
+mode="" POST /api/networks/v1/cloud-managed-setups?type=MERAKI auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="application/json" body="{\"type\":\"MERAKI\",\"name\":\"m1\",\"apiKeyId\":\"k1\",\"credentialId\":\"c1\",\"testResult\":{\"savedAt\":\"2026-01-01T00:00:00Z\"}}"
+mode="service" POST /api/networks/v1/cloud-managed-setups?type=MERAKI auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="application/json" body="{\"type\":\"MERAKI\",\"name\":\"m1\",\"apiKeyId\":\"k1\",\"credentialId\":\"c1\",\"testResult\":{\"savedAt\":\"2026-01-01T00:00:00Z\"}}"
+mode="browser" GET /api/public/csrf auth="" cookies="SESSION=v1;XSRF-TOKEN=v1" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="none" POST /api/networks/v1/cloud-managed-setups?type=MERAKI auth="" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="application/json" body="{\"type\":\"MERAKI\",\"name\":\"m1\",\"apiKeyId\":\"k1\",\"credentialId\":\"c1\",\"testResult\":{\"savedAt\":\"2026-01-01T00:00:00Z\"}}"
+== CloudManagedSetups.DeleteMeraki
+mode="" DELETE /api/networks/v1/cloud-managed-setups/v1 auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="service" DELETE /api/networks/v1/cloud-managed-setups/v1 auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="browser" GET /api/public/csrf auth="" cookies="SESSION=v1;XSRF-TOKEN=v1" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="none" DELETE /api/networks/v1/cloud-managed-setups/v1 auth="" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+== CloudManagedSetups.DiscoverMeraki
+mode="" POST /api/networks/v1/cloud-managed-setups/v1?action=discover&type=MERAKI auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="service" POST /api/networks/v1/cloud-managed-setups/v1?action=discover&type=MERAKI auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="browser" GET /api/public/csrf auth="" cookies="SESSION=v1;XSRF-TOKEN=v1" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="none" POST /api/networks/v1/cloud-managed-setups/v1?action=discover&type=MERAKI auth="" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+== CloudManagedSetups.GetMeraki
+mode="" GET /api/networks/v1/cloud-managed-setups/v1 auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="service" GET /api/networks/v1/cloud-managed-setups/v1 auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="browser" GET /api/networks/v1/cloud-managed-setups/v1 auth="" cookies="SESSION=v1;XSRF-TOKEN=v1" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="none" GET /api/networks/v1/cloud-managed-setups/v1 auth="" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+== CloudManagedSetups.ListMeraki
+mode="" GET /api/networks/v1/cloud-managed-setups auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="service" GET /api/networks/v1/cloud-managed-setups auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="browser" GET /api/networks/v1/cloud-managed-setups auth="" cookies="SESSION=v1;XSRF-TOKEN=v1" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="none" GET /api/networks/v1/cloud-managed-setups auth="" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+== CloudManagedSetups.PatchMeraki
+mode="" PATCH /api/networks/v1/cloud-managed-setups/v1?type=MERAKI auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="application/json" body="{\"collect\":false,\"type\":\"MERAKI\"}"
+mode="service" PATCH /api/networks/v1/cloud-managed-setups/v1?type=MERAKI auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="application/json" body="{\"collect\":false,\"type\":\"MERAKI\"}"
+mode="browser" GET /api/public/csrf auth="" cookies="SESSION=v1;XSRF-TOKEN=v1" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="none" PATCH /api/networks/v1/cloud-managed-setups/v1?type=MERAKI auth="" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="application/json" body="{\"collect\":false,\"type\":\"MERAKI\"}"
+== CloudManagedSetups.TestMeraki
+mode="" POST /api/networks/v1/cloud-managed-setup-tests?type=MERAKI auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="application/json" body="{\"type\":\"MERAKI\",\"id\":\"v1\",\"apiKeyId\":\"v1\",\"credentialId\":\"v1\",\"proxyServerId\":\"v1\",\"otpBypassToken\":\"v1\",\"region\":\"v1\",\"collectorId\":\"v1\",\"disablePrivateApiCollection\":true}"
+mode="service" POST /api/networks/v1/cloud-managed-setup-tests?type=MERAKI auth="Basic dXNlcjpwYXNz" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="application/json" body="{\"type\":\"MERAKI\",\"id\":\"v1\",\"apiKeyId\":\"v1\",\"credentialId\":\"v1\",\"proxyServerId\":\"v1\",\"otpBypassToken\":\"v1\",\"region\":\"v1\",\"collectorId\":\"v1\",\"disablePrivateApiCollection\":true}"
+mode="browser" GET /api/public/csrf auth="" cookies="SESSION=v1;XSRF-TOKEN=v1" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="" body=""
+mode="none" POST /api/networks/v1/cloud-managed-setup-tests?type=MERAKI auth="" cookies="" xsrf="" ua="forward-go-sdk" accept="application/json" content-type="application/json" body="{\"type\":\"MERAKI\",\"id\":\"v1\",\"apiKeyId\":\"v1\",\"credentialId\":\"v1\",\"proxyServerId\":\"v1\",\"otpBypassToken\":\"v1\",\"region\":\"v1\",\"collectorId\":\"v1\",\"disablePrivateApiCollection\":true}"

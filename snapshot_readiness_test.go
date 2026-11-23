@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -50,7 +55,7 @@ func TestSnapshotsLatestProcessedWithOnlyPredictions(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, _, err := newTestClient(t, server.URL).Snapshots.LatestProcessed(context.Background(), "net-1"); !errors.Is(err, ErrNoSnapshots) {
+	if _, _, err := newTestClient(t, server.URL).Snapshots.LatestProcessed(context.Background(), "net-1"); !errors.Is(err, domain.ErrNoSnapshots) {
 		t.Fatalf("LatestProcessed() error = %v, want ErrNoSnapshots", err)
 	}
 }
@@ -68,49 +73,49 @@ func TestSnapshotReadinessErrorsAreClassifiedOnEveryRoute(t *testing.T) {
 		status int
 		body   string
 		want   error
-		kind   ErrorKind
+		kind   domain.ErrorKind
 	}{
 		{
 			name:   "snapshot still processing",
 			status: http.StatusConflict,
 			body:   `{"apiUrl":"/api/nqe","httpMethod":"POST","message":"Snapshot 1021 cannot be used at the moment (currently PROCESSING)","reason":"SNAPSHOT_UNAVAILABLE","snapshotId":1021,"snapshotState":"PROCESSING"}`,
-			want:   ErrSnapshotNotProcessed,
-			kind:   ErrorKindSnapshotNotProcessed,
+			want:   domain.ErrSnapshotNotProcessed,
+			kind:   domain.ErrorKindSnapshotNotProcessed,
 		},
 		{
 			name:   "no snapshot given and the latest is not processed",
 			status: http.StatusConflict,
 			body:   `{"apiUrl":"/api/nqe","httpMethod":"POST","message":"No qualifying Snapshot found. The latest Snapshot, 1022, is currently PROCESSING.","reason":"NO_QUALIFYING_SNAPSHOT","latestSnapshotId":"1022","latestSnapshotState":"PROCESSING"}`,
-			want:   ErrSnapshotNotProcessed,
-			kind:   ErrorKindSnapshotNotProcessed,
+			want:   domain.ErrSnapshotNotProcessed,
+			kind:   domain.ErrorKindSnapshotNotProcessed,
 		},
 		{
 			name:   "no snapshot given and the network has none",
 			status: http.StatusConflict,
 			body:   `{"apiUrl":"/api/nqe","httpMethod":"POST","message":"No qualifying Snapshot found","reason":"NO_QUALIFYING_SNAPSHOT"}`,
-			want:   ErrNoSnapshots,
-			kind:   ErrorKindNoSnapshots,
+			want:   domain.ErrNoSnapshots,
+			kind:   domain.ErrorKindNoSnapshots,
 		},
 		{
 			name:   "processing failed",
 			status: http.StatusBadRequest,
 			body:   `{"apiUrl":"/api/nqe","httpMethod":"POST","message":"The snapshot you are attempting to access failed to process successfully.\nPlease contact your Forward representative for details."}`,
-			want:   ErrSnapshotProcessingFailed,
-			kind:   ErrorKindSnapshotProcessingFailed,
+			want:   domain.ErrSnapshotProcessingFailed,
+			kind:   domain.ErrorKindSnapshotProcessingFailed,
 		},
 		{
 			name:   "processing canceled",
 			status: http.StatusBadRequest,
 			body:   `{"apiUrl":"/api/nqe","httpMethod":"POST","message":"Processing was canceled for Snapshot 1021."}`,
-			want:   ErrSnapshotProcessingFailed,
-			kind:   ErrorKindSnapshotProcessingFailed,
+			want:   domain.ErrSnapshotProcessingFailed,
+			kind:   domain.ErrorKindSnapshotProcessingFailed,
 		},
 		{
 			name:   "processing timed out",
 			status: http.StatusBadRequest,
 			body:   `{"apiUrl":"/api/nqe","httpMethod":"POST","message":"Processing timed out for Snapshot 1021."}`,
-			want:   ErrSnapshotProcessingFailed,
-			kind:   ErrorKindSnapshotProcessingFailed,
+			want:   domain.ErrSnapshotProcessingFailed,
+			kind:   domain.ErrorKindSnapshotProcessingFailed,
 		},
 	}
 	for _, tc := range cases {
@@ -119,13 +124,13 @@ func TestSnapshotReadinessErrorsAreClassifiedOnEveryRoute(t *testing.T) {
 			w.WriteHeader(tc.status)
 			_, _ = io.WriteString(w, tc.body)
 		}))
-		_, _, err := newTestClient(t, server.URL).NQE.Run(context.Background(), "net-1", "", NQEQueryRequest{Query: "select 1"})
+		_, _, err := newTestClient(t, server.URL).NQE.Run(context.Background(), "net-1", "", domain.NQEQueryRequest{Query: "select 1"})
 		server.Close()
-		var apiErr *ErrorResponse
+		var apiErr *ports.ErrorResponse
 		if !errors.As(err, &apiErr) || apiErr.Kind != tc.kind || !errors.Is(err, tc.want) {
 			t.Errorf("%s: err = %v (kind %v), want %v", tc.name, err, kindOf(apiErr), tc.kind)
 		}
-		for _, other := range []error{ErrSnapshotNotProcessed, ErrSnapshotProcessingFailed, ErrNoSnapshots} {
+		for _, other := range []error{domain.ErrSnapshotNotProcessed, domain.ErrSnapshotProcessingFailed, domain.ErrNoSnapshots} {
 			if other != tc.want && errors.Is(err, other) {
 				t.Errorf("%s: also matches %v", tc.name, other)
 			}
@@ -144,8 +149,8 @@ func TestSnapshotUnavailableCarriesSnapshotState(t *testing.T) {
 	defer server.Close()
 
 	_, err := newTestClient(t, server.URL).Raw.DoJSON(context.Background(), http.MethodGet, "/api/networks/net-1/paths", nil, nil)
-	var apiErr *ErrorResponse
-	if !errors.As(err, &apiErr) || !errors.Is(err, ErrSnapshotNotProcessed) {
+	var apiErr *ports.ErrorResponse
+	if !errors.As(err, &apiErr) || !errors.Is(err, domain.ErrSnapshotNotProcessed) {
 		t.Fatalf("err = %v, want ErrSnapshotNotProcessed", err)
 	}
 	if apiErr.SnapshotID != "1021" || apiErr.SnapshotState != "UNPROCESSED" {
@@ -153,7 +158,7 @@ func TestSnapshotUnavailableCarriesSnapshotState(t *testing.T) {
 	}
 }
 
-func kindOf(apiErr *ErrorResponse) ErrorKind {
+func kindOf(apiErr *ports.ErrorResponse) domain.ErrorKind {
 	if apiErr == nil {
 		return ""
 	}
@@ -309,10 +314,10 @@ func TestSnapshotsComputeAdvancedReachability(t *testing.T) {
 		{name: "unknown snapshot", status: http.StatusNotFound, body: `{"apiUrl":"/api/snapshots/9164","httpMethod":"POST","message":"Snapshot not found"}`},
 		{name: "reachability not finished", status: http.StatusConflict,
 			body: `{"apiUrl":"/api/snapshots/9164","httpMethod":"POST","message":"Snapshot 9164 cannot be used at the moment (currently PROCESSING)","reason":"SNAPSHOT_UNAVAILABLE","snapshotId":9164,"snapshotState":"PROCESSING"}`,
-			want: ErrSnapshotNotProcessed},
+			want: domain.ErrSnapshotNotProcessed},
 		{name: "processing failed", status: http.StatusBadRequest,
 			body: `{"apiUrl":"/api/snapshots/9164","httpMethod":"POST","message":"The snapshot you are attempting to access failed to process successfully.\nPlease contact your Forward representative for details."}`,
-			want: ErrSnapshotProcessingFailed},
+			want: domain.ErrSnapshotProcessingFailed},
 	}
 	for _, tc := range cases {
 		var method, path, query string
@@ -332,13 +337,13 @@ func TestSnapshotsComputeAdvancedReachability(t *testing.T) {
 		switch {
 		case tc.status == http.StatusNoContent && err != nil:
 			t.Errorf("%s: err = %v", tc.name, err)
-		case tc.status == http.StatusNotFound && !IsStatus(err, http.StatusNotFound):
+		case tc.status == http.StatusNotFound && !ports.IsStatus(err, http.StatusNotFound):
 			t.Errorf("%s: err = %v, want a 404", tc.name, err)
 		case tc.want != nil && !errors.Is(err, tc.want):
 			t.Errorf("%s: err = %v, want %v", tc.name, err, tc.want)
 		}
 	}
-	if _, err := newTestClient(t, "http://127.0.0.1:1").Snapshots.ComputeAdvancedReachability(context.Background(), " "); err == nil || IsStatus(err, 0) {
+	if _, err := newTestClient(t, "http://127.0.0.1:1").Snapshots.ComputeAdvancedReachability(context.Background(), " "); err == nil || ports.IsStatus(err, 0) {
 		t.Fatal("an empty snapshot ID must be refused locally")
 	}
 }

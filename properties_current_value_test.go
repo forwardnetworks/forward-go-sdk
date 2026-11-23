@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -37,7 +41,7 @@ func TestPropertiesCurrentValue(t *testing.T) {
 	}
 
 	status, body = http.StatusBadRequest, `{"message":"No enum constant com.forwardnetworks.cv.config.OrgProperty.NOT_A_PROPERTY"}`
-	if _, _, err = client.Properties.CurrentValue(ctx, "NOT_A_PROPERTY"); !IsUnknownOrgProperty(err) {
+	if _, _, err = client.Properties.CurrentValue(ctx, "NOT_A_PROPERTY"); !domain.IsUnknownOrgProperty(err) {
 		t.Fatalf("an unknown property is ErrUnknownOrgProperty: %v", err)
 	}
 	status, body = http.StatusOK, `{"SOMETHING_ELSE":1}`
@@ -46,7 +50,7 @@ func TestPropertiesCurrentValue(t *testing.T) {
 	}
 	for _, bad := range []string{"", "PREDICT_MODELING/../ALLOWED_IPS", "A B", "ALLOWED_IPS?x=1", "../config", "1ABC"} {
 		before := calls
-		if _, _, err := client.Properties.CurrentValue(ctx, OrgProperty(bad)); err == nil || calls != before {
+		if _, _, err := client.Properties.CurrentValue(ctx, domain.OrgProperty(bad)); err == nil || calls != before {
 			t.Errorf("%q must be refused before any request (err %v)", bad, err)
 		}
 	}

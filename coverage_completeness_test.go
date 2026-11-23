@@ -14,8 +14,9 @@ import (
 )
 
 // TestCoverageManifestIsComplete fails when an exported service method that
-// issues an HTTP request -- directly or through any chain of same-package
-// helpers and sibling methods -- has no route in coverage_manifest.json.
+// issues an HTTP request -- directly or through any chain of helpers and
+// sibling methods, across the module's packages and through the ports to the
+// wired adapter (analyzeModuleRequests) -- has no route in coverage_manifest.json.
 //
 // A consumer's route-liveness gate (Skyforge's forwardrawgate
 // TestRouteLiveness) can only check an SDK call it can map to a route through
@@ -30,7 +31,9 @@ import (
 // when a manifest symbol sends no request at all: a stale entry, or a hole in
 // the analysis.
 func TestCoverageManifestIsComplete(t *testing.T) {
-	graph := analyzeServiceRequests(t)
+	// The module-wide walk (coverage_graph_test.go), which also follows calls across packages, through port interfaces and into
+	// promoted methods; on the unmoved tree it equals the single-package walk (TestServiceRequestAnalyzersAgree).
+	graph := analyzeModuleRequests(t)
 
 	// Positive controls: a direct sender, a composite that only reaches the
 	// wire through sibling methods, a kind-dependent sender through a helper,
@@ -137,8 +140,6 @@ type serviceRequestGraph struct {
 	// it reaches through unexported helpers and closures (the walk stops at a
 	// service method: that method's own manifest entry carries its routes).
 	via map[string][]string
-	// file is the source file declaring each service method.
-	file map[string]string
 }
 
 // analyzeServiceRequests type-checks this package from source and walks its
@@ -262,10 +263,9 @@ func analyzeServiceRequests(t *testing.T) serviceRequestGraph {
 		}
 	}
 
-	graph := serviceRequestGraph{issuing: map[string]bool{}, via: map[string][]string{}, file: map[string]string{}}
+	graph := serviceRequestGraph{issuing: map[string]bool{}, via: map[string][]string{}}
 	for root, symbol := range symbols {
 		graph.issuing[symbol] = true
-		graph.file[symbol] = filepath.Base(fset.Position(root.Pos()).Filename)
 		seen := map[*types.Func]bool{root: true}
 		stack := append([]*types.Func(nil), edges[root]...)
 		for len(stack) > 0 {

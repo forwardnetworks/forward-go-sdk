@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -71,7 +75,7 @@ func TestDiffKindCannotReshapeTheRequest(t *testing.T) {
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
 
-	for _, bad := range []DiffKind{"devices?x=1", "devices#f", "a b", "%2e%2e", "../x", "devices/", "/devices", "Devices", "a//b", "devices\n", "devices%3Fx", "a_b"} {
+	for _, bad := range []domain.DiffKind{"devices?x=1", "devices#f", "a b", "%2e%2e", "../x", "devices/", "/devices", "Devices", "a//b", "devices\n", "devices%3Fx", "a_b"} {
 		if _, _, err := client.Diffs.Count(ctx, "1", "2", bad); err == nil {
 			t.Errorf("%q must be refused", bad)
 		}
@@ -79,7 +83,7 @@ func TestDiffKindCannotReshapeTheRequest(t *testing.T) {
 	if sent.Load() != 0 {
 		t.Fatalf("%d refused kinds reached the server", sent.Load())
 	}
-	for _, kind := range CountableDiffKinds {
+	for _, kind := range domain.CountableDiffKinds {
 		if _, _, err := client.Diffs.Count(ctx, "1", "2", kind); err != nil {
 			t.Errorf("%q must stay accepted: %v", kind, err)
 		}

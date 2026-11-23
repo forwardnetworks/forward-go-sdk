@@ -83,7 +83,7 @@ runtime evidence shared by scoped clones.
 
 2. **Replace transport, IDs, and errors.** Put the SDK client inside the existing
    wrapper. Map collection conflicts with
-   `errors.Is(err, forward.ErrCollectionAlreadyInProgress)`, unprocessed exports
+   `errors.Is(err, domain.ErrCollectionAlreadyInProgress)`, unprocessed exports
    with `ErrSnapshotNotProcessed`, missing tenants with `ErrNetworkNotFound`, and
    credential failures with `ErrAuthentication`. Remove all caller-side message
    matching. Treat SDK `Identifier` as the only string-or-number decoder.

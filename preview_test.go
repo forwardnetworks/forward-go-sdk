@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -49,7 +53,7 @@ func TestPredictRoutesAndBodies(t *testing.T) {
 
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	changeSet, _, err := client.Predict.CreateChangeSet(ctx, "network-1", ChangeSetCreateRequest{
+	changeSet, _, err := client.Predict.CreateChangeSet(ctx, "network-1", domain.ChangeSetCreateRequest{
 		Name: "upgrade", Description: "IOS upgrade", SnapshotID: "snapshot-1", Tags: []string{"maintenance"},
 	})
 	if err != nil || changeSet.ID != "42" {
@@ -105,7 +109,7 @@ func TestAIChatRoutes(t *testing.T) {
 		t.Fatalf("AddMessage() error = %v", err)
 	}
 	since := time.Date(2026, time.August, 5, 12, 0, 0, 0, time.UTC)
-	messages, _, err := client.AI.ListMessages(ctx, "7", AIMessageListOptions{Since: &since})
+	messages, _, err := client.AI.ListMessages(ctx, "7", domain.AIMessageListOptions{Since: &since})
 	if err != nil || len(messages) != 1 || messages[0].FinalAnswer.AnswerText() != "done on this build" {
 		t.Fatalf("ListMessages() = %#v, %v", messages, err)
 	}

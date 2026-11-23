@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -33,14 +37,14 @@ func TestTraceFacetsQuerySendsThePathQuery(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	facets, _, err := client.Trace.FacetsQuery(context.Background(), "net1", "s1", TracePathQuery{
-		From: &TraceEndpoint{Location: TraceInterface("n1", "eth1/1"), Headers: []TraceHeaders{{"ipv4_dst": {"10.0.0.2"}}}},
-		Chain: []TraceChainHop{
-			{Transit: TraceTransitThrough, Location: TraceDevice("core")},
+	facets, _, err := client.Trace.FacetsQuery(context.Background(), "net1", "s1", domain.TracePathQuery{
+		From: &domain.TraceEndpoint{Location: domain.TraceInterface("n1", "eth1/1"), Headers: []domain.TraceHeaders{{"ipv4_dst": {"10.0.0.2"}}}},
+		Chain: []domain.TraceChainHop{
+			{Transit: domain.TraceTransitThrough, Location: domain.TraceDevice("core")},
 		},
-		To:   &TraceEndpoint{Location: TraceInterface("n2", "eth1/1"), Headers: []TraceHeaders{{"ip_proto": {"6"}}}},
-		Mode: TraceModePermitAll,
-	}, TraceFacetsOptions{MaxFacetValues: 5})
+		To:   &domain.TraceEndpoint{Location: domain.TraceInterface("n2", "eth1/1"), Headers: []domain.TraceHeaders{{"ip_proto": {"6"}}}},
+		Mode: domain.TraceModePermitAll,
+	}, domain.TraceFacetsOptions{MaxFacetValues: 5})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +63,7 @@ func TestTraceFacetsQuerySendsThePathQuery(t *testing.T) {
 	if err != nil || !ok || total.Value != 2 || total.Type != "EXACT" {
 		t.Fatalf("Total = %+v, %v, %v", total, ok, err)
 	}
-	ambiguous, _, err := client.Trace.FacetsQuery(context.Background(), "net1", "ambiguous", TracePathQuery{To: &TraceEndpoint{Location: TraceSubnet("10.0.0.0/24")}}, TraceFacetsOptions{})
+	ambiguous, _, err := client.Trace.FacetsQuery(context.Background(), "net1", "ambiguous", domain.TracePathQuery{To: &domain.TraceEndpoint{Location: domain.TraceSubnet("10.0.0.0/24")}}, domain.TraceFacetsOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,10 +74,10 @@ func TestTraceFacetsQuerySendsThePathQuery(t *testing.T) {
 	if err != nil || !ok || possible.From != nil || possible.To == nil || possible.To.Type != "HOST" || len(possible.To.Locations) != 2 || possible.To.Locations[0].Device != "d1" {
 		t.Fatalf("PossibleLocations = %+v, %v, %v", possible, ok, err)
 	}
-	if _, ok, _ := (&TraceFacets{}).Total(); ok {
+	if _, ok, _ := (&domain.TraceFacets{}).Total(); ok {
 		t.Fatal("an absent totalResults (a timed out request) reported a total")
 	}
-	if _, ok, _ := (&TraceFacets{}).PossibleLocations(); ok {
+	if _, ok, _ := (&domain.TraceFacets{}).PossibleLocations(); ok {
 		t.Fatal("an absent possibleIpLocations reported candidates")
 	}
 }
@@ -85,16 +89,16 @@ func TestTraceLocationsRenderForwardsFilterObjects(t *testing.T) {
 
 	for _, tc := range []struct {
 		name string
-		loc  TraceLocation
+		loc  domain.TraceLocation
 		want string
 	}{
-		{"host", TraceHost("h1"), `{"type":"HostFilter","values":["h1"]}`},
-		{"vrf", TraceVRF("mgmt"), `{"type":"VrfFilter","values":["mgmt"]}`},
-		{"device vrf", TraceDeviceVRF("d1", "mgmt"), `{"device":"d1","type":"DeviceVrfFilter","vrf":"mgmt"}`},
-		{"zone", TraceSecurityZone("fw", "untrust"), `{"device":"fw","type":"SecurityZoneFilter","value":"untrust"}`},
-		{"subnet", TraceSubnet("10.0.0.0/24"), `{"type":"SubnetLocationFilter","value":"10.0.0.0/24"}`},
-		{"subnet at device", TraceSubnetAtDevice("10.0.0.0/24", "d1"), `{"device":"d1","type":"SubnetLocationFilter","value":"10.0.0.0/24"}`},
-		{"not", TraceNot(TraceDevice("d1")), `{"clause":{"type":"DeviceFilter","values":["d1"]},"type":"NotFilter"}`},
+		{"host", domain.TraceHost("h1"), `{"type":"HostFilter","values":["h1"]}`},
+		{"vrf", domain.TraceVRF("mgmt"), `{"type":"VrfFilter","values":["mgmt"]}`},
+		{"device vrf", domain.TraceDeviceVRF("d1", "mgmt"), `{"device":"d1","type":"DeviceVrfFilter","vrf":"mgmt"}`},
+		{"zone", domain.TraceSecurityZone("fw", "untrust"), `{"device":"fw","type":"SecurityZoneFilter","value":"untrust"}`},
+		{"subnet", domain.TraceSubnet("10.0.0.0/24"), `{"type":"SubnetLocationFilter","value":"10.0.0.0/24"}`},
+		{"subnet at device", domain.TraceSubnetAtDevice("10.0.0.0/24", "d1"), `{"device":"d1","type":"SubnetLocationFilter","value":"10.0.0.0/24"}`},
+		{"not", domain.TraceNot(domain.TraceDevice("d1")), `{"clause":{"type":"DeviceFilter","values":["d1"]},"type":"NotFilter"}`},
 	} {
 		got, err := tc.loc.MarshalJSON()
 		if err != nil || string(got) != tc.want {
@@ -118,25 +122,25 @@ func TestTraceFacetsQueryRefusesWhatForwardRefuses(t *testing.T) {
 	}))
 	defer server.Close()
 	trace := newTestClient(t, server.URL).Trace
-	from := &TraceEndpoint{Location: TraceDevice("d1")}
+	from := &domain.TraceEndpoint{Location: domain.TraceDevice("d1")}
 
-	for name, q := range map[string]TracePathQuery{
+	for name, q := range map[string]domain.TracePathQuery{
 		"empty":                  {},
-		"mode only":              {Mode: TraceModePermitAll},
-		"double negation":        {From: &TraceEndpoint{Location: TraceNot(TraceNot(TraceDevice("d")))}},
-		"blank interface part":   {From: &TraceEndpoint{Location: TraceInterface("", "eth1/1")}},
-		"host in chain":          {From: from, Chain: []TraceChainHop{{Transit: TraceTransitThrough, Location: TraceHost("h")}}},
-		"subnet in chain":        {From: from, Chain: []TraceChainHop{{Transit: TraceTransitThrough, Location: TraceSubnet("10.0.0.0/8")}}},
-		"not host in chain":      {From: from, Chain: []TraceChainHop{{Transit: TraceTransitThrough, Location: TraceNot(TraceHost("h"))}}},
-		"bad transit":            {From: from, Chain: []TraceChainHop{{Transit: "via", Location: TraceDevice("d")}}},
-		"blank device":           {From: &TraceEndpoint{Location: TraceDevice(" ")}},
-		"zero location":          {From: &TraceEndpoint{}},
-		"zone without device":    {From: &TraceEndpoint{Location: TraceSecurityZone("", "z")}},
+		"mode only":              {Mode: domain.TraceModePermitAll},
+		"double negation":        {From: &domain.TraceEndpoint{Location: domain.TraceNot(domain.TraceNot(domain.TraceDevice("d")))}},
+		"blank interface part":   {From: &domain.TraceEndpoint{Location: domain.TraceInterface("", "eth1/1")}},
+		"host in chain":          {From: from, Chain: []domain.TraceChainHop{{Transit: domain.TraceTransitThrough, Location: domain.TraceHost("h")}}},
+		"subnet in chain":        {From: from, Chain: []domain.TraceChainHop{{Transit: domain.TraceTransitThrough, Location: domain.TraceSubnet("10.0.0.0/8")}}},
+		"not host in chain":      {From: from, Chain: []domain.TraceChainHop{{Transit: domain.TraceTransitThrough, Location: domain.TraceNot(domain.TraceHost("h"))}}},
+		"bad transit":            {From: from, Chain: []domain.TraceChainHop{{Transit: "via", Location: domain.TraceDevice("d")}}},
+		"blank device":           {From: &domain.TraceEndpoint{Location: domain.TraceDevice(" ")}},
+		"zero location":          {From: &domain.TraceEndpoint{}},
+		"zone without device":    {From: &domain.TraceEndpoint{Location: domain.TraceSecurityZone("", "z")}},
 		"unknown mode":           {From: from, Mode: "DENY_ALL"},
-		"from-only header in to": {From: from, To: &TraceEndpoint{Location: TraceDevice("d2"), Headers: []TraceHeaders{{"app_id": {"x"}}}}},
-		"empty header":           {From: &TraceEndpoint{Location: TraceDevice("d1"), Headers: []TraceHeaders{{}}}},
+		"from-only header in to": {From: from, To: &domain.TraceEndpoint{Location: domain.TraceDevice("d2"), Headers: []domain.TraceHeaders{{"app_id": {"x"}}}}},
+		"empty header":           {From: &domain.TraceEndpoint{Location: domain.TraceDevice("d1"), Headers: []domain.TraceHeaders{{}}}},
 	} {
-		if _, _, err := trace.FacetsQuery(context.Background(), "net1", "s1", q, TraceFacetsOptions{}); err == nil {
+		if _, _, err := trace.FacetsQuery(context.Background(), "net1", "s1", q, domain.TraceFacetsOptions{}); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
 	}
@@ -145,7 +149,7 @@ func TestTraceFacetsQueryRefusesWhatForwardRefuses(t *testing.T) {
 	}
 
 	// From-only header fields are fine in From.
-	if _, _, err := trace.FacetsQuery(context.Background(), "net1", "s1", TracePathQuery{From: &TraceEndpoint{Location: TraceDevice("d1"), Headers: []TraceHeaders{{"app_id": {"x"}}}}}, TraceFacetsOptions{}); err != nil {
+	if _, _, err := trace.FacetsQuery(context.Background(), "net1", "s1", domain.TracePathQuery{From: &domain.TraceEndpoint{Location: domain.TraceDevice("d1"), Headers: []domain.TraceHeaders{{"app_id": {"x"}}}}}, domain.TraceFacetsOptions{}); err != nil {
 		t.Fatalf("a From header with app_id was refused: %v", err)
 	}
 }
@@ -176,10 +180,10 @@ func TestTraceForAndExplainQuery(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	q := TracePathQuery{
-		From:  &TraceEndpoint{Location: TraceDevice("a")},
-		Chain: []TraceChainHop{{Transit: TraceTransitThrough, Location: TraceDevice("b")}},
-		To:    &TraceEndpoint{Location: TraceSubnet("10.0.0.0/24")},
+	q := domain.TracePathQuery{
+		From:  &domain.TraceEndpoint{Location: domain.TraceDevice("a")},
+		Chain: []domain.TraceChainHop{{Transit: domain.TraceTransitThrough, Location: domain.TraceDevice("b")}},
+		To:    &domain.TraceEndpoint{Location: domain.TraceSubnet("10.0.0.0/24")},
 	}
 	explained, _, err := client.Trace.ExplainQuery(context.Background(), "n1", "9", q)
 	if err != nil || len(explained.Paths) != 1 || explained.Paths[0].Trace == nil || explained.Paths[0].Descriptor != "a>b" {
@@ -191,7 +195,7 @@ func TestTraceForAndExplainQuery(t *testing.T) {
 	if !strings.Contains(traceFilters, `"chain"`) || !strings.Contains(picked, `"behavior":{"k":1}`) || !strings.Contains(picked, `"traceType":"VALID"`) {
 		t.Fatalf("filters=%s picked=%s", traceFilters, picked)
 	}
-	if _, _, err = client.Trace.TraceFor(context.Background(), "n1", "9", q, TraceSelection{}); err == nil {
+	if _, _, err = client.Trace.TraceFor(context.Background(), "n1", "9", q, domain.TraceSelection{}); err == nil {
 		t.Fatal("a trace without a selected path must be refused")
 	}
 }

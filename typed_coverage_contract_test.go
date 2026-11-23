@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -44,7 +48,7 @@ func TestCollectorRegistrationIdentityIsUsedForUpload(t *testing.T) {
 	defer server.Close()
 
 	client, err := NewClient(Config{HTTPClient: privateHTTPClient(),
-		BaseURL: server.URL, Username: "support", Password: "api-secret", AuthMode: AuthModeService,
+		BaseURL: server.URL, Username: "support", Password: "api-secret", AuthMode: domain.AuthModeService,
 		Hooks: []Hook{func(_ context.Context, event Event) {
 			eventsMu.Lock()
 			events = append(events, event)
@@ -54,11 +58,11 @@ func TestCollectorRegistrationIdentityIsUsedForUpload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registration, _, err := client.Collectors.Register(context.Background(), CollectorRegistrationRequest{CollectorName: "edge"})
+	registration, _, err := client.Collectors.Register(context.Background(), domain.CollectorRegistrationRequest{CollectorName: "edge"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if registration.Identity() != (CollectorIdentity{Username: "collector.edge", AuthorizationKey: "collector-secret"}) {
+	if registration.Identity() != (domain.CollectorIdentity{Username: "collector.edge", AuthorizationKey: "collector-secret"}) {
 		t.Fatalf("collector identity = %#v", registration.Identity())
 	}
 	if _, err := client.Performance.UploadWithIdentity(context.Background(), "n-1", registration.Identity(), []byte("payload")); err != nil {
@@ -72,10 +76,10 @@ func TestCollectorRegistrationIdentityIsUsedForUpload(t *testing.T) {
 		if event.Type != EventRequest {
 			continue
 		}
-		if event.Operation == "Collectors.Register" && event.AuthMode == AuthModeService {
+		if event.Operation == "Collectors.Register" && event.AuthMode == domain.AuthModeService {
 			foundService = true
 		}
-		if event.Operation == "Performance.UploadWithIdentity" && event.AuthMode == AuthModeCollector {
+		if event.Operation == "Performance.UploadWithIdentity" && event.AuthMode == domain.AuthModeCollector {
 			foundCollector = true
 		}
 	}
@@ -126,7 +130,7 @@ func TestBrowserSessionAndUnauthenticatedReachability(t *testing.T) {
 	}))
 	defer server.Close()
 
-	browser, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "alice", Password: "password", AuthMode: AuthModeBrowser})
+	browser, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "alice", Password: "password", AuthMode: domain.AuthModeBrowser})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +138,7 @@ func TestBrowserSessionAndUnauthenticatedReachability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	login, _, err := browser.Browser.LoginLegacy(context.Background(), BrowserLoginRequest{}, *csrf)
+	login, _, err := browser.Browser.LoginLegacy(context.Background(), domain.BrowserLoginRequest{}, *csrf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +153,7 @@ func TestBrowserSessionAndUnauthenticatedReachability(t *testing.T) {
 		t.Fatalf("browser user = %#v", user)
 	}
 
-	probe, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, AuthMode: AuthModeNone})
+	probe, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, AuthMode: domain.AuthModeNone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,32 +209,32 @@ func TestBackupAPIRoutes(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "support", Password: "secret", AuthMode: AuthModeService})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "support", Password: "secret", AuthMode: domain.AuthModeService})
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings, _, err := client.Backups.GetSettings(context.Background(), StorageTypeS3)
+	settings, _, err := client.Backups.GetSettings(context.Background(), domain.StorageTypeS3)
 	if err != nil || !settings.Enabled {
 		t.Fatalf("settings=%#v err=%v", settings, err)
 	}
-	if _, err := client.Backups.SetS3BucketOwnership(context.Background(), S3StorageSettings{BucketName: "bucket"}); err != nil {
+	if _, err := client.Backups.SetS3BucketOwnership(context.Background(), domain.S3StorageSettings{BucketName: "bucket"}); err != nil {
 		t.Fatal(err)
 	}
 	storage, _, err := client.Backups.GetS3Storage(context.Background())
 	if err != nil || storage != nil {
 		t.Fatalf("empty storage=%#v err=%v", storage, err)
 	}
-	last, _, err := client.Backups.Last(context.Background(), StorageTypeS3, BackupTriggerManual)
+	last, _, err := client.Backups.Last(context.Background(), domain.StorageTypeS3, domain.BackupTriggerManual)
 	if err != nil || last != nil {
 		t.Fatalf("empty last=%#v err=%v", last, err)
 	}
-	if _, err := client.Backups.Trigger(context.Background(), BackupTriggerRequest{StorageType: StorageTypeS3, Name: "sf-primary"}); err != nil {
+	if _, err := client.Backups.Trigger(context.Background(), domain.BackupTriggerRequest{StorageType: domain.StorageTypeS3, Name: "sf-primary"}); err != nil {
 		t.Fatalf("trigger: %v", err)
 	}
-	if _, _, err := client.Backups.UpdateSettings(context.Background(), StorageTypeS3, BackupSettingsPatch{}); err != nil {
+	if _, _, err := client.Backups.UpdateSettings(context.Background(), domain.StorageTypeS3, domain.BackupSettingsPatch{}); err != nil {
 		t.Fatalf("update settings: %v", err)
 	}
-	if _, _, err := client.Backups.UpdateS3Storage(context.Background(), S3StorageSettingsPatch{}); err != nil {
+	if _, _, err := client.Backups.UpdateS3Storage(context.Background(), domain.S3StorageSettingsPatch{}); err != nil {
 		t.Fatalf("update s3 storage: %v", err)
 	}
 }
@@ -264,7 +268,7 @@ func TestTransparentFacadeAndMutationNoRetry(t *testing.T) {
 	if document.StatusCode != http.StatusConflict || document.Header.Get("X-Forward-Test") != "preserved" || !strings.Contains(string(document.Body), "already in progress") {
 		t.Fatalf("document = %#v body=%s", document, document.Body)
 	}
-	if _, err := client.Collectors.Attach(context.Background(), "n-1", CollectorAttachmentRequest{Username: "collector"}); err == nil {
+	if _, err := client.Collectors.Attach(context.Background(), "n-1", domain.CollectorAttachmentRequest{Username: "collector"}); err == nil {
 		t.Fatal("attach unexpectedly succeeded")
 	}
 	if got := attachCalls.Load(); got != 1 {
@@ -284,7 +288,7 @@ func TestAdminSupportedOrganizationCorrectionRoute(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()
-	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "support", Password: "secret", AuthMode: AuthModeService})
+	client, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "support", Password: "secret", AuthMode: domain.AuthModeService})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +299,7 @@ func TestAdminSupportedOrganizationCorrectionRoute(t *testing.T) {
 
 func TestConnectivityStatusToleratesMeasuredNestedShapes(t *testing.T) {
 	t.Parallel()
-	var status SourceTestStatus
+	var status domain.SourceTestStatus
 	if err := json.Unmarshal([]byte(`{"deviceName":"r1","testResult":{"error":{"code":"auth failed","message":"bad secret"},"phase":"LOGIN"},"snmpCollectionStatus":{"state":"FAILED"}}`), &status); err != nil {
 		t.Fatal(err)
 	}

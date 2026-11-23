@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -24,13 +28,13 @@ func TestPathSearchDomainParameter(t *testing.T) {
 	defer server.Close()
 	c := newTestClient(t, server.URL)
 
-	if _, _, err := c.Networks.Paths(context.Background(), "n1", PathSearchRequest{SrcIP: "10.0.0.1", DstIP: "10.1.0.1", Domain: "example.com"}); err != nil {
+	if _, _, err := c.Networks.Paths(context.Background(), "n1", domain.PathSearchRequest{SrcIP: "10.0.0.1", DstIP: "10.1.0.1", Domain: "example.com"}); err != nil {
 		t.Fatal(err)
 	}
 	if got := parsedQuery(t, query).Get("domain"); got != "example.com" {
 		t.Errorf("domain = %q in %q", got, query)
 	}
-	if _, _, err := c.Networks.Paths(context.Background(), "n1", PathSearchRequest{SrcIP: "10.0.0.1", DstIP: "10.1.0.1"}); err != nil {
+	if _, _, err := c.Networks.Paths(context.Background(), "n1", domain.PathSearchRequest{SrcIP: "10.0.0.1", DstIP: "10.1.0.1"}); err != nil {
 		t.Fatal(err)
 	}
 	if parsedQuery(t, query).Has("domain") {
@@ -54,7 +58,7 @@ func TestS3SecretKeyIsNeverReturned(t *testing.T) {
 		t.Errorf("GetS3Storage = %+v, %v", got, err)
 	}
 	secret := "new"
-	updated, _, err := c.Backups.UpdateS3Storage(context.Background(), S3StorageSettingsPatch{SecretKey: &secret})
+	updated, _, err := c.Backups.UpdateS3Storage(context.Background(), domain.S3StorageSettingsPatch{SecretKey: &secret})
 	if err != nil || updated.SecretKey != "" {
 		t.Errorf("UpdateS3Storage = %+v, %v", updated, err)
 	}
@@ -80,7 +84,7 @@ func TestOlderDeletesDoNotTreatAnUnservedRouteAsGone(t *testing.T) {
 		"WanCircuits.Delete":   func() error { _, err := c.WanCircuits.Delete(ctx, "n1", "w1"); return err },
 		"DeviceTags.DeleteTag": func() error { _, err := c.DeviceTags.DeleteTag(ctx, "n1", "t1"); return err },
 	} {
-		if err := call(); !errors.Is(err, ErrEndpointNotServed) {
+		if err := call(); !errors.Is(err, domain.ErrEndpointNotServed) {
 			t.Errorf("%s with an unserved route = %v, want ErrEndpointNotServed", name, err)
 		}
 	}

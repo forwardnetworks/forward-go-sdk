@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -36,7 +40,7 @@ func TestDataConnectorsReads(t *testing.T) {
 	connectors := newTestClient(t, server.URL).DataConnectors
 	ctx := context.Background()
 
-	list, _, err := connectors.List(ctx, "N1", DataConnectorReadOptions{Status: true, TestResult: true})
+	list, _, err := connectors.List(ctx, "N1", domain.DataConnectorReadOptions{Status: true, TestResult: true})
 	if err != nil || list.SnapshotID != "S9" || len(list.Connectors) != 2 {
 		t.Fatalf("List() = %+v, %v", list, err)
 	}
@@ -47,10 +51,10 @@ func TestDataConnectorsReads(t *testing.T) {
 	if cmdb := list.Connectors[1]; cmdb.Collects() || cmdb.Status != nil {
 		t.Fatalf("cmdb = %+v", cmdb)
 	}
-	if got, _, err := connectors.Get(ctx, "N1", "cmdb", DataConnectorReadOptions{}); err != nil || got.Name != "cmdb" {
+	if got, _, err := connectors.Get(ctx, "N1", "cmdb", domain.DataConnectorReadOptions{}); err != nil || got.Name != "cmdb" {
 		t.Fatalf("Get() = %+v, %v", got, err)
 	}
-	if got, _, err := connectors.Get(ctx, "N1", "gone", DataConnectorReadOptions{}); got != nil || err != nil {
+	if got, _, err := connectors.Get(ctx, "N1", "gone", domain.DataConnectorReadOptions{}); got != nil || err != nil {
 		t.Fatalf("absent Get() = %+v, %v", got, err)
 	}
 }
@@ -82,11 +86,11 @@ func TestDataConnectorsWrites(t *testing.T) {
 	connectors := newTestClient(t, server.URL).DataConnectors
 	ctx := context.Background()
 
-	if _, _, err := connectors.Add(ctx, "N1", NewDataConnector{Name: "ipam", BaseURL: "https://ipam", Endpoints: []HTTPEndpoint{{Name: "s", Path: "/s"}}}); err != nil ||
+	if _, _, err := connectors.Add(ctx, "N1", domain.NewDataConnector{Name: "ipam", BaseURL: "https://ipam", Endpoints: []domain.HTTPEndpoint{{Name: "s", Path: "/s"}}}); err != nil ||
 		calls[0] != `POST /api/networks/N1/data-connectors {"name":"ipam","baseUrl":"https://ipam","endpoints":[{"name":"s","path":"/s"}]}` {
 		t.Fatalf("Add: %v %q", err, calls)
 	}
-	if _, _, err := connectors.Update(ctx, "N1", "ipam", DataConnectorPatch{Collect: Ptr(false), CredentialID: Ptr(""), CollectorID: Ptr("COL2")}); err != nil ||
+	if _, _, err := connectors.Update(ctx, "N1", "ipam", domain.DataConnectorPatch{Collect: domain.Ptr(false), CredentialID: domain.Ptr(""), CollectorID: domain.Ptr("COL2")}); err != nil ||
 		calls[1] != `PATCH /api/networks/N1/data-connectors/ipam {"collect":false,"collectorId":"COL2","credentialId":null}` {
 		t.Fatalf("Update: %v %q", err, calls[1])
 	}
@@ -97,10 +101,10 @@ func TestDataConnectorsWrites(t *testing.T) {
 	if _, err := connectors.Delete(ctx, "N1", "ipam"); err != nil {
 		t.Fatalf("Delete of an absent connector must succeed: %v", err)
 	}
-	if _, _, err := connectors.Update(ctx, "N1", "ipam", DataConnectorPatch{}); err == nil {
+	if _, _, err := connectors.Update(ctx, "N1", "ipam", domain.DataConnectorPatch{}); err == nil {
 		t.Fatal("an empty patch must be refused locally")
 	}
-	if _, _, err := connectors.Add(ctx, "N1", NewDataConnector{Name: "x", BaseURL: "https://x"}); err == nil {
+	if _, _, err := connectors.Add(ctx, "N1", domain.NewDataConnector{Name: "x", BaseURL: "https://x"}); err == nil {
 		t.Fatal("a connector without endpoints must be refused locally")
 	}
 	if len(calls) != 4 {

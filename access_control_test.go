@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -42,7 +46,7 @@ func TestAccessControlGroupNilNetworkRolesIsOrgAdminOnTheWireAndOnRead(t *testin
 	})
 	ctx := context.Background()
 
-	admin, _, err := c.AccessControl.CreateGroup(ctx, OrgAdminGroup("admins", []string{"ops"}))
+	admin, _, err := c.AccessControl.CreateGroup(ctx, domain.OrgAdminGroup("admins", []string{"ops"}))
 	if err != nil {
 		t.Fatalf("create org admin: %v", err)
 	}
@@ -53,7 +57,7 @@ func TestAccessControlGroupNilNetworkRolesIsOrgAdminOnTheWireAndOnRead(t *testin
 		t.Fatal("echoed org-admin group did not read back as org admin")
 	}
 
-	viewers, _, err := c.AccessControl.CreateGroup(ctx, NetworkGroup("viewers", nil, nil, []string{"l1"}))
+	viewers, _, err := c.AccessControl.CreateGroup(ctx, domain.NetworkGroup("viewers", nil, nil, []string{"l1"}))
 	if err != nil {
 		t.Fatalf("create network group: %v", err)
 	}
@@ -78,7 +82,7 @@ func TestAccessControlGroupNilNetworkRolesIsOrgAdminOnTheWireAndOnRead(t *testin
 func TestAccessControlGroupOrgAdminWithLabelsIsRefusedLocally(t *testing.T) {
 	calls := 0
 	c := acClient(t, func(w http.ResponseWriter, r *http.Request) { calls++ })
-	req := OrgAdminGroup("admins", nil)
+	req := domain.OrgAdminGroup("admins", nil)
 	req.DeviceAccessLabelIDs = []string{"l1"}
 	if _, _, err := c.AccessControl.CreateGroup(context.Background(), req); err == nil || !strings.Contains(err.Error(), "cannot be narrowed") {
 		t.Fatalf("err = %v, want the org-admin/label refusal", err)
@@ -113,7 +117,7 @@ func TestDeviceAccessLabelRequestShape(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(w, `{"id":"l1","name":"edge","deviceGlobs":["edge-*"]}`)
 	})
-	got, _, err := c.AccessControl.CreateDeviceAccessLabel(context.Background(), DeviceAccessLabelRequest{Name: "edge", DeviceGlobs: []string{"edge-*"}})
+	got, _, err := c.AccessControl.CreateDeviceAccessLabel(context.Background(), domain.DeviceAccessLabelRequest{Name: "edge", DeviceGlobs: []string{"edge-*"}})
 	if err != nil || got.ID != "l1" {
 		t.Fatalf("create: %v %+v", err, got)
 	}
@@ -125,7 +129,7 @@ func TestDeviceAccessLabelRequestShape(t *testing.T) {
 	if string(body["deviceNames"]) != "[]" {
 		t.Fatalf("absent deviceNames must be sent as [], got %s", body["deviceNames"])
 	}
-	if _, _, err := c.AccessControl.CreateDeviceAccessLabel(context.Background(), DeviceAccessLabelRequest{Name: "empty"}); err == nil {
+	if _, _, err := c.AccessControl.CreateDeviceAccessLabel(context.Background(), domain.DeviceAccessLabelRequest{Name: "empty"}); err == nil {
 		t.Fatal("a label selecting no devices was accepted")
 	}
 }
@@ -154,7 +158,7 @@ func TestSAMLSettingsEmptyAndNullMeanNotConfigured(t *testing.T) {
 	}
 	calls := 0
 	c2 := acClient(t, func(w http.ResponseWriter, r *http.Request) { calls++ })
-	_, err = c2.SAML.PutSettings(context.Background(), SAMLSettings{CustomName: "x", SAMLAuthSettings: &SAMLAuthSettings{Enabled: true}})
+	_, err = c2.SAML.PutSettings(context.Background(), domain.SAMLSettings{CustomName: "x", SAMLAuthSettings: &domain.SAMLAuthSettings{Enabled: true}})
 	if err == nil || calls != 0 {
 		t.Fatalf("an enabled config without IdP fields was sent (err=%v calls=%d)", err, calls)
 	}
@@ -181,7 +185,7 @@ func TestUsersRolesAndAdminUserExternalGroups(t *testing.T) {
 	}
 	// Admin routes require a SERVICE principal; the SDK refuses a user-mode
 	// client before sending, which is its own contract and not this test's.
-	svc, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p", AuthMode: AuthModeService})
+	svc, err := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p", AuthMode: domain.AuthModeService})
 	if err != nil {
 		t.Fatalf("service client: %v", err)
 	}

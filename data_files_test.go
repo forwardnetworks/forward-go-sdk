@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"bytes"
 	"context"
 	"encoding/json"
@@ -47,7 +52,7 @@ func TestDataFilesReads(t *testing.T) {
 	if err != nil || len(list) != 2 {
 		t.Fatalf("List() = %+v, %v", list, err)
 	}
-	if f := list[0]; f.NQEName != "sites" || f.Type != DataFileCSV || f.NetworkIDs[0] != "3347" || f.UploadedBy != "mary" || f.CreatedByID != "12" || f.IsEmpty {
+	if f := list[0]; f.NQEName != "sites" || f.Type != domain.DataFileCSV || f.NetworkIDs[0] != "3347" || f.UploadedBy != "mary" || f.CreatedByID != "12" || f.IsEmpty {
 		t.Fatalf("data file = %+v", f)
 	}
 	if !list[1].IsEmpty {
@@ -114,18 +119,18 @@ func TestDataFilesUploads(t *testing.T) {
 	files := newTestClient(t, server.URL).DataFiles
 	ctx := context.Background()
 
-	inf, _, err := files.InferSchema(ctx, "x.json", []byte(`{"a":1}`), DataFileJSON)
+	inf, _, err := files.InferSchema(ctx, "x.json", []byte(`{"a":1}`), domain.DataFileJSON)
 	if err != nil || inf.Inference.DataFormat != "JSON" || inf.Inference.Warnings[0] != "w" || inf.Inference.Schema != nil {
 		t.Fatalf("InferSchema() = %+v, %v", inf, err)
 	}
-	if _, _, err := files.InferSchema(ctx, "p.csv", nil, DataFileSTIG); err == nil {
+	if _, _, err := files.InferSchema(ctx, "p.csv", nil, domain.DataFileSTIG); err == nil {
 		t.Fatal("STIG inference must be refused locally")
 	}
-	added, _, err := files.Add(ctx, DataFileCreateRequest{Name: " sites.csv ", FileType: DataFileCSV}, []byte("site\nsjc\n"))
+	added, _, err := files.Add(ctx, domain.DataFileCreateRequest{Name: " sites.csv ", FileType: domain.DataFileCSV}, []byte("site\nsjc\n"))
 	if err != nil || added.NQEName != "sites" {
 		t.Fatalf("Add() = %+v, %v", added, err)
 	}
-	if _, _, err := files.Add(ctx, DataFileCreateRequest{Name: "a.json", FileType: DataFileJSON, Headers: []string{"x"}}, nil); err == nil {
+	if _, _, err := files.Add(ctx, domain.DataFileCreateRequest{Name: "a.json", FileType: domain.DataFileJSON, Headers: []string{"x"}}, nil); err == nil {
 		t.Fatal("headers on a non-CSV file must be refused locally")
 	}
 }
@@ -153,7 +158,7 @@ func TestDataFilesNetworkAttachment(t *testing.T) {
 	if _, err := files.RemoveFromNetwork(ctx, "3347", "a b.csv"); err != nil || calls[1] != "DELETE /api/networks/3347/data-files/a%20b.csv" {
 		t.Fatalf("RemoveFromNetwork: %v %v", err, calls)
 	}
-	if _, err := files.RemoveFromNetwork(ctx, "3347", "stig_policy.csv"); !IsStatus(err, http.StatusBadRequest) {
+	if _, err := files.RemoveFromNetwork(ctx, "3347", "stig_policy.csv"); !ports.IsStatus(err, http.StatusBadRequest) {
 		t.Fatalf("the STIG refusal must surface: %v", err)
 	}
 	if _, err := files.AddToNetwork(ctx, "3347", " "); err == nil {
@@ -227,7 +232,7 @@ func TestDataFilesReplaceAndAssess(t *testing.T) {
 	if _, _, err := files.AssessReplacement(ctx, "sites.csv", []byte("x\n"), nil); err == nil {
 		t.Fatal("an unknown assessment result must be an error, not a pass")
 	}
-	if _, _, err := files.ReplaceContent(ctx, "missing.csv", []byte("x"), nil); !IsStatus(err, http.StatusNotFound) {
+	if _, _, err := files.ReplaceContent(ctx, "missing.csv", []byte("x"), nil); !ports.IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("a missing file must surface its 404: %v", err)
 	}
 }
@@ -245,21 +250,21 @@ func TestDataFilesPatch(t *testing.T) {
 	files := newTestClient(t, server.URL).DataFiles
 	ctx := context.Background()
 
-	got, _, err := files.Patch(ctx, "sites.csv", DataFilePatch{Name: Ptr("owners.csv"), NQEName: Ptr("owners")})
+	got, _, err := files.Patch(ctx, "sites.csv", domain.DataFilePatch{Name: domain.Ptr("owners.csv"), NQEName: domain.Ptr("owners")})
 	if err != nil || got.Name != "owners.csv" || method != http.MethodPatch || uri != "/api/data-files/sites.csv" || body != `{"name":"owners.csv","nqeName":"owners"}` {
 		t.Fatalf("rename: %+v %v %s %s %s", got, err, method, uri, body)
 	}
-	if _, _, err := files.Patch(ctx, "sites.csv", DataFilePatch{Description: Ptr("")}); err != nil || body != `{"description":null}` {
+	if _, _, err := files.Patch(ctx, "sites.csv", domain.DataFilePatch{Description: domain.Ptr("")}); err != nil || body != `{"description":null}` {
 		t.Fatalf("an empty description must clear with an explicit null: %v %s", err, body)
 	}
-	if _, _, err := files.Patch(ctx, "sites.csv", DataFilePatch{Description: Ptr("site owners")}); err != nil || body != `{"description":"site owners"}` {
+	if _, _, err := files.Patch(ctx, "sites.csv", domain.DataFilePatch{Description: domain.Ptr("site owners")}); err != nil || body != `{"description":"site owners"}` {
 		t.Fatalf("set description: %v %s", err, body)
 	}
 	before := body
-	for name, patch := range map[string]DataFilePatch{
+	for name, patch := range map[string]domain.DataFilePatch{
 		"empty":          {},
-		"blank NQE name": {NQEName: Ptr(" ")},
-		"blank new name": {Name: Ptr("")},
+		"blank NQE name": {NQEName: domain.Ptr(" ")},
+		"blank new name": {Name: domain.Ptr("")},
 	} {
 		if _, _, err := files.Patch(ctx, "sites.csv", patch); err == nil || body != before {
 			t.Errorf("%s patch must be refused locally", name)

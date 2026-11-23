@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -20,7 +24,7 @@ func TestCollectionInFlightClassifiedWhenAPIURLCarriesTheQuery(t *testing.T) {
 	defer srv.Close()
 
 	_, _, err := newTestClient(t, srv.URL).CollectorTasks.Start(context.Background(), "5323")
-	if !IsCollectionAlreadyInProgress(err) {
+	if !domain.IsCollectionAlreadyInProgress(err) {
 		t.Fatalf("Start() error = %v, want ErrCollectionAlreadyInProgress", err)
 	}
 }

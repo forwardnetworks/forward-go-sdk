@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -40,12 +45,20 @@ func TestDiffForwardingStateFamiliesWire(t *testing.T) {
 
 	for _, family := range []struct {
 		name string
-		call func() ([]DeviceDiffSummary, *Response, error)
+		call func() ([]domain.DeviceDiffSummary, *ports.Response, error)
 	}{
-		{"arp", func() ([]DeviceDiffSummary, *Response, error) { return client.Diffs.ARPDevices(ctx, "A", "B") }},
-		{"mac", func() ([]DeviceDiffSummary, *Response, error) { return client.Diffs.MACDevices(ctx, "A", "B") }},
-		{"nat", func() ([]DeviceDiffSummary, *Response, error) { return client.Diffs.NATDevices(ctx, "A", "B") }},
-		{"l3", func() ([]DeviceDiffSummary, *Response, error) { return client.Diffs.L3Devices(ctx, "A", "B") }},
+		{"arp", func() ([]domain.DeviceDiffSummary, *ports.Response, error) {
+			return client.Diffs.ARPDevices(ctx, "A", "B")
+		}},
+		{"mac", func() ([]domain.DeviceDiffSummary, *ports.Response, error) {
+			return client.Diffs.MACDevices(ctx, "A", "B")
+		}},
+		{"nat", func() ([]domain.DeviceDiffSummary, *ports.Response, error) {
+			return client.Diffs.NATDevices(ctx, "A", "B")
+		}},
+		{"l3", func() ([]domain.DeviceDiffSummary, *ports.Response, error) {
+			return client.Diffs.L3Devices(ctx, "A", "B")
+		}},
 	} {
 		devices, _, err := family.call()
 		if err != nil || len(devices) != 1 || devices[0].DeviceName != "edge-1" || !devices[0].HasConfigChange || devices[0].Stats["ADDED"] != 2 {
@@ -84,11 +97,11 @@ func TestDiffForwardingStateFamiliesWire(t *testing.T) {
 			return b, err
 		},
 		func() ([]byte, error) {
-			b, _, err := client.Diffs.L3Prefixes(ctx, "A", "B", L3PrefixOptions{})
+			b, _, err := client.Diffs.L3Prefixes(ctx, "A", "B", domain.L3PrefixOptions{})
 			return b, err
 		},
 		func() ([]byte, error) {
-			b, _, err := client.Diffs.L3Prefixes(ctx, "A", "B", L3PrefixOptions{Offset: 100, Limit: 50, PrefixFilter: "10.0.0.0/8"})
+			b, _, err := client.Diffs.L3Prefixes(ctx, "A", "B", domain.L3PrefixOptions{Offset: 100, Limit: 50, PrefixFilter: "10.0.0.0/8"})
 			return b, err
 		},
 	} {
@@ -120,7 +133,7 @@ func TestDiffForwardingStateFamiliesWire(t *testing.T) {
 	if _, _, err := client.Diffs.L3PrefixDetails(ctx, "A", "B", ""); err == nil {
 		t.Error("a prefix is required")
 	}
-	if _, _, err := client.Diffs.L3Prefixes(ctx, "A", "B", L3PrefixOptions{Limit: -1}); err == nil {
+	if _, _, err := client.Diffs.L3Prefixes(ctx, "A", "B", domain.L3PrefixOptions{Limit: -1}); err == nil {
 		t.Error("a negative limit is refused")
 	}
 }

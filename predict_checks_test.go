@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -17,27 +21,27 @@ func TestChangeSetCheckDefinitionValidation(t *testing.T) {
 	t.Parallel()
 
 	filters := json.RawMessage(`{"from":{"location":{"type":"SubnetLocationFilter","value":"10.0.0.0/8"}}}`)
-	good := []ChangeSetCheckDefinition{
-		{CheckType: ChangeSetCheckIsolation, Filters: filters, NoiseTypes: []string{"GLEAN"}},
-		{CheckType: ChangeSetCheckReachability, Filters: filters, HeaderFieldsWithDefaults: []string{"ip_tos"}},
-		{CheckType: ChangeSetCheckExists, Filters: filters, ReturnPath: ReturnPathSymmetric},
-		{CheckType: ChangeSetCheckNQE, QueryID: "Q_abc", Params: map[string]json.RawMessage{"n": json.RawMessage(`3`)}},
+	good := []domain.ChangeSetCheckDefinition{
+		{CheckType: domain.ChangeSetCheckIsolation, Filters: filters, NoiseTypes: []string{"GLEAN"}},
+		{CheckType: domain.ChangeSetCheckReachability, Filters: filters, HeaderFieldsWithDefaults: []string{"ip_tos"}},
+		{CheckType: domain.ChangeSetCheckExists, Filters: filters, ReturnPath: domain.ReturnPathSymmetric},
+		{CheckType: domain.ChangeSetCheckNQE, QueryID: "Q_abc", Params: map[string]json.RawMessage{"n": json.RawMessage(`3`)}},
 	}
 	for _, d := range good {
 		if err := d.Validate(); err != nil {
 			t.Errorf("%s: %v", d.CheckType, err)
 		}
 	}
-	bad := map[string]ChangeSetCheckDefinition{
+	bad := map[string]domain.ChangeSetCheckDefinition{
 		"unsupported type":            {CheckType: "Predefined"},
-		"intent with no filters":      {CheckType: ChangeSetCheckIsolation},
-		"intent with null filters":    {CheckType: ChangeSetCheckIsolation, Filters: json.RawMessage(`null`)},
-		"returnPath on isolation":     {CheckType: ChangeSetCheckIsolation, Filters: filters, ReturnPath: ReturnPathAny},
-		"unknown returnPath":          {CheckType: ChangeSetCheckExists, Filters: filters, ReturnPath: "BOTH"},
-		"query on an intent check":    {CheckType: ChangeSetCheckReachability, Filters: filters, QueryID: "Q"},
-		"nqe with no query":           {CheckType: ChangeSetCheckNQE},
-		"nqe with filters":            {CheckType: ChangeSetCheckNQE, QueryID: "Q", Filters: filters},
-		"nqe with intent noise types": {CheckType: ChangeSetCheckNQE, QueryID: "Q", NoiseTypes: []string{}},
+		"intent with no filters":      {CheckType: domain.ChangeSetCheckIsolation},
+		"intent with null filters":    {CheckType: domain.ChangeSetCheckIsolation, Filters: json.RawMessage(`null`)},
+		"returnPath on isolation":     {CheckType: domain.ChangeSetCheckIsolation, Filters: filters, ReturnPath: domain.ReturnPathAny},
+		"unknown returnPath":          {CheckType: domain.ChangeSetCheckExists, Filters: filters, ReturnPath: "BOTH"},
+		"query on an intent check":    {CheckType: domain.ChangeSetCheckReachability, Filters: filters, QueryID: "Q"},
+		"nqe with no query":           {CheckType: domain.ChangeSetCheckNQE},
+		"nqe with filters":            {CheckType: domain.ChangeSetCheckNQE, QueryID: "Q", Filters: filters},
+		"nqe with intent noise types": {CheckType: domain.ChangeSetCheckNQE, QueryID: "Q", NoiseTypes: []string{}},
 	}
 	for name, d := range bad {
 		if d.Validate() == nil {
@@ -65,18 +69,18 @@ func TestChangeSetCheckAddUpdateDeleteWire(t *testing.T) {
 	ctx := context.Background()
 	filters := json.RawMessage(`{"to":{}}`)
 
-	added, _, err := client.Predict.AddChangeSetCheck(ctx, "N1", "cs 1", NewChangeSetCheck{Name: "c", Definition: ChangeSetCheckDefinition{CheckType: ChangeSetCheckExists, Filters: filters, ReturnPath: ReturnPathAny}})
+	added, _, err := client.Predict.AddChangeSetCheck(ctx, "N1", "cs 1", domain.NewChangeSetCheck{Name: "c", Definition: domain.ChangeSetCheckDefinition{CheckType: domain.ChangeSetCheckExists, Filters: filters, ReturnPath: domain.ReturnPathAny}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	parsed, err := added.ParsedDefinition()
-	if err != nil || parsed.CheckType != ChangeSetCheckExists || parsed.ReturnPath != "ANY" || added.Status != "PASS" {
+	if err != nil || parsed.CheckType != domain.ChangeSetCheckExists || parsed.ReturnPath != "ANY" || added.Status != "PASS" {
 		t.Fatalf("result: %+v %+v %v", added, parsed, err)
 	}
-	if _, err := client.Predict.UpdateChangeSetCheck(ctx, "N1", "cs 1", "7", ChangeSetCheckPatch{ClearName: true}); err != nil {
+	if _, err := client.Predict.UpdateChangeSetCheck(ctx, "N1", "cs 1", "7", domain.ChangeSetCheckPatch{ClearName: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Predict.UpdateChangeSetCheck(ctx, "N1", "cs 1", "7", ChangeSetCheckPatch{Name: Ptr("renamed"), Definition: &ChangeSetCheckDefinition{CheckType: ChangeSetCheckIsolation, Filters: filters}}); err != nil {
+	if _, err := client.Predict.UpdateChangeSetCheck(ctx, "N1", "cs 1", "7", domain.ChangeSetCheckPatch{Name: domain.Ptr("renamed"), Definition: &domain.ChangeSetCheckDefinition{CheckType: domain.ChangeSetCheckIsolation, Filters: filters}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := client.Predict.DeleteChangeSetCheck(ctx, "N1", "cs 1", "7"); err != nil {
@@ -100,13 +104,13 @@ func TestChangeSetCheckAddUpdateDeleteWire(t *testing.T) {
 
 	// Refusals happen before any request.
 	before := len(requests)
-	if _, _, err := client.Predict.AddChangeSetCheck(ctx, "N1", "cs", NewChangeSetCheck{Name: "q", Definition: ChangeSetCheckDefinition{CheckType: ChangeSetCheckNQE, QueryID: "Q"}}); err == nil || !strings.Contains(err.Error(), "name") {
+	if _, _, err := client.Predict.AddChangeSetCheck(ctx, "N1", "cs", domain.NewChangeSetCheck{Name: "q", Definition: domain.ChangeSetCheckDefinition{CheckType: domain.ChangeSetCheckNQE, QueryID: "Q"}}); err == nil || !strings.Contains(err.Error(), "name") {
 		t.Errorf("a named NQE check must be refused: %v", err)
 	}
-	if _, err := client.Predict.UpdateChangeSetCheck(ctx, "N1", "cs", "7", ChangeSetCheckPatch{}); err == nil {
+	if _, err := client.Predict.UpdateChangeSetCheck(ctx, "N1", "cs", "7", domain.ChangeSetCheckPatch{}); err == nil {
 		t.Error("an empty patch must be refused")
 	}
-	if _, err := client.Predict.UpdateChangeSetCheck(ctx, "N1", "cs", "7", ChangeSetCheckPatch{Name: Ptr("x"), ClearName: true}); err == nil {
+	if _, err := client.Predict.UpdateChangeSetCheck(ctx, "N1", "cs", "7", domain.ChangeSetCheckPatch{Name: domain.Ptr("x"), ClearName: true}); err == nil {
 		t.Error("Name and ClearName together must be refused")
 	}
 	if _, err := client.Predict.DeleteChangeSetCheck(ctx, "N1", "cs", " "); err == nil {
@@ -128,7 +132,7 @@ func TestChangeSetCheckDefinitionKeepsEmptyListsDistinctFromAbsentOnes(t *testin
 		`{"checkType":"Isolation","filters":{"to":{}}}`:                                               `{"checkType":"Isolation","filters":{"to":{}}}`,
 		`{"checkType":"NQE","queryId":"Q_1","params":{"big":9007199254740993}}`:                       `{"checkType":"NQE","params":{"big":9007199254740993},"queryId":"Q_1"}`,
 	} {
-		var def ChangeSetCheckDefinition
+		var def domain.ChangeSetCheckDefinition
 		if err := json.Unmarshal([]byte(body), &def); err != nil {
 			t.Fatal(err)
 		}

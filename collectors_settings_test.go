@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -33,7 +37,7 @@ func TestCollectorsGetSettings(t *testing.T) {
 	if err != nil || set.Concurrency == nil || *set.Concurrency != 256 || set.EffectiveConcurrency() != 256 {
 		t.Fatalf("GetSettings(7) = %+v, %v", set, err)
 	}
-	if set.SNMPCollectionConcurrency != nil || set.EffectiveSNMPCollectionConcurrency() != DefaultCollectorSNMPConcurrency {
+	if set.SNMPCollectionConcurrency != nil || set.EffectiveSNMPCollectionConcurrency() != domain.DefaultCollectorSNMPConcurrency {
 		t.Fatalf("an unset SNMP concurrency must be nil with an explicit default: %+v", set)
 	}
 	empty, _, err := collectors.GetSettings(ctx, "8")
@@ -103,14 +107,14 @@ func TestOrgSettingsDisabledCommandsPatchAndRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := settings.DisabledCommands["panos_ssh"]
-	if len(got) != 1 || got[0].Command != "show .*session" || got[0].Version != (DisabledCommandVersion{Start: "1.0", End: "99.0"}) {
+	if len(got) != 1 || got[0].Command != "show .*session" || got[0].Version != (domain.DisabledCommandVersion{Start: "1.0", End: "99.0"}) {
 		t.Fatalf("disabled commands = %+v", settings.DisabledCommands)
 	}
 
-	add := map[string][]DisabledCommand{"f5_ssh": {{Command: "tmsh list", Version: DisabledCommandVersion{Start: "1.0", End: "99.0"}}}}
-	empty := map[string][]DisabledCommand{}
-	for _, patch := range []OrgCollectionSettingsPatch{
-		{CommandDelayMS: Ptr(5)},
+	add := map[string][]domain.DisabledCommand{"f5_ssh": {{Command: "tmsh list", Version: domain.DisabledCommandVersion{Start: "1.0", End: "99.0"}}}}
+	empty := map[string][]domain.DisabledCommand{}
+	for _, patch := range []domain.OrgCollectionSettingsPatch{
+		{CommandDelayMS: domain.Ptr(5)},
 		{DisabledCommands: &add},
 		{DisabledCommands: &empty},
 	} {
@@ -129,14 +133,14 @@ func TestOrgSettingsDisabledCommandsPatchAndRead(t *testing.T) {
 	}
 
 	sent := len(bodies)
-	for name, bad := range map[string]map[string][]DisabledCommand{
-		"no command": {"f5_ssh": {{Version: DisabledCommandVersion{Start: "1", End: "2"}}}},
-		"no start":   {"f5_ssh": {{Command: "x", Version: DisabledCommandVersion{End: "2"}}}},
-		"no end":     {"f5_ssh": {{Command: "x", Version: DisabledCommandVersion{Start: "1"}}}},
-		"empty type": {"": {{Command: "x", Version: DisabledCommandVersion{Start: "1", End: "2"}}}},
+	for name, bad := range map[string]map[string][]domain.DisabledCommand{
+		"no command": {"f5_ssh": {{Version: domain.DisabledCommandVersion{Start: "1", End: "2"}}}},
+		"no start":   {"f5_ssh": {{Command: "x", Version: domain.DisabledCommandVersion{End: "2"}}}},
+		"no end":     {"f5_ssh": {{Command: "x", Version: domain.DisabledCommandVersion{Start: "1"}}}},
+		"empty type": {"": {{Command: "x", Version: domain.DisabledCommandVersion{Start: "1", End: "2"}}}},
 	} {
 		bad := bad
-		if _, err := collectors.PatchOrganizationSettings(ctx, OrgCollectionSettingsPatch{DisabledCommands: &bad}); err == nil || len(bodies) != sent {
+		if _, err := collectors.PatchOrganizationSettings(ctx, domain.OrgCollectionSettingsPatch{DisabledCommands: &bad}); err == nil || len(bodies) != sent {
 			t.Errorf("%s must fail before any request (err=%v)", name, err)
 		}
 	}

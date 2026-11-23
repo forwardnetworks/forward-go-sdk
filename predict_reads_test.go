@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"context"
 	"errors"
@@ -32,7 +36,7 @@ func TestPredictCatalogReads(t *testing.T) {
 	if err != nil || strings.Join(oses, ",") != "arista_eos,junos" {
 		t.Fatalf("PredictOSes = %v, %v", oses, err)
 	}
-	text, _, err := predict.AllowedCommands(ctx, "arista_eos", PredictProtocolBGP)
+	text, _, err := predict.AllowedCommands(ctx, "arista_eos", domain.PredictProtocolBGP)
 	if err != nil || !strings.Contains(text, "neighbor <ip>") {
 		t.Fatalf("AllowedCommands = %q, %v", text, err)
 	}
@@ -42,7 +46,7 @@ func TestPredictCatalogReads(t *testing.T) {
 	if _, _, err := predict.AllowedCommands(ctx, "arista_eos", "RSVP"); err == nil {
 		t.Fatal("an unknown protocol was sent")
 	}
-	if _, _, err := predict.AllowedCommands(ctx, " ", PredictProtocolBGP); err == nil || len(seen) != 2 {
+	if _, _, err := predict.AllowedCommands(ctx, " ", domain.PredictProtocolBGP); err == nil || len(seen) != 2 {
 		t.Fatal("a blank OS was sent")
 	}
 }
@@ -71,12 +75,12 @@ func TestFirewallObjectsAndPrettifyAndExport(t *testing.T) {
 	predict := newTestClient(t, server.URL).Predict
 	ctx := context.Background()
 
-	raw, _, err := predict.FirewallObjects(ctx, "7", "3", "fw 1", FirewallAddressObjects)
+	raw, _, err := predict.FirewallObjects(ctx, "7", "3", "fw 1", domain.FirewallAddressObjects)
 	if err != nil || !strings.Contains(string(raw), `"web"`) || seen[0].uri != "/api/networks/7/change-sets/3/devices/fw%201/address-objects" {
 		t.Fatalf("FirewallObjects = %s, %v, seen %+v", raw, err, seen)
 	}
-	_, _, err = predict.FirewallObjects(ctx, "7", "3", "fw1", FirewallZones)
-	if !errors.Is(err, ErrPermissionDenied) {
+	_, _, err = predict.FirewallObjects(ctx, "7", "3", "fw1", domain.FirewallZones)
+	if !errors.Is(err, domain.ErrPermissionDenied) {
 		t.Fatalf("err = %v, want ErrPermissionDenied", err)
 	}
 	if _, _, err := predict.FirewallObjects(ctx, "7", "3", "fw1", "rules"); err == nil {
@@ -160,7 +164,7 @@ func TestProtocolModelingAndAffectedDevices(t *testing.T) {
 	if err != nil || empty == nil || len(empty) != 0 {
 		t.Fatalf("empty = %#v, %v", empty, err)
 	}
-	if _, _, err := predict.AffectedDevices(ctx, "s-base"); !errors.Is(err, ErrNoAffectedDevices) {
+	if _, _, err := predict.AffectedDevices(ctx, "s-base"); !errors.Is(err, domain.ErrNoAffectedDevices) {
 		t.Fatalf("a base snapshot gave %v, want ErrNoAffectedDevices", err)
 	}
 	if seen[0].uri != "/api/internal/snapshots/s9/protocol-modeling?view=status" || seen[1].uri != "/api/internal/snapshots/s9/protocol-modeling?view=affected-devices" {

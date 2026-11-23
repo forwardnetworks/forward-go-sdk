@@ -1,0 +1,7 @@
+CloudManagedSetups.CreateMeraki(context.Context, string, domain.NewMerakiSetup) (*domain.MerakiSetup, *ports.Response, error)
+CloudManagedSetups.DeleteMeraki(context.Context, string, string) (*ports.Response, error)
+CloudManagedSetups.DiscoverMeraki(context.Context, string, string) (*domain.MerakiDiscovery, *ports.Response, error)
+CloudManagedSetups.GetMeraki(context.Context, string, string) (*domain.MerakiSetup, *ports.Response, error)
+CloudManagedSetups.ListMeraki(context.Context, string) ([]domain.MerakiSetup, *ports.Response, error)
+CloudManagedSetups.PatchMeraki(context.Context, string, string, domain.MerakiSetupPatch) (*domain.MerakiSetup, *ports.Response, error)
+CloudManagedSetups.TestMeraki(context.Context, string, domain.MerakiConnectivityTest) (*ports.Response, error)

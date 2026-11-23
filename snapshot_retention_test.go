@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -26,7 +31,7 @@ func TestNetworksSnapshotRetentionPolicyRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	policy, _, err := networks.GetSnapshotRetentionPolicy(ctx, "N1")
-	if err != nil || uri != "/api/networks/N1/snapshotRetentionPolicy" || !policy.Enabled || policy.LastMonth != SnapshotRetainPerDay || policy.Older != SnapshotRetainPerQuarter {
+	if err != nil || uri != "/api/networks/N1/snapshotRetentionPolicy" || !policy.Enabled || policy.LastMonth != domain.SnapshotRetainPerDay || policy.Older != domain.SnapshotRetainPerQuarter {
 		t.Fatalf("Get() = %+v, %v; %s", policy, err, uri)
 	}
 	// Turning thinning off is read-modify-write: Forward validates every
@@ -42,7 +47,7 @@ func TestNetworksSnapshotRetentionPolicyRoundTrip(t *testing.T) {
 	if _, err := networks.SetSnapshotRetentionPolicy(ctx, "N1", bad); err == nil || method != http.MethodPut || uri != before {
 		t.Fatalf("an unknown granularity must be refused locally: %v", err)
 	}
-	if _, err := networks.SetSnapshotRetentionPolicy(ctx, "N1", SnapshotRetentionPolicy{}); err == nil {
+	if _, err := networks.SetSnapshotRetentionPolicy(ctx, "N1", domain.SnapshotRetentionPolicy{}); err == nil {
 		t.Fatal("a zero policy (empty granularities) must be refused locally")
 	}
 }
@@ -56,10 +61,10 @@ func TestNetworksSetSnapshotRetentionPolicyOnSaaS(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
-	policy := SnapshotRetentionPolicy{Enabled: false, LastWeek: SnapshotRetainAll, LastMonth: SnapshotRetainPerDay, LastQuarter: SnapshotRetainPerWeek, LastYear: SnapshotRetainPerMonth, Older: SnapshotRetainPerQuarter}
+	policy := domain.SnapshotRetentionPolicy{Enabled: false, LastWeek: domain.SnapshotRetainAll, LastMonth: domain.SnapshotRetainPerDay, LastQuarter: domain.SnapshotRetainPerWeek, LastYear: domain.SnapshotRetainPerMonth, Older: domain.SnapshotRetainPerQuarter}
 
 	_, err := newTestClient(t, server.URL).Networks.SetSnapshotRetentionPolicy(context.Background(), "N1", policy)
-	if err == nil || !IsStatus(err, http.StatusNotFound) {
+	if err == nil || !ports.IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("err = %v", err)
 	}
 }

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -30,10 +34,10 @@ func TestEndpointsCreateProfileDefinition(t *testing.T) {
 	client := newTestClient(t, server.URL)
 
 	timeout := 20
-	def := EndpointProfile{
+	def := domain.EndpointProfile{
 		ID: "SNMP-99", Type: "snmp", Name: " printer ", CreatedBy: "someone",
 		DetectorOID: "1.3.6.1.2.1.1.2.0", DetectorPatterns: []string{"^1.3.6.1.4.1.11"}, ResponseTimeoutSec: &timeout,
-		OIDSets: []string{"STANDARD"}, CustomOIDs: []CustomOID{{Name: "system_desc", OID: "1.3.6.1.2.1.1.1"}},
+		OIDSets: []string{"STANDARD"}, CustomOIDs: []domain.CustomOID{{Name: "system_desc", OID: "1.3.6.1.2.1.1.1"}},
 		CommandSets: []string{"UNIX"}, // a CLI field: must not be sent for SNMP
 	}
 	got, _, err := client.Endpoints.CreateProfileDefinition(context.Background(), def)
@@ -48,10 +52,10 @@ func TestEndpointsCreateProfileDefinition(t *testing.T) {
 	if body["name"] != "printer" || body["detectorOid"] != "1.3.6.1.2.1.1.2.0" || body["responseTimeoutSec"] != float64(20) || body["customOids"] == nil {
 		t.Fatalf("SNMP body = %v", body)
 	}
-	if _, _, err := client.Endpoints.CreateProfileDefinition(context.Background(), EndpointProfile{Name: "x", Type: "HTTP"}); err == nil {
+	if _, _, err := client.Endpoints.CreateProfileDefinition(context.Background(), domain.EndpointProfile{Name: "x", Type: "HTTP"}); err == nil {
 		t.Fatal("an HTTP profile without https, authType and endpoints must be refused locally")
 	}
-	if _, _, err := client.Endpoints.CreateProfileDefinition(context.Background(), EndpointProfile{Name: "x", Type: "TELNET"}); err == nil {
+	if _, _, err := client.Endpoints.CreateProfileDefinition(context.Background(), domain.EndpointProfile{Name: "x", Type: "TELNET"}); err == nil {
 		t.Fatal("an unknown type must be refused locally")
 	}
 }
@@ -83,7 +87,7 @@ func TestEndpointsDeleteProfile(t *testing.T) {
 		if method != http.MethodDelete || path != "/api/endpoint-profiles/SNMP-5" {
 			t.Errorf("%d: sent %s %s", tc.status, method, path)
 		}
-		if tc.ok != (err == nil) || tc.inUse != errors.Is(err, ErrEndpointProfileInUse) {
+		if tc.ok != (err == nil) || tc.inUse != errors.Is(err, domain.ErrEndpointProfileInUse) {
 			t.Errorf("%d: err = %v", tc.status, err)
 		}
 	}

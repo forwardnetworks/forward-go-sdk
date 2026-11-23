@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"testing"
@@ -13,14 +18,14 @@ func TestSetGlobalToAnOrgLevelPropertyIsClassified(t *testing.T) {
 	var seen []predictSeen
 	props := newTestClient(t, predictRecorder(t, 403, `{"message":"Permission denied. Global default value cannot be changed for edge_assets_in_sources"}`, &seen).URL).Properties
 	_, _, err := props.SetGlobal(context.Background(), "EDGE_ASSETS_IN_SOURCES", "true")
-	if !IsGlobalDefaultNotAllowed(err) || !errors.Is(err, ErrGlobalDefaultNotAllowed) || !IsErrorKind(err, ErrorKindGlobalDefaultNotAllowed) {
+	if !domain.IsGlobalDefaultNotAllowed(err) || !errors.Is(err, domain.ErrGlobalDefaultNotAllowed) || !ports.IsErrorKind(err, domain.ErrorKindGlobalDefaultNotAllowed) {
 		t.Fatalf("err = %v", err)
 	}
-	var apiErr *ErrorResponse
+	var apiErr *ports.ErrorResponse
 	if !errors.As(err, &apiErr) || apiErr.GateProperty != "EDGE_ASSETS_IN_SOURCES" {
 		t.Fatalf("property = %+v", apiErr)
 	}
-	if IsErrorKind(err, ErrorKindPermissionDenied) {
+	if ports.IsErrorKind(err, domain.ErrorKindPermissionDenied) {
 		t.Error("a global-default refusal also read as a missing permission")
 	}
 }
@@ -61,7 +66,7 @@ func TestPropertyProvenanceReads(t *testing.T) {
 	}
 	// A build without the view answers the plain property read; that must not read as an override by an org named after the property.
 	plain := newTestClient(t, predictRecorder(t, 200, `{"edge_assets_in_sources":false}`, &seen).URL).Properties
-	if _, _, err := plain.OrganizationOverrides(ctx, "EDGE_ASSETS_IN_SOURCES"); !errors.Is(err, ErrEndpointNotServed) {
+	if _, _, err := plain.OrganizationOverrides(ctx, "EDGE_ASSETS_IN_SOURCES"); !errors.Is(err, domain.ErrEndpointNotServed) {
 		t.Errorf("plain answer: err = %v, want ErrEndpointNotServed", err)
 	}
 	seen = seen[:len(seen)-1]

@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -51,10 +56,10 @@ func TestCollectorMetricsReadsTheSeriesAndMapsThePermissionError(t *testing.T) {
 		t.Fatalf("samplesPerSeries must be capped at what Forward allows: ?%s (%v)", gotQuery, err)
 	}
 	_, _, err = collectors.Metrics(ctx, "locked", start, end, 0)
-	if !errors.Is(err, ErrPermissionDenied) {
+	if !errors.Is(err, domain.ErrPermissionDenied) {
 		t.Fatalf("a login without DEBUG_COLLECTORS must get the typed 403: %v", err)
 	}
-	if op, ok := MissingPermission(err); !ok || op != "OrgOperation.DEBUG_COLLECTORS" {
+	if op, ok := ports.MissingPermission(err); !ok || op != "OrgOperation.DEBUG_COLLECTORS" {
 		t.Fatalf("MissingPermission = %q, %v", op, ok)
 	}
 	for name, call := range map[string]func() error{

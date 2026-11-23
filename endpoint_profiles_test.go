@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"bytes"
 	"context"
 	"io"
@@ -101,10 +106,10 @@ func TestTextReadsAcceptJSONErrors(t *testing.T) {
 	client := newTestClient(t, server.URL)
 
 	var buf bytes.Buffer
-	if _, _, _, err := client.Snapshots.Logs(context.Background(), "9164", SnapshotLogOptions{}, 1024, &buf); !IsStatus(err, http.StatusNotFound) {
+	if _, _, _, err := client.Snapshots.Logs(context.Background(), "9164", domain.SnapshotLogOptions{}, 1024, &buf); !ports.IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("Logs error = %v, want the real 404", err)
 	}
-	if _, err := client.Devices.DownloadFile(context.Background(), "n1", "leaf-1", "CONFIGURATION.txt", "", &buf); !IsStatus(err, http.StatusNotFound) {
+	if _, err := client.Devices.DownloadFile(context.Background(), "n1", "leaf-1", "CONFIGURATION.txt", "", &buf); !ports.IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("DownloadFile error = %v, want the real 404", err)
 	}
 }

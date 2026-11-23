@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -32,8 +37,8 @@ func TestMergeIntoLatestWire(t *testing.T) {
 	}))
 	defer server.Close()
 	c := newTestClient(t, server.URL)
-	out, _, err := c.Snapshots.MergeIntoLatest(context.Background(), "N1", SnapshotUploadFile{Name: "extra.zip", Reader: strings.NewReader("PKzip")},
-		SnapshotMergeOptions{Note: "n", MergeType: SnapshotMergeReplaceExisting})
+	out, _, err := c.Snapshots.MergeIntoLatest(context.Background(), "N1", domain.SnapshotUploadFile{Name: "extra.zip", Reader: strings.NewReader("PKzip")},
+		domain.SnapshotMergeOptions{Note: "n", MergeType: domain.SnapshotMergeReplaceExisting})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +49,7 @@ func TestMergeIntoLatestWire(t *testing.T) {
 		t.Errorf("result = %+v (the id must come from Location)", out)
 	}
 	// The zero merge type is NONE, Forward's own default, sent explicitly.
-	_, _, _ = c.Snapshots.MergeIntoLatest(context.Background(), "N1", SnapshotUploadFile{Reader: strings.NewReader("PK")}, SnapshotMergeOptions{})
+	_, _, _ = c.Snapshots.MergeIntoLatest(context.Background(), "N1", domain.SnapshotUploadFile{Reader: strings.NewReader("PK")}, domain.SnapshotMergeOptions{})
 	if !strings.Contains(query, "mergeType=NONE") {
 		t.Errorf("default merge type: %q", query)
 	}
@@ -59,9 +64,9 @@ func TestMergeIntoLatestConflict(t *testing.T) {
 	}))
 	defer server.Close()
 	c := newTestClient(t, server.URL)
-	_, _, err := c.Snapshots.MergeIntoLatest(context.Background(), "N1", SnapshotUploadFile{Reader: strings.NewReader("PK")}, SnapshotMergeOptions{})
-	var apiErr *ErrorResponse
-	if !errors.Is(err, ErrSnapshotMergeConflict) || !errors.As(err, &apiErr) || strings.Join(apiErr.ConflictDevices, ",") != "r1,r2" {
+	_, _, err := c.Snapshots.MergeIntoLatest(context.Background(), "N1", domain.SnapshotUploadFile{Reader: strings.NewReader("PK")}, domain.SnapshotMergeOptions{})
+	var apiErr *ports.ErrorResponse
+	if !errors.Is(err, domain.ErrSnapshotMergeConflict) || !errors.As(err, &apiErr) || strings.Join(apiErr.ConflictDevices, ",") != "r1,r2" {
 		t.Fatalf("err = %v (%+v)", err, apiErr)
 	}
 }
@@ -73,18 +78,18 @@ func TestMergeIntoLatestRefusesBeforeSending(t *testing.T) {
 	defer server.Close()
 	c := newTestClient(t, server.URL)
 	ctx := context.Background()
-	file := SnapshotUploadFile{Reader: strings.NewReader("PK")}
-	if _, _, err := c.Snapshots.MergeIntoLatest(ctx, "N1", file, SnapshotMergeOptions{MergeType: "replace_existing"}); err == nil {
+	file := domain.SnapshotUploadFile{Reader: strings.NewReader("PK")}
+	if _, _, err := c.Snapshots.MergeIntoLatest(ctx, "N1", file, domain.SnapshotMergeOptions{MergeType: "replace_existing"}); err == nil {
 		t.Error("an unknown merge type must be refused")
 	}
-	if _, _, err := c.Snapshots.MergeIntoLatest(ctx, "N1", SnapshotUploadFile{}, SnapshotMergeOptions{}); err == nil {
+	if _, _, err := c.Snapshots.MergeIntoLatest(ctx, "N1", domain.SnapshotUploadFile{}, domain.SnapshotMergeOptions{}); err == nil {
 		t.Error("a missing reader must be refused")
 	}
 	empty := filepath.Join(t.TempDir(), "empty.zip")
 	if err := os.WriteFile(empty, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := c.Snapshots.MergeFileIntoLatest(ctx, "N1", empty, SnapshotMergeOptions{}); err == nil {
+	if _, _, err := c.Snapshots.MergeFileIntoLatest(ctx, "N1", empty, domain.SnapshotMergeOptions{}); err == nil {
 		t.Error("an empty ZIP must be refused")
 	}
 	if sent != 0 {

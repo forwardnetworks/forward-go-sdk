@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 func newSnapshotCmd() *cobra.Command {
@@ -82,11 +82,11 @@ func newSnapshotCmd() *cobra.Command {
 			Args:  cobra.NoArgs,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx, c, net := cmd.Context(), client(cmd), network(cmd)
-				op, _, err := c.CollectorTasks.StartCollectionOperation(ctx, net, forward.CollectionStartOptions{})
+				op, _, err := c.CollectorTasks.StartCollectionOperation(ctx, net, ports.CollectionStartOptions{})
 				if err != nil {
 					return err
 				}
-				s, err := op.Wait(ctx, forward.CollectionWaitOptions{PollInterval: 10 * time.Second})
+				s, err := op.Wait(ctx, ports.CollectionWaitOptions{PollInterval: 10 * time.Second})
 				if err != nil {
 					return err
 				}

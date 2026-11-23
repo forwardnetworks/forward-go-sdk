@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -40,7 +44,7 @@ func TestJumpServersCreateUsesTheLiveRouteAndNewJumpServerBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	created, _, err := client.JumpServers.Create(context.Background(), "net-7", JumpServerRequest{
+	created, _, err := client.JumpServers.Create(context.Background(), "net-7", domain.JumpServerRequest{
 		Host:     "10.0.0.9",
 		Port:     2222,
 		Username: "lab",
@@ -92,7 +96,7 @@ func TestJumpServersCreateOmitsOptionalFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := client.JumpServers.Create(context.Background(), "n", JumpServerRequest{Host: "h", Username: "u", SSHKey: "k"}); err != nil {
+	if _, _, err := client.JumpServers.Create(context.Background(), "n", domain.JumpServerRequest{Host: "h", Username: "u", SSHKey: "k"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, key := range []string{"port", "sshCert"} {
@@ -110,7 +114,7 @@ func TestJumpServersCreateRequiresKeyMaterial(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, input := range map[string]JumpServerRequest{
+	for name, input := range map[string]domain.JumpServerRequest{
 		"host":     {Username: "u", SSHKey: "k"},
 		"username": {Host: "h", SSHKey: "k"},
 		"sshKey":   {Host: "h", Username: "u"},

@@ -3,8 +3,10 @@
 # the module proxy resolves it. It never commits: write the commit yourself (commit style in CLAUDE.md).
 #
 #   scripts/release.sh vX.Y.Z "tag message"
+#   scripts/release.sh vX.Y.Z-rc.N "tag message"   # a release candidate (Craig approved, 2026-11-21)
 #
-# Pre-1.0: a breaking change bumps the minor, anything else the patch.
+# Pre-1.0: a breaking change bumps the minor, anything else the patch. A release candidate runs the same gate, from main, and
+# pushes the same way; Go never selects a pre-release for @latest, so consumers get it only by naming it.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -13,7 +15,7 @@ message="${2:-}"
 module="github.com/forwardnetworks/forward-go-sdk"
 remotes=(origin github)
 
-[[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "usage: $0 vX.Y.Z \"tag message\"" >&2; exit 2; }
+[[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$ ]] || { echo "usage: $0 vX.Y.Z[-rc.N] \"tag message\"" >&2; exit 2; }
 [[ -n "${message}" ]] || { echo "a tag message is required" >&2; exit 2; }
 [[ "$(git rev-parse --abbrev-ref HEAD)" == "main" ]] || { echo "release from main (on $(git rev-parse --abbrev-ref HEAD))" >&2; exit 1; }
 

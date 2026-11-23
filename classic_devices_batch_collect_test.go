@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -27,7 +31,7 @@ func TestClassicDevicePutBatchCollectHasThreeStates(t *testing.T) {
 	}
 	no := false
 	yes := true
-	if _, err := c.ClassicDevices.PutBatch(context.Background(), "1", []ClassicDeviceBatchItem{
+	if _, err := c.ClassicDevices.PutBatch(context.Background(), "1", []domain.ClassicDeviceBatchItem{
 		{Name: "absent", Host: "h1"},
 		{Name: "off", Host: "h2", Collect: &no},
 		{Name: "on", Host: "h3", Collect: &yes},

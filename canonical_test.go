@@ -1,15 +1,19 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
 )
 
-func decodeAlias(t *testing.T, text string) Alias {
+func decodeAlias(t *testing.T, text string) domain.Alias {
 	t.Helper()
-	var alias Alias
+	var alias domain.Alias
 	if err := json.Unmarshal([]byte(text), &alias); err != nil {
 		t.Fatalf("decode %s: %v", text, err)
 	}
@@ -38,7 +42,7 @@ func TestAliasBuilderFromDefinitions(t *testing.T) {
 			`{"devices":["d1","d2*"],"edgeNodes":["en1"],"name":"enclave","type":"LOGICAL_NETWORK"}`},
 	}
 	for _, tc := range cases {
-		builder, err := decodeAlias(t, tc.read).Builder(AliasConvertOptions{})
+		builder, err := decodeAlias(t, tc.read).Builder(domain.AliasConvertOptions{})
 		if err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 			continue
@@ -55,14 +59,14 @@ func TestAliasBuilderRefusesWhatItCannotMap(t *testing.T) {
 	t.Parallel()
 
 	alias := decodeAlias(t, `{"name":"web","type":"HOSTS","values":["h"],"futureField":1,"anotherOne":"x"}`)
-	_, err := alias.Builder(AliasConvertOptions{})
+	_, err := alias.Builder(domain.AliasConvertOptions{})
 	if err == nil || !strings.Contains(err.Error(), "anotherOne, futureField") || !strings.Contains(err.Error(), `"web"`) {
 		t.Fatalf("unknown fields must be named, sorted: %v", err)
 	}
-	if _, err := alias.Builder(AliasConvertOptions{IgnoreKeys: []string{"futureField", "anotherOne"}}); err != nil {
+	if _, err := alias.Builder(domain.AliasConvertOptions{IgnoreKeys: []string{"futureField", "anotherOne"}}); err != nil {
 		t.Fatalf("explicitly ignored keys must convert: %v", err)
 	}
-	if _, err := alias.Builder(AliasConvertOptions{IgnoreKeys: []string{"futureField"}}); err == nil {
+	if _, err := alias.Builder(domain.AliasConvertOptions{IgnoreKeys: []string{"futureField"}}); err == nil {
 		t.Fatal("ignoring one key must not hide another")
 	}
 	for name, text := range map[string]string{
@@ -73,11 +77,11 @@ func TestAliasBuilderRefusesWhatItCannotMap(t *testing.T) {
 		"hosts with nothing":   `{"name":"a","type":"HOSTS"}`,
 		"exposure not bool":    `{"name":"a","type":"INTERFACES","values":["d p"],"isExposurePoint":"yes"}`,
 	} {
-		if _, err := decodeAlias(t, text).Builder(AliasConvertOptions{}); err == nil {
+		if _, err := decodeAlias(t, text).Builder(domain.AliasConvertOptions{}); err == nil {
 			t.Errorf("%s must be an error, not a partial conversion", name)
 		}
 	}
-	if _, err := (Alias{Name: "built by hand", Type: AliasTypeDevices}).Builder(AliasConvertOptions{}); err == nil {
+	if _, err := (domain.Alias{Name: "built by hand", Type: domain.AliasTypeDevices}).Builder(domain.AliasConvertOptions{}); err == nil {
 		t.Error("an alias without a Definition must be an error")
 	}
 }
@@ -87,34 +91,34 @@ func TestAliasBuilderRefusesWhatItCannotMap(t *testing.T) {
 func TestCanonicalFormsAreOrderIndependent(t *testing.T) {
 	t.Parallel()
 
-	aliases := []Alias{
+	aliases := []domain.Alias{
 		decodeAlias(t, `{"name":"zeta","type":"DEVICES","values":["b","a"]}`),
 		decodeAlias(t, `{"name":"alpha","type":"HOSTS","values":["h2","h1"],"locations":["l"]}`),
 	}
-	reversed := []Alias{aliases[1], aliases[0]}
-	one, err := CanonicalAliases(aliases, AliasConvertOptions{})
-	two, err2 := CanonicalAliases(reversed, AliasConvertOptions{})
+	reversed := []domain.Alias{aliases[1], aliases[0]}
+	one, err := domain.CanonicalAliases(aliases, domain.AliasConvertOptions{})
+	two, err2 := domain.CanonicalAliases(reversed, domain.AliasConvertOptions{})
 	if err != nil || err2 != nil || !reflect.DeepEqual(one, two) || one[0].Name != "alpha" || !reflect.DeepEqual(one[1].Values, []string{"a", "b"}) {
 		t.Fatalf("aliases: %+v / %+v (%v, %v)", one, two, err, err2)
 	}
-	if _, err := CanonicalAliases([]Alias{aliases[0], decodeAlias(t, `{"name":"bad","type":"HOSTS","x":1}`)}, AliasConvertOptions{}); err == nil || !strings.Contains(err.Error(), `"bad"`) {
+	if _, err := domain.CanonicalAliases([]domain.Alias{aliases[0], decodeAlias(t, `{"name":"bad","type":"HOSTS","x":1}`)}, domain.AliasConvertOptions{}); err == nil || !strings.Contains(err.Error(), `"bad"`) {
 		t.Fatalf("a list with an unmappable alias must fail naming it: %v", err)
 	}
 
-	locations := []Location{{ID: "b", Name: "B", DeviceGlobs: []string{"z-*", "a-*"}}, {ID: "a", Name: "A"}}
-	got := CanonicalLocations(locations)
+	locations := []domain.Location{{ID: "b", Name: "B", DeviceGlobs: []string{"z-*", "a-*"}}, {ID: "a", Name: "A"}}
+	got := domain.CanonicalLocations(locations)
 	if got[0].ID != "a" || !reflect.DeepEqual(got[1].DeviceGlobs, []string{"a-*", "z-*"}) || locations[0].ID != "b" || locations[0].DeviceGlobs[0] != "z-*" {
 		t.Fatalf("locations = %+v (input must be untouched: %+v)", got, locations)
 	}
 
-	circuits := []WanCircuit{{Name: "b", Source: "API"}, {Name: "a", Source: "UI", Connection1: WanCircuitConnection{Device: "x", Port: "1"}}}
-	cc := CanonicalWanCircuits(circuits)
+	circuits := []domain.WanCircuit{{Name: "b", Source: "API"}, {Name: "a", Source: "UI", Connection1: domain.WanCircuitConnection{Device: "x", Port: "1"}}}
+	cc := domain.CanonicalWanCircuits(circuits)
 	if cc[0].Name != "a" || cc[0].Source != "" || cc[1].Source != "" || circuits[0].Source != "API" {
 		t.Fatalf("circuits = %+v (input must be untouched: %+v)", cc, circuits)
 	}
 
-	tags := []DeviceTag{{Name: "Edge", Color: "#00FF00", Devices: []string{"r2", "r1"}}, {Name: "Core", Devices: []string{"csw01"}}}
-	ct := CanonicalDeviceTags(tags)
+	tags := []domain.DeviceTag{{Name: "Edge", Color: "#00FF00", Devices: []string{"r2", "r1"}}, {Name: "Core", Devices: []string{"csw01"}}}
+	ct := domain.CanonicalDeviceTags(tags)
 	if ct[0].Name != "Core" || ct[1].Color != "#00ff00" || !reflect.DeepEqual(ct[1].Devices, []string{"r1", "r2"}) || tags[0].Color != "#00FF00" || tags[0].Devices[0] != "r2" {
 		t.Fatalf("tags = %+v (input must be untouched: %+v)", ct, tags)
 	}

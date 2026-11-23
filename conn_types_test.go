@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"net/http"
@@ -17,17 +21,17 @@ import (
 func TestSourceTestStatusDiscoveredTypeAndControllers(t *testing.T) {
 	t.Parallel()
 
-	var got SourceTestStatus
+	var got domain.SourceTestStatus
 	body := `{"name":"edge1","type":"cisco_ios_xe_ssh","testResult":{"discoveredType":"cisco_ios_xe_ssh","controllerInfos":[{"name":"vmanage1","ipAddress":"10.0.0.5"},{"ipAddress":"10.0.0.6"}]}}`
 	if err := json.Unmarshal([]byte(body), &got); err != nil {
 		t.Fatal(err)
 	}
-	want := []ControllerInfo{{Name: "vmanage1", IPAddress: "10.0.0.5"}, {IPAddress: "10.0.0.6"}}
+	want := []domain.ControllerInfo{{Name: "vmanage1", IPAddress: "10.0.0.5"}, {IPAddress: "10.0.0.6"}}
 	if got.Type != "cisco_ios_xe_ssh" || got.DiscoveredType != "cisco_ios_xe_ssh" || !reflect.DeepEqual(got.ControllerInfos, want) {
 		t.Fatalf("decoded %+v", got)
 	}
 
-	var bare SourceTestStatus
+	var bare domain.SourceTestStatus
 	if err := json.Unmarshal([]byte(`{"name":"edge2","type":"arista_eos_ssh"}`), &bare); err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -49,14 +53,14 @@ func TestThreatExposureWire(t *testing.T) {
 	te := client.ThreatExposure
 
 	list, _, err := te.ListDefinitions(ctx, "N1")
-	if err != nil || len(list) != 1 || list[0].Definition.ID != "6f1c" || list[0].Definition.ExposurePoints[0].Level != ExposureHigh || list[0].Definition.MaxDurationSeconds != 600 || list[0].LatestAnalyzedSnapshotID != "" {
+	if err != nil || len(list) != 1 || list[0].Definition.ID != "6f1c" || list[0].Definition.ExposurePoints[0].Level != domain.ExposureHigh || list[0].Definition.MaxDurationSeconds != 600 || list[0].LatestAnalyzedSnapshotID != "" {
 		t.Fatalf("list: %+v %v", list, err)
 	}
-	created, _, err := te.CreateDefinition(ctx, "N1", NewThreatExposureDefinition{Name: "edge", ExposurePoints: []ExposurePointAndLevel{{"internet", ExposureHigh}}, Criticalities: []string{CriticalityCrownJewel}, MaxDurationSeconds: 600})
+	created, _, err := te.CreateDefinition(ctx, "N1", domain.NewThreatExposureDefinition{Name: "edge", ExposurePoints: []domain.ExposurePointAndLevel{{ExposurePoint: "internet", Level: domain.ExposureHigh}}, Criticalities: []string{domain.CriticalityCrownJewel}, MaxDurationSeconds: 600})
 	if err != nil || created.ID != "6f1c" {
 		t.Fatalf("create: %+v %v", created, err)
 	}
-	if _, err := te.UpdateDefinition(ctx, "N1", "6f1c", ThreatExposureDefinitionPatch{Locations: []string{}, Name: Ptr("renamed")}); err != nil {
+	if _, err := te.UpdateDefinition(ctx, "N1", "6f1c", domain.ThreatExposureDefinitionPatch{Locations: []string{}, Name: domain.Ptr("renamed")}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := te.Evaluate(ctx, "N1", "6f1c", "S1"); err != nil {
@@ -65,16 +69,16 @@ func TestThreatExposureWire(t *testing.T) {
 	if _, _, err := te.Status(ctx, "N1", "6f1c", "S1"); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := te.CriticalAssetsSummary(ctx, "N1", "6f1c", "S1", ThreatExposurePaging{}); err != nil {
+	if _, _, err := te.CriticalAssetsSummary(ctx, "N1", "6f1c", "S1", domain.ThreatExposurePaging{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := te.DirectExposureDetails(ctx, "N1", "6f1c", "S1", 42); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := te.TransitiveExposureDetails(ctx, "N1", "6f1c", "S1", 42, ThreatExposurePaging{Offset: 10, Limit: 5}); err != nil {
+	if _, _, err := te.TransitiveExposureDetails(ctx, "N1", "6f1c", "S1", 42, domain.ThreatExposurePaging{Offset: 10, Limit: 5}); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := te.ResolveDefinition(ctx, "N1", "S1", NewThreatExposureDefinition{Name: "preview", ExposurePoints: []ExposurePointAndLevel{{"internet", ExposureSevere}}, MaxDurationSeconds: 60}); err != nil {
+	if _, _, err := te.ResolveDefinition(ctx, "N1", "S1", domain.NewThreatExposureDefinition{Name: "preview", ExposurePoints: []domain.ExposurePointAndLevel{{ExposurePoint: "internet", Level: domain.ExposureSevere}}, MaxDurationSeconds: 60}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := te.DeleteDefinition(ctx, "N1", "6f1c"); err != nil {
@@ -110,14 +114,14 @@ func TestThreatExposureRefusesWhatForwardRefuses(t *testing.T) {
 	client, requests := seenRequestServer(t, func(w http.ResponseWriter, r *http.Request) {})
 	ctx := context.Background()
 	te := client.ThreatExposure
-	point := ExposurePointAndLevel{"internet", ExposureHigh}
-	ok := NewThreatExposureDefinition{Name: "d", ExposurePoints: []ExposurePointAndLevel{point}, MaxDurationSeconds: 60}
-	bad := map[string]NewThreatExposureDefinition{
+	point := domain.ExposurePointAndLevel{ExposurePoint: "internet", Level: domain.ExposureHigh}
+	ok := domain.NewThreatExposureDefinition{Name: "d", ExposurePoints: []domain.ExposurePointAndLevel{point}, MaxDurationSeconds: 60}
+	bad := map[string]domain.NewThreatExposureDefinition{
 		"blank name":           {Name: " ", ExposurePoints: ok.ExposurePoints, MaxDurationSeconds: 60},
 		"no exposure points":   {Name: "d", MaxDurationSeconds: 60},
-		"five exposure points": {Name: "d", MaxDurationSeconds: 60, ExposurePoints: []ExposurePointAndLevel{{"a", ExposureHigh}, {"b", ExposureHigh}, {"c", ExposureHigh}, {"d", ExposureHigh}, {"e", ExposureHigh}}},
-		"duplicate point":      {Name: "d", MaxDurationSeconds: 60, ExposurePoints: []ExposurePointAndLevel{point, point}},
-		"unknown level":        {Name: "d", MaxDurationSeconds: 60, ExposurePoints: []ExposurePointAndLevel{{"a", "EXTREME"}}},
+		"five exposure points": {Name: "d", MaxDurationSeconds: 60, ExposurePoints: []domain.ExposurePointAndLevel{{ExposurePoint: "a", Level: domain.ExposureHigh}, {ExposurePoint: "b", Level: domain.ExposureHigh}, {ExposurePoint: "c", Level: domain.ExposureHigh}, {ExposurePoint: "d", Level: domain.ExposureHigh}, {ExposurePoint: "e", Level: domain.ExposureHigh}}},
+		"duplicate point":      {Name: "d", MaxDurationSeconds: 60, ExposurePoints: []domain.ExposurePointAndLevel{point, point}},
+		"unknown level":        {Name: "d", MaxDurationSeconds: 60, ExposurePoints: []domain.ExposurePointAndLevel{{ExposurePoint: "a", Level: "EXTREME"}}},
 		"missing duration":     {Name: "d", ExposurePoints: ok.ExposurePoints},
 		"unknown criticality":  {Name: "d", MaxDurationSeconds: 60, ExposurePoints: ok.ExposurePoints, Criticalities: []string{"VIP"}},
 	}
@@ -126,19 +130,19 @@ func TestThreatExposureRefusesWhatForwardRefuses(t *testing.T) {
 			t.Errorf("%s must be refused", name)
 		}
 	}
-	if _, err := te.UpdateDefinition(ctx, "N1", "6f1c", ThreatExposureDefinitionPatch{}); err == nil {
+	if _, err := te.UpdateDefinition(ctx, "N1", "6f1c", domain.ThreatExposureDefinitionPatch{}); err == nil {
 		t.Error("an empty patch must be refused")
 	}
-	for name, patch := range map[string]ThreatExposureDefinitionPatch{
-		"empty exposure points": {ExposurePoints: []ExposurePointAndLevel{}},
-		"blank name":            {Name: Ptr(" ")},
+	for name, patch := range map[string]domain.ThreatExposureDefinitionPatch{
+		"empty exposure points": {ExposurePoints: []domain.ExposurePointAndLevel{}},
+		"blank name":            {Name: domain.Ptr(" ")},
 		"unknown criticality":   {Criticalities: []string{"VIP"}},
 	} {
 		if _, err := te.UpdateDefinition(ctx, "N1", "6f1c", patch); err == nil {
 			t.Errorf("a patch with %s must be refused", name)
 		}
 	}
-	if _, err := te.UpdateDefinition(ctx, "N1", "6f1c", ThreatExposureDefinitionPatch{MaxDurationSeconds: Ptr(int64(0))}); err == nil {
+	if _, err := te.UpdateDefinition(ctx, "N1", "6f1c", domain.ThreatExposureDefinitionPatch{MaxDurationSeconds: domain.Ptr(int64(0))}); err == nil {
 		t.Error("a zero duration must be refused")
 	}
 	if _, err := te.Evaluate(ctx, "N1", "6f1c", ""); err == nil {
@@ -147,7 +151,7 @@ func TestThreatExposureRefusesWhatForwardRefuses(t *testing.T) {
 	if _, _, err := te.Status(ctx, "N1", "6f1c", " "); err == nil {
 		t.Error("status needs an explicit snapshot")
 	}
-	if _, _, err := te.CriticalAssetsSummary(ctx, "N1", "6f1c", "S1", ThreatExposurePaging{Limit: 10001}); err == nil {
+	if _, _, err := te.CriticalAssetsSummary(ctx, "N1", "6f1c", "S1", domain.ThreatExposurePaging{Limit: 10001}); err == nil {
 		t.Error("a limit above 10000 must be refused")
 	}
 	if _, err := te.DeleteDefinition(ctx, "N1", ""); err == nil {
@@ -171,13 +175,13 @@ func TestEdgeAssetsWire(t *testing.T) {
 	ctx := context.Background()
 	ea := client.EdgeAssets
 	assets, _, err := ea.List(ctx, "N1")
-	if err != nil || len(assets) != 1 || assets[0].Name != "web 1" || !assets[0].Include || assets[0].Criticality != CriticalityCrownJewel || assets[0].EnrichmentSources[0] != "RAPID7" || !assets[0].IncludedInLatestSnapshot {
+	if err != nil || len(assets) != 1 || assets[0].Name != "web 1" || !assets[0].Include || assets[0].Criticality != domain.CriticalityCrownJewel || assets[0].EnrichmentSources[0] != "RAPID7" || !assets[0].IncludedInLatestSnapshot {
 		t.Fatalf("list: %+v %v", assets, err)
 	}
-	if _, err := ea.Update(ctx, "N1", "web 1", EdgeAssetPatch{Include: Ptr(false)}); err != nil {
+	if _, err := ea.Update(ctx, "N1", "web 1", domain.EdgeAssetPatch{Include: domain.Ptr(false)}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ea.SetCriticality(ctx, "N1", []string{"web 1", " ", "db"}, CriticalityBusinessCritical); err != nil {
+	if _, err := ea.SetCriticality(ctx, "N1", []string{"web 1", " ", "db"}, domain.CriticalityBusinessCritical); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ea.RemoveCriticality(ctx, "N1", []string{"web 1"}); err != nil {
@@ -203,16 +207,16 @@ func TestEdgeAssetsWire(t *testing.T) {
 		}
 	}
 	before := len(*requests)
-	if _, err := ea.Update(ctx, "N1", "web 1", EdgeAssetPatch{}); err == nil {
+	if _, err := ea.Update(ctx, "N1", "web 1", domain.EdgeAssetPatch{}); err == nil {
 		t.Error("an empty patch must be refused")
 	}
-	if _, err := ea.Update(ctx, "N1", "web 1", EdgeAssetPatch{Name: "  "}); err == nil {
+	if _, err := ea.Update(ctx, "N1", "web 1", domain.EdgeAssetPatch{Name: "  "}); err == nil {
 		t.Error("a blank rename must be refused")
 	}
 	if _, err := ea.SetCriticality(ctx, "N1", []string{"web 1"}, "VIP"); err == nil {
 		t.Error("an unknown criticality must be refused")
 	}
-	if _, err := ea.SetCriticality(ctx, "N1", []string{" "}, CriticalityCrownJewel); err == nil {
+	if _, err := ea.SetCriticality(ctx, "N1", []string{" "}, domain.CriticalityCrownJewel); err == nil {
 		t.Error("at least one asset name is required")
 	}
 	if _, err := ea.Delete(ctx, "N1", ""); err == nil {

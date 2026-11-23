@@ -1,8 +1,13 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,7 +21,7 @@ import (
 func miniCheckout(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	dir := filepath.Join(root, accessSourceDir)
+	dir := filepath.Join(root, forwardAccessDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +123,7 @@ func TestAccessTableParsesOperationsAndInheritance(t *testing.T) {
 		}
 	}
 	// A comment that names an operation must not grant it to the role.
-	if table.roles["LIMITED_READ_ONLY"]["NetworkOperation.LAUNCH_WIDGETS"] {
+	if tableRoles(t, table)["LIMITED_READ_ONLY"]["NetworkOperation.LAUNCH_WIDGETS"] {
 		t.Error("an operation named only in a comment was granted")
 	}
 	if got := len(table.Operations("NetworkOperation")); got != 4 {
@@ -142,9 +147,9 @@ func TestAccessCanFollowsForwardsEnforcement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	check := func(roles SessionRoles, operation, network string) AccessAnswer {
+	check := func(roles domain.SessionRoles, operation, network string) domain.AccessAnswer {
 		t.Helper()
-		answer, err := NewAccess(table, roles).Can(operation, network)
+		answer, err := domain.NewAccess(table, roles).Can(operation, network)
 		if err != nil {
 			t.Fatalf("%s: %v", operation, err)
 		}
@@ -152,26 +157,26 @@ func TestAccessCanFollowsForwardsEnforcement(t *testing.T) {
 	}
 	cases := []struct {
 		name      string
-		roles     SessionRoles
+		roles     domain.SessionRoles
 		operation string
 		network   string
-		want      Verdict
+		want      domain.Verdict
 	}{
-		{"org admin holds a write", SessionRoles{Org: []string{"ADMIN"}}, "TWEAK_WIDGETS", "9", VerdictYes},
-		{"org admin holds an admin-only op", SessionRoles{Org: []string{"ADMIN"}}, "OrgOperation.ADMIN_ONLY_GADGETS", "", VerdictYes},
-		{"org read-only holds a read", SessionRoles{Org: []string{"READ_ONLY"}}, "VIEW_WIDGETS", "9", VerdictYes},
-		{"org read-only does not hold a write", SessionRoles{Org: []string{"READ_ONLY"}}, "TWEAK_WIDGETS", "9", VerdictNo},
-		{"network role holds it on that network", SessionRoles{Org: []string{}, Network: map[string]string{"9": "OPERATOR"}}, "TWEAK_WIDGETS", "9", VerdictYes},
-		{"a lower network role does not", SessionRoles{Network: map[string]string{"9": "READ_ONLY"}}, "TWEAK_WIDGETS", "9", VerdictNo},
-		{"the role is the one on THAT network", SessionRoles{Network: map[string]string{"8": "ADMIN", "9": "READ_ONLY"}}, "LAUNCH_WIDGETS", "9", VerdictNo},
-		{"no role on that network", SessionRoles{Network: map[string]string{"8": "ADMIN"}}, "VIEW_WIDGETS", "9", VerdictNo},
-		{"an org op is granted by a network role on any network", SessionRoles{Network: map[string]string{"8": "WORKSPACE_OPERATOR"}}, "MANAGE_GADGETS", "", VerdictYes},
-		{"an org op is not granted by a lower network role", SessionRoles{Network: map[string]string{"8": "OPERATOR"}}, "MANAGE_GADGETS", "", VerdictNo},
-		{"an admin-only org op is no for any network role", SessionRoles{Network: map[string]string{"8": "ADMIN"}}, "OrgOperation.ADMIN_ONLY_GADGETS", "", VerdictNo},
-		{"empty roles are unknown, not a refusal", SessionRoles{}, "VIEW_WIDGETS", "9", VerdictUnknown},
-		{"system roles are not modelled", SessionRoles{System: []string{"SUPPORT_ADMIN"}, Org: []string{}}, "VIEW_WIDGETS", "9", VerdictUnknown},
-		{"an unrecognised network role is unknown", SessionRoles{Network: map[string]string{"9": "ROLE_FROM_THE_FUTURE"}}, "VIEW_WIDGETS", "9", VerdictUnknown},
-		{"an unrecognised org role is unknown, not no", SessionRoles{Org: []string{"AUDITOR"}}, "VIEW_WIDGETS", "9", VerdictUnknown},
+		{"org admin holds a write", domain.SessionRoles{Org: []string{"ADMIN"}}, "TWEAK_WIDGETS", "9", domain.VerdictYes},
+		{"org admin holds an admin-only op", domain.SessionRoles{Org: []string{"ADMIN"}}, "OrgOperation.ADMIN_ONLY_GADGETS", "", domain.VerdictYes},
+		{"org read-only holds a read", domain.SessionRoles{Org: []string{"READ_ONLY"}}, "VIEW_WIDGETS", "9", domain.VerdictYes},
+		{"org read-only does not hold a write", domain.SessionRoles{Org: []string{"READ_ONLY"}}, "TWEAK_WIDGETS", "9", domain.VerdictNo},
+		{"network role holds it on that network", domain.SessionRoles{Org: []string{}, Network: map[string]string{"9": "OPERATOR"}}, "TWEAK_WIDGETS", "9", domain.VerdictYes},
+		{"a lower network role does not", domain.SessionRoles{Network: map[string]string{"9": "READ_ONLY"}}, "TWEAK_WIDGETS", "9", domain.VerdictNo},
+		{"the role is the one on THAT network", domain.SessionRoles{Network: map[string]string{"8": "ADMIN", "9": "READ_ONLY"}}, "LAUNCH_WIDGETS", "9", domain.VerdictNo},
+		{"no role on that network", domain.SessionRoles{Network: map[string]string{"8": "ADMIN"}}, "VIEW_WIDGETS", "9", domain.VerdictNo},
+		{"an org op is granted by a network role on any network", domain.SessionRoles{Network: map[string]string{"8": "WORKSPACE_OPERATOR"}}, "MANAGE_GADGETS", "", domain.VerdictYes},
+		{"an org op is not granted by a lower network role", domain.SessionRoles{Network: map[string]string{"8": "OPERATOR"}}, "MANAGE_GADGETS", "", domain.VerdictNo},
+		{"an admin-only org op is no for any network role", domain.SessionRoles{Network: map[string]string{"8": "ADMIN"}}, "OrgOperation.ADMIN_ONLY_GADGETS", "", domain.VerdictNo},
+		{"empty roles are unknown, not a refusal", domain.SessionRoles{}, "VIEW_WIDGETS", "9", domain.VerdictUnknown},
+		{"system roles are not modelled", domain.SessionRoles{System: []string{"SUPPORT_ADMIN"}, Org: []string{}}, "VIEW_WIDGETS", "9", domain.VerdictUnknown},
+		{"an unrecognised network role is unknown", domain.SessionRoles{Network: map[string]string{"9": "ROLE_FROM_THE_FUTURE"}}, "VIEW_WIDGETS", "9", domain.VerdictUnknown},
+		{"an unrecognised org role is unknown, not no", domain.SessionRoles{Org: []string{"AUDITOR"}}, "VIEW_WIDGETS", "9", domain.VerdictUnknown},
 	}
 	for _, tc := range cases {
 		got := check(tc.roles, tc.operation, tc.network)
@@ -179,22 +184,22 @@ func TestAccessCanFollowsForwardsEnforcement(t *testing.T) {
 			t.Errorf("%s: %s (%s), want %s", tc.name, got.Verdict, got.Reason, tc.want)
 		}
 	}
-	answer := check(SessionRoles{Network: map[string]string{"9": "OPERATOR"}}, "TWEAK_WIDGETS", "9")
+	answer := check(domain.SessionRoles{Network: map[string]string{"9": "OPERATOR"}}, "TWEAK_WIDGETS", "9")
 	if answer.Facet != "BASE" || !answer.Write || answer.LowestRole != "OPERATOR" || answer.Operation != "NetworkOperation.TWEAK_WIDGETS" {
 		t.Errorf("the answer must say which licence facet a Yes still depends on: %+v", answer)
 	}
-	if _, err := NewAccess(table, SessionRoles{Org: []string{"ADMIN"}}).Can("TWEAK_WIDGETS", ""); err == nil {
+	if _, err := domain.NewAccess(table, domain.SessionRoles{Org: []string{"ADMIN"}}).Can("TWEAK_WIDGETS", ""); err == nil {
 		t.Error("a network operation needs a network id")
 	}
-	if _, err := NewAccess(table, SessionRoles{}).Can("NOT_A_THING", "9"); err == nil {
+	if _, err := domain.NewAccess(table, domain.SessionRoles{}).Can("NOT_A_THING", "9"); err == nil {
 		t.Error("an unknown operation must be an error")
 	}
 	// The zero value and a missing table are unknown with the reason, never permission.
-	if none, _ := NewAccess(nil, SessionRoles{Org: []string{"ADMIN"}}).Can("TWEAK_WIDGETS", "9"); none.Verdict != VerdictUnknown || !strings.Contains(none.Reason, "FORWARD_SOURCE") {
+	if none, _ := domain.NewAccess(nil, domain.SessionRoles{Org: []string{"ADMIN"}}).Can("TWEAK_WIDGETS", "9"); none.Verdict != domain.VerdictUnknown || !strings.Contains(none.Reason, "FORWARD_SOURCE") {
 		t.Errorf("no table: %+v", none)
 	}
-	var zero Verdict
-	if zero != VerdictUnknown {
+	var zero domain.Verdict
+	if zero != domain.VerdictUnknown {
 		t.Error("the zero verdict must be unknown")
 	}
 }
@@ -204,12 +209,12 @@ func TestNetworkRoleAtLeastNeedsNoTable(t *testing.T) {
 
 	for _, tc := range []struct {
 		have, want string
-		verdict    Verdict
+		verdict    domain.Verdict
 	}{
-		{"ADMIN", "OPERATOR", VerdictYes}, {"operator", " OPERATOR ", VerdictYes}, {"READ_ONLY", "OPERATOR", VerdictNo},
-		{"WORKSPACE_OPERATOR", "ADMIN", VerdictNo}, {"AUDITOR", "OPERATOR", VerdictUnknown}, {"ADMIN", "", VerdictUnknown},
+		{"ADMIN", "OPERATOR", domain.VerdictYes}, {"operator", " OPERATOR ", domain.VerdictYes}, {"READ_ONLY", "OPERATOR", domain.VerdictNo},
+		{"WORKSPACE_OPERATOR", "ADMIN", domain.VerdictNo}, {"AUDITOR", "OPERATOR", domain.VerdictUnknown}, {"ADMIN", "", domain.VerdictUnknown},
 	} {
-		if got := NetworkRoleAtLeast(tc.have, tc.want); got != tc.verdict {
+		if got := domain.NetworkRoleAtLeast(tc.have, tc.want); got != tc.verdict {
 			t.Errorf("AtLeast(%q, %q) = %s, want %s", tc.have, tc.want, got, tc.verdict)
 		}
 	}
@@ -233,10 +238,10 @@ func TestAccessTableJSONRoundTripAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	roles := SessionRoles{Network: map[string]string{"9": "OPERATOR"}}
+	roles := domain.SessionRoles{Network: map[string]string{"9": "OPERATOR"}}
 	for _, op := range []string{"VIEW_WIDGETS", "TWEAK_WIDGETS", "LAUNCH_WIDGETS"} {
-		a, _ := NewAccess(table, roles).Can(op, "9")
-		b, _ := NewAccess(loaded, roles).Can(op, "9")
+		a, _ := domain.NewAccess(table, roles).Can(op, "9")
+		b, _ := domain.NewAccess(loaded, roles).Can(op, "9")
 		if a.Verdict != b.Verdict || a.LowestRole != b.LowestRole {
 			t.Errorf("%s differs after a JSON round trip: %+v vs %+v", op, a, b)
 		}
@@ -270,7 +275,7 @@ func TestAccessTableRefusesAnUnparseableCheckout(t *testing.T) {
 	t.Parallel()
 
 	root := miniCheckout(t)
-	dir := filepath.Join(root, accessSourceDir)
+	dir := filepath.Join(root, forwardAccessDir)
 	if err := os.WriteFile(filepath.Join(dir, "NetworkRole.java"), []byte("package x;\npublic enum NetworkRole {\n    ADMIN(\n        1,\n        Sets.immutableEnumSet(NetworkOperation.NO_SUCH_OPERATION)\n    );\n}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +312,7 @@ func TestUsersAccessReadsTheSessionOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, op := range []string{"VIEW_WIDGETS", "TWEAK_WIDGETS", "LAUNCH_WIDGETS"} {
-		if answer, err := access.Can(op, "9"); err != nil || answer.Verdict != VerdictYes {
+		if answer, err := access.Can(op, "9"); err != nil || answer.Verdict != domain.VerdictYes {
 			t.Errorf("%s: %v %+v", op, err, answer)
 		}
 	}
@@ -324,7 +329,7 @@ func TestAccessTableAgainstARealCheckout(t *testing.T) {
 		home, _ := os.UserHomeDir()
 		root = filepath.Join(home, "src", "fwd")
 	}
-	if _, err := os.Stat(filepath.Join(root, accessSourceDir)); err != nil {
+	if _, err := os.Stat(filepath.Join(root, forwardAccessDir)); err != nil {
 		t.Skip("no Forward source checkout (set FORWARD_SOURCE)")
 	}
 	table, err := LoadAccessTable(root)
@@ -350,18 +355,18 @@ func TestAccessIsUnknownWhereForwardGrantsWhatTheRolesDoNotShow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	roles := SessionRoles{Network: map[string]string{"9": "READ_ONLY"}}
-	for name, access := range map[string]*Access{
-		"impersonated": NewAccessForSession(table, &UserSession{Impersonator: "admin", Roles: roles}),
-		"supported":    NewAccess(table, SessionRoles{Network: roles.Network, SupportedOrgIDs: []string{"7"}}),
-		"blank role":   NewAccess(table, SessionRoles{Network: map[string]string{"9": ""}}),
+	roles := domain.SessionRoles{Network: map[string]string{"9": "READ_ONLY"}}
+	for name, access := range map[string]*domain.Access{
+		"impersonated": domain.NewAccessForSession(table, &domain.UserSession{Impersonator: "admin", Roles: roles}),
+		"supported":    domain.NewAccess(table, domain.SessionRoles{Network: roles.Network, SupportedOrgIDs: []string{"7"}}),
+		"blank role":   domain.NewAccess(table, domain.SessionRoles{Network: map[string]string{"9": ""}}),
 	} {
 		got, err := access.Can("TWEAK_WIDGETS", "9")
-		if err != nil || got.Verdict != VerdictUnknown || got.Reason == "" {
+		if err != nil || got.Verdict != domain.VerdictUnknown || got.Reason == "" {
 			t.Errorf("%s: %+v %v, want unknown with a reason", name, got, err)
 		}
 	}
-	if got, _ := NewAccessForSession(table, &UserSession{Roles: roles}).Can("TWEAK_WIDGETS", "9"); got.Verdict != VerdictNo {
+	if got, _ := domain.NewAccessForSession(table, &domain.UserSession{Roles: roles}).Can("TWEAK_WIDGETS", "9"); got.Verdict != domain.VerdictNo {
 		t.Errorf("a plain session is still answered: %+v", got)
 	}
 }
@@ -373,7 +378,7 @@ func TestAccessTableFailsClosedOnUnfollowedFormsAndInheritsPerScope(t *testing.T
 
 	for _, form := range []string{"OrgOperation.VALUES.stream().filter(x -> true)", "Sets.difference(READ_ONLY.allowedOperations, EnumSet.of(NetworkOperation.TWEAK_WIDGETS))"} {
 		root := miniCheckout(t)
-		path := filepath.Join(root, accessSourceDir, "NetworkRole.java")
+		path := filepath.Join(root, forwardAccessDir, "NetworkRole.java")
 		raw, _ := os.ReadFile(path)
 		edited := strings.Replace(string(raw), "Sets.immutableEnumSet(WORKSPACE_OPERATOR.allowedOperations)", "Sets.immutableEnumSet("+form+")", 1)
 		if edited == string(raw) {
@@ -388,7 +393,7 @@ func TestAccessTableFailsClosedOnUnfollowedFormsAndInheritsPerScope(t *testing.T
 	}
 
 	root := miniCheckout(t)
-	path := filepath.Join(root, accessSourceDir, "NetworkRole.java")
+	path := filepath.Join(root, forwardAccessDir, "NetworkRole.java")
 	raw, _ := os.ReadFile(path)
 	// ADMIN inherits only org operations from LIMITED_READ_ONLY here (plus its own network list): LIMITED's network ops must not follow.
 	edited := strings.Replace(string(raw), "Sets.immutableEnumSet(WORKSPACE_OPERATOR.allowedOrgOperations),\n        Sets.immutableEnumSet(WORKSPACE_OPERATOR.allowedOperations)",
@@ -404,10 +409,38 @@ func TestAccessTableFailsClosedOnUnfollowedFormsAndInheritsPerScope(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if table.roles["ADMIN"]["NetworkOperation.VIEW_WIDGETS"] {
+	if tableRoles(t, table)["ADMIN"]["NetworkOperation.VIEW_WIDGETS"] {
 		t.Error("inheriting a role's org operations copied its network operations")
 	}
-	if !table.roles["ADMIN"]["OrgOperation.VIEW_GADGETS"] || !table.roles["ADMIN"]["NetworkOperation.LAUNCH_WIDGETS"] {
+	if !tableRoles(t, table)["ADMIN"]["OrgOperation.VIEW_GADGETS"] || !tableRoles(t, table)["ADMIN"]["NetworkOperation.LAUNCH_WIDGETS"] {
 		t.Error("the inherited org operation or the role's own network operation is missing")
 	}
 }
+
+// tableRoles is the table's role -> operation sets as WriteJSON publishes them, so the parser's tests do not read the table's
+// private fields, which live in the domain package (the v0.9 hexagonal split).
+func tableRoles(t *testing.T, table *domain.AccessTable) map[string]map[string]bool {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := table.WriteJSON(&buf); err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Roles map[string][]string `json:"roles"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &doc); err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]map[string]bool{}
+	for role, ops := range doc.Roles {
+		out[role] = map[string]bool{}
+		for _, op := range ops {
+			out[role][op] = true
+		}
+	}
+	return out
+}
+
+// forwardAccessDir is where a Forward source checkout keeps its access package. The tests state it themselves, because "a
+// checkout laid out like Forward's is found" is what they check.
+const forwardAccessDir = "app/src/main/java/com/forwardnetworks/cv/access"

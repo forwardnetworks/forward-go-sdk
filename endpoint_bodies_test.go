@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -39,7 +43,7 @@ func TestEndpointsAddBatchSendsOnlyTheTypesFields(t *testing.T) {
 	}
 	yes := true
 
-	if _, err := client.Endpoints.AddBatch(context.Background(), "", "snmp", []Endpoint{{Name: "printer1", Host: "10.0.0.9", Port: 161, CredentialID: "S1", ProfileID: "SNMP-5", FullCollect: true}}); err != nil {
+	if _, err := client.Endpoints.AddBatch(context.Background(), "", "snmp", []domain.Endpoint{{Name: "printer1", Host: "10.0.0.9", Port: 161, CredentialID: "S1", ProfileID: "SNMP-5", FullCollect: true}}); err != nil {
 		t.Fatal(err)
 	}
 	if query != "action=addBatch&type=SNMP" || len(bodies) != 1 || bodies[0]["type"] != "SNMP" {
@@ -49,7 +53,7 @@ func TestEndpointsAddBatchSendsOnlyTheTypesFields(t *testing.T) {
 		t.Fatalf("SNMP keys = %v", got)
 	}
 
-	if _, err := client.Endpoints.AddBatch(context.Background(), "", "CLI", []Endpoint{{Name: "r1", Host: "10.0.0.1", Protocol: "SSH", JumpServerID: "J1"}, {Name: "r2", Host: "10.0.0.2"}}); err != nil {
+	if _, err := client.Endpoints.AddBatch(context.Background(), "", "CLI", []domain.Endpoint{{Name: "r1", Host: "10.0.0.1", Protocol: "SSH", JumpServerID: "J1"}, {Name: "r2", Host: "10.0.0.2"}}); err != nil {
 		t.Fatal(err)
 	}
 	if bodies[0]["protocol"] != "SSH" || bodies[0]["jumpServerId"] != "J1" {
@@ -59,7 +63,7 @@ func TestEndpointsAddBatchSendsOnlyTheTypesFields(t *testing.T) {
 		t.Fatalf("an empty CLI protocol must be omitted, not sent: %v", bodies[1])
 	}
 
-	if _, err := client.Endpoints.AddBatch(context.Background(), "", "HTTP", []Endpoint{{Name: "nsx", Host: "nsx.example.com", DisableSSLValidation: &yes}}); err != nil {
+	if _, err := client.Endpoints.AddBatch(context.Background(), "", "HTTP", []domain.Endpoint{{Name: "nsx", Host: "nsx.example.com", DisableSSLValidation: &yes}}); err != nil {
 		t.Fatal(err)
 	}
 	if got := keys(bodies[0]); !equalStrings(got, []string{"disableSslValidation", "host", "name", "type"}) || bodies[0]["disableSslValidation"] != true {
@@ -83,26 +87,26 @@ func TestEndpointsWritesRefuseFieldsOfOtherTypes(t *testing.T) {
 
 	for name, endpoints := range map[string]struct {
 		kind string
-		list []Endpoint
+		list []domain.Endpoint
 	}{
-		"SNMP with protocol":        {"SNMP", []Endpoint{{Name: "p", Host: "h", Protocol: "SSH"}}},
-		"SNMP with a jump server":   {"SNMP", []Endpoint{{Name: "p", Host: "h", JumpServerID: "J1"}}},
-		"HTTP with full collection": {"HTTP", []Endpoint{{Name: "p", Host: "h", FullCollect: true}}},
-		"CLI with SSL validation":   {"CLI", []Endpoint{{Name: "p", Host: "h", DisableSSLValidation: &yes}}},
-		"type mismatch":             {"SNMP", []Endpoint{{Type: "CLI", Name: "p", Host: "h"}}},
-		"unknown type":              {"TELNET", []Endpoint{{Name: "p", Host: "h"}}},
+		"SNMP with protocol":        {"SNMP", []domain.Endpoint{{Name: "p", Host: "h", Protocol: "SSH"}}},
+		"SNMP with a jump server":   {"SNMP", []domain.Endpoint{{Name: "p", Host: "h", JumpServerID: "J1"}}},
+		"HTTP with full collection": {"HTTP", []domain.Endpoint{{Name: "p", Host: "h", FullCollect: true}}},
+		"CLI with SSL validation":   {"CLI", []domain.Endpoint{{Name: "p", Host: "h", DisableSSLValidation: &yes}}},
+		"type mismatch":             {"SNMP", []domain.Endpoint{{Type: "CLI", Name: "p", Host: "h"}}},
+		"unknown type":              {"TELNET", []domain.Endpoint{{Name: "p", Host: "h"}}},
 	} {
 		if _, err := client.Endpoints.AddBatch(context.Background(), "", endpoints.kind, endpoints.list); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
 	}
-	if _, err := client.Endpoints.Patch(context.Background(), "", "printer1", "SNMP", EndpointPatch{Protocol: &ssh}); err == nil {
+	if _, err := client.Endpoints.Patch(context.Background(), "", "printer1", "SNMP", domain.EndpointPatch{Protocol: &ssh}); err == nil {
 		t.Error("an SNMP patch with protocol was accepted")
 	}
 	if calls != 0 {
 		t.Fatalf("a refused write still sent %d request(s)", calls)
 	}
-	if _, err := client.Endpoints.Patch(context.Background(), "", "printer1", "SNMP", EndpointPatch{ProfileID: &snmpProfile}); err != nil || calls != 1 {
+	if _, err := client.Endpoints.Patch(context.Background(), "", "printer1", "SNMP", domain.EndpointPatch{ProfileID: &snmpProfile}); err != nil || calls != 1 {
 		t.Fatalf("repointing an SNMP endpoint's profile must go through: %v (%d calls)", err, calls)
 	}
 }

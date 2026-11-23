@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"net/http"
@@ -23,29 +28,29 @@ func TestJSONDocumentMethodsReturnTheBodyVerbatim(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	query := MetricQuery{}
+	query := domain.MetricQuery{}
 
-	calls := map[string]func() (JSONDocument, *Response, error){
-		"Performance.DeviceMetricsDocument": func() (JSONDocument, *Response, error) {
+	calls := map[string]func() (domain.JSONDocument, *ports.Response, error){
+		"Performance.DeviceMetricsDocument": func() (domain.JSONDocument, *ports.Response, error) {
 			return client.Performance.DeviceMetricsDocument(ctx, "net-1", query)
 		},
-		"Performance.DeviceMetricHistoryDocument": func() (JSONDocument, *Response, error) {
-			return client.Performance.DeviceMetricHistoryDocument(ctx, "net-1", query, DeviceMetricHistoryRequest{})
+		"Performance.DeviceMetricHistoryDocument": func() (domain.JSONDocument, *ports.Response, error) {
+			return client.Performance.DeviceMetricHistoryDocument(ctx, "net-1", query, domain.DeviceMetricHistoryRequest{})
 		},
-		"Performance.InterfaceMetricsDocument": func() (JSONDocument, *Response, error) {
+		"Performance.InterfaceMetricsDocument": func() (domain.JSONDocument, *ports.Response, error) {
 			return client.Performance.InterfaceMetricsDocument(ctx, "net-1", query)
 		},
-		"Performance.InterfaceMetricHistoryDocument": func() (JSONDocument, *Response, error) {
-			return client.Performance.InterfaceMetricHistoryDocument(ctx, "net-1", query, InterfaceMetricHistoryRequest{})
+		"Performance.InterfaceMetricHistoryDocument": func() (domain.JSONDocument, *ports.Response, error) {
+			return client.Performance.InterfaceMetricHistoryDocument(ctx, "net-1", query, domain.InterfaceMetricHistoryRequest{})
 		},
-		"Performance.UnhealthyDevices": func() (JSONDocument, *Response, error) {
+		"Performance.UnhealthyDevices": func() (domain.JSONDocument, *ports.Response, error) {
 			return client.Performance.UnhealthyDevices(ctx, "net-1", query)
 		},
-		"Performance.UnhealthyInterfaces": func() (JSONDocument, *Response, error) {
-			return client.Performance.UnhealthyInterfaces(ctx, "net-1", query, UnhealthyInterfacesRequest{Devices: []string{"leaf-1"}})
+		"Performance.UnhealthyInterfaces": func() (domain.JSONDocument, *ports.Response, error) {
+			return client.Performance.UnhealthyInterfaces(ctx, "net-1", query, domain.UnhealthyInterfacesRequest{Devices: []string{"leaf-1"}})
 		},
-		"Snapshots.ListDocument": func() (JSONDocument, *Response, error) {
-			return client.Snapshots.ListDocument(ctx, "net-1", SnapshotListOptions{})
+		"Snapshots.ListDocument": func() (domain.JSONDocument, *ports.Response, error) {
+			return client.Snapshots.ListDocument(ctx, "net-1", ports.SnapshotListOptions{})
 		},
 	}
 	for name, call := range calls {
@@ -66,8 +71,8 @@ func TestJSONDocumentMarshalsAsJSON(t *testing.T) {
 	t.Parallel()
 
 	wrapped, err := json.Marshal(struct {
-		Doc JSONDocument `json:"doc"`
-	}{Doc: JSONDocument(`{"a":1}`)})
+		Doc domain.JSONDocument `json:"doc"`
+	}{Doc: domain.JSONDocument(`{"a":1}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

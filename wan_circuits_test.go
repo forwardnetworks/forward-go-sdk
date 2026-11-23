@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -55,14 +59,14 @@ func TestWanCircuitsReadAndWrite(t *testing.T) {
 	if !strings.HasPrefix(put, "PUT /api/networks/n1/wan-circuits/wc1 ") || strings.Contains(put, "source") || !strings.Contains(put, `"vlan":100`) {
 		t.Fatalf("PUT = %s", put)
 	}
-	if _, err := client.WanCircuits.Put(ctx, "", "wc1", WanCircuit{Name: "other"}); err == nil {
+	if _, err := client.WanCircuits.Put(ctx, "", "wc1", domain.WanCircuit{Name: "other"}); err == nil {
 		t.Fatal("a body naming a different circuit must be refused: Forward would store it under the body's name")
 	}
 	if _, err := client.WanCircuits.Put(ctx, "", " ", list[0]); err == nil {
 		t.Fatal("an empty name must not collapse onto the collection route")
 	}
 	rename := "wc2"
-	patched, _, err := client.WanCircuits.Patch(ctx, "", "wc1", WanCircuitPatch{Name: &rename, Connection2: &WanCircuitConnection{Device: "ce3", Port: "e9"}})
+	patched, _, err := client.WanCircuits.Patch(ctx, "", "wc1", domain.WanCircuitPatch{Name: &rename, Connection2: &domain.WanCircuitConnection{Device: "ce3", Port: "e9"}})
 	if err != nil || patched.Name != "wc2" || !strings.Contains(bodies[len(bodies)-1], `{"name":"wc2","connection2":{"device":"ce3","port":"e9"}}`) {
 		t.Fatalf("Patch() = %+v, %v; sent %s", patched, err, bodies[len(bodies)-1])
 	}
@@ -91,7 +95,7 @@ func TestWanCircuitsReplaceAllGuardsTheEmptyList(t *testing.T) {
 	if _, err := client.WanCircuits.ReplaceAll(context.Background(), "", nil, true); err != nil || sent[0] != `PUT /api/networks/n1/wan-circuits {"wanCircuits":[]}` {
 		t.Fatalf("an asked-for empty ReplaceAll = %v, %v", sent, err)
 	}
-	one := []WanCircuit{{Name: "wc1", Source: "MANUAL", Connection1: WanCircuitConnection{Device: "a", Port: "1"}, Connection2: WanCircuitConnection{Device: "b", Port: "2"}}}
+	one := []domain.WanCircuit{{Name: "wc1", Source: "MANUAL", Connection1: domain.WanCircuitConnection{Device: "a", Port: "1"}, Connection2: domain.WanCircuitConnection{Device: "b", Port: "2"}}}
 	if _, err := client.WanCircuits.ReplaceAll(context.Background(), "", one, false); err != nil || strings.Contains(sent[1], "source") {
 		t.Fatalf("ReplaceAll body = %s, %v", sent[1], err)
 	}
@@ -125,12 +129,12 @@ func TestBackdateRoutesAndGuards(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	want := map[SyntheticNodeKind]string{
-		SyntheticInternet:        "POST /api/networks/n1/internet-node?op=backdate&snapshotId=1021",
-		SyntheticIntranet:        "POST /api/networks/n1/intranet-nodes?op=backdate&snapshotId=1021",
-		SyntheticL3VPN:           "POST /api/networks/n1/l3-vpns?op=backdate&snapshotId=1021",
-		SyntheticL2VPN:           "POST /api/networks/n1/l2-vpns?op=backdate&snapshotId=1021",
-		SyntheticAdjacentNetwork: "POST /api/networks/n1/adjacent-networks?op=backdate&snapshotId=1021",
+	want := map[domain.SyntheticNodeKind]string{
+		domain.SyntheticInternet:        "POST /api/networks/n1/internet-node?op=backdate&snapshotId=1021",
+		domain.SyntheticIntranet:        "POST /api/networks/n1/intranet-nodes?op=backdate&snapshotId=1021",
+		domain.SyntheticL3VPN:           "POST /api/networks/n1/l3-vpns?op=backdate&snapshotId=1021",
+		domain.SyntheticL2VPN:           "POST /api/networks/n1/l2-vpns?op=backdate&snapshotId=1021",
+		domain.SyntheticAdjacentNetwork: "POST /api/networks/n1/adjacent-networks?op=backdate&snapshotId=1021",
 	}
 	for kind, request := range want {
 		seen, ops = nil, nil
@@ -151,7 +155,7 @@ func TestBackdateRoutesAndGuards(t *testing.T) {
 	}
 
 	seen = nil
-	if _, err := hooked.SyntheticNodes.Backdate(ctx, "", SyntheticL3VPN, " "); err == nil {
+	if _, err := hooked.SyntheticNodes.Backdate(ctx, "", domain.SyntheticL3VPN, " "); err == nil {
 		t.Error("SyntheticNodes.Backdate accepted an empty snapshot ID")
 	}
 	if _, err := hooked.WanCircuits.Backdate(ctx, "", ""); err == nil {

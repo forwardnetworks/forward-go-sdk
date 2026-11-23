@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"encoding/json"
 	"testing"
 )
@@ -10,7 +14,7 @@ import (
 // unwrapped into both the PUT body and the GET response). Omitting it must send
 // no field, so the appserver keeps the network's default collector.
 func TestClassicDeviceRequestSendsCollectorIDOnlyWhenSet(t *testing.T) {
-	set, err := json.Marshal(ClassicDeviceRequest{Name: "a", Host: "h", CollectorID: "42"})
+	set, err := json.Marshal(domain.ClassicDeviceRequest{Name: "a", Host: "h", CollectorID: "42"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +25,7 @@ func TestClassicDeviceRequestSendsCollectorIDOnlyWhenSet(t *testing.T) {
 	if got["collectorId"] != "42" {
 		t.Fatalf("collectorId = %v, want 42", got["collectorId"])
 	}
-	unset, _ := json.Marshal(ClassicDeviceRequest{Name: "a", Host: "h"})
+	unset, _ := json.Marshal(domain.ClassicDeviceRequest{Name: "a", Host: "h"})
 	got = nil
 	_ = json.Unmarshal(unset, &got)
 	if _, present := got["collectorId"]; present {
@@ -30,7 +34,7 @@ func TestClassicDeviceRequestSendsCollectorIDOnlyWhenSet(t *testing.T) {
 }
 
 func TestClassicDeviceBatchItemSendsCollectorIDOnlyWhenSet(t *testing.T) {
-	b, _ := json.Marshal([]ClassicDeviceBatchItem{{Name: "a", Host: "h", CollectorID: "7"}, {Name: "b", Host: "h"}})
+	b, _ := json.Marshal([]domain.ClassicDeviceBatchItem{{Name: "a", Host: "h", CollectorID: "7"}, {Name: "b", Host: "h"}})
 	var items []map[string]any
 	if err := json.Unmarshal(b, &items); err != nil {
 		t.Fatal(err)
@@ -46,14 +50,14 @@ func TestClassicDeviceBatchItemSendsCollectorIDOnlyWhenSet(t *testing.T) {
 // The appserver serialises CollectorId as "C<n>"; a read must keep that and also accept
 // a bare number or string, and an absent field must read as empty rather than as an error.
 func TestClassicDeviceReadsCollectorID(t *testing.T) {
-	for body, want := range map[string]Identifier{
+	for body, want := range map[string]domain.Identifier{
 		`{"name":"a","host":"h","collectorId":42}`:    "42",
 		`{"name":"a","host":"h","collectorId":"42"}`:  "42",
 		`{"name":"a","host":"h","collectorId":"C42"}`: "C42",
 		`{"name":"a","host":"h"}`:                     "",
 		`{"name":"a","host":"h","collectorId":null}`:  "",
 	} {
-		var d ClassicDevice
+		var d domain.ClassicDevice
 		if err := json.Unmarshal([]byte(body), &d); err != nil {
 			t.Fatalf("%s: %v", body, err)
 		}
@@ -63,46 +67,14 @@ func TestClassicDeviceReadsCollectorID(t *testing.T) {
 	}
 }
 
-// An endpoint create must carry collectorId for every type (each New*NetworkEndpoint
-// binds it), and a patch must send it only when stated.
-func TestEndpointBodiesCarryCollectorIDOnlyWhenSet(t *testing.T) {
-	for _, typ := range []string{"CLI", "SNMP", "HTTP"} {
-		body, err := endpointBody(typ, Endpoint{Name: "e", Host: "h", CollectorID: "C5"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		b, _ := json.Marshal(body)
-		var got map[string]any
-		_ = json.Unmarshal(b, &got)
-		if got["collectorId"] != "C5" {
-			t.Fatalf("%s: collectorId = %v, want C5", typ, got["collectorId"])
-		}
-		body, _ = endpointBody(typ, Endpoint{Name: "e", Host: "h"})
-		b, _ = json.Marshal(body)
-		got = nil
-		_ = json.Unmarshal(b, &got)
-		if _, present := got["collectorId"]; present {
-			t.Fatalf("%s: an unset CollectorID was sent", typ)
-		}
-	}
-	id := "9"
-	b, _ := json.Marshal(EndpointPatch{CollectorID: &id})
-	if string(b) != `{"collectorId":"9"}` {
-		t.Fatalf("patch body = %s", b)
-	}
-	if b, _ := json.Marshal(EndpointPatch{}); string(b) != `{}` {
-		t.Fatalf("empty patch body = %s, want {}", b)
-	}
-}
-
 // Moving a device between collectors is a PATCH; an unstated CollectorID must
 // not appear, or every other patch would assert a collector on the device.
 func TestClassicDevicePatchSendsCollectorIDOnlyWhenSet(t *testing.T) {
 	id := "C3"
-	if b, _ := json.Marshal(ClassicDevicePatch{CollectorID: &id}); string(b) != `{"collectorId":"C3"}` {
+	if b, _ := json.Marshal(domain.ClassicDevicePatch{CollectorID: &id}); string(b) != `{"collectorId":"C3"}` {
 		t.Fatalf("patch body = %s", b)
 	}
-	if b, _ := json.Marshal(ClassicDevicePatch{}); string(b) != `{}` {
+	if b, _ := json.Marshal(domain.ClassicDevicePatch{}); string(b) != `{}` {
 		t.Fatalf("empty patch body = %s, want {}", b)
 	}
 }

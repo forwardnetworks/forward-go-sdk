@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -24,7 +28,7 @@ func TestCredentialTypeIsOmittedNotEmptied(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id":"c1","name":"n"}`))
 	})
 
-	got, _, err := c.Credentials.CreateCLI(context.Background(), "net-1", CLICredentialRequest{
+	got, _, err := c.Credentials.CreateCLI(context.Background(), "net-1", domain.CLICredentialRequest{
 		Name: "Skyforge CLI", Username: "u", Password: "p",
 	})
 	if err != nil {
@@ -39,7 +43,7 @@ func TestCredentialTypeIsOmittedNotEmptied(t *testing.T) {
 
 	// An explicit type still travels.
 	body = nil
-	if _, _, err := c.Credentials.CreateCLI(context.Background(), "net-1", CLICredentialRequest{
+	if _, _, err := c.Credentials.CreateCLI(context.Background(), "net-1", domain.CLICredentialRequest{
 		Type: "PRIVILEGED_MODE", Name: "n", Password: "p",
 	}); err != nil {
 		t.Fatalf("explicit type: %v", err)
@@ -50,16 +54,16 @@ func TestCredentialTypeIsOmittedNotEmptied(t *testing.T) {
 
 	// What Forward DOES require is still refused here, where the message can
 	// name the field, rather than as an opaque 400.
-	if _, _, err := c.Credentials.CreateCLI(context.Background(), "net-1", CLICredentialRequest{Password: "p"}); err == nil {
+	if _, _, err := c.Credentials.CreateCLI(context.Background(), "net-1", domain.CLICredentialRequest{Password: "p"}); err == nil {
 		t.Fatal("an empty name must be refused")
 	}
-	if _, _, err := c.Credentials.CreateCLI(context.Background(), "net-1", CLICredentialRequest{Name: "n"}); err == nil {
+	if _, _, err := c.Credentials.CreateCLI(context.Background(), "net-1", domain.CLICredentialRequest{Name: "n"}); err == nil {
 		t.Fatal("an empty password must be refused")
 	}
 
 	// HTTP credentials default the same way.
 	body = nil
-	if _, _, err := c.Credentials.CreateHTTP(context.Background(), "net-1", HTTPCredentialRequest{
+	if _, _, err := c.Credentials.CreateHTTP(context.Background(), "net-1", domain.HTTPCredentialRequest{
 		Name: "h", Password: "p",
 	}); err != nil {
 		t.Fatalf("http credential with no type must be accepted: %v", err)

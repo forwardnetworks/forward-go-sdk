@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"net/http"
@@ -11,7 +16,7 @@ import (
 // Spring's 400 for an unmapped ?action= is the only signal a build lacks a variant; it must classify without callers matching text,
 // and only as a 400.
 func TestActionNotSupportedKind(t *testing.T) {
-	for status, want := range map[int]ErrorKind{http.StatusBadRequest: ErrorKindActionNotSupported, http.StatusConflict: ErrorKindUnknown} {
+	for status, want := range map[int]domain.ErrorKind{http.StatusBadRequest: domain.ErrorKindActionNotSupported, http.StatusConflict: domain.ErrorKindUnknown} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(status)
@@ -20,10 +25,10 @@ func TestActionNotSupportedKind(t *testing.T) {
 		client := newTestClient(t, server.URL)
 		_, _, err := client.Networks.List(context.Background())
 		server.Close()
-		if !IsErrorKind(err, want) {
+		if !ports.IsErrorKind(err, want) {
 			t.Fatalf("status %d: kind = %v, want %v", status, err, want)
 		}
-		if want == ErrorKindActionNotSupported && !errors.Is(err, ErrActionNotSupported) {
+		if want == domain.ErrorKindActionNotSupported && !errors.Is(err, domain.ErrActionNotSupported) {
 			t.Fatal("ErrActionNotSupported must match")
 		}
 	}
@@ -35,13 +40,13 @@ func TestServiceNowAsleepKind(t *testing.T) {
 	cases := []struct {
 		status  int
 		message string
-		want    ErrorKind
+		want    domain.ErrorKind
 	}{
-		{http.StatusConflict, "ServiceNow instance is hibernating", ErrorKindServiceNowInstanceAsleep},
-		{http.StatusConflict, "ServiceNow instance is suspended.", ErrorKindServiceNowInstanceAsleep},
-		{http.StatusConflict, "Unknown Error", ErrorKindUnknown},
-		{http.StatusBadGateway, "ServiceNow instance is hibernating", ErrorKindUnknown},
-		{http.StatusConflict, "The ServiceNow instance is hibernating, retry", ErrorKindUnknown},
+		{http.StatusConflict, "ServiceNow instance is hibernating", domain.ErrorKindServiceNowInstanceAsleep},
+		{http.StatusConflict, "ServiceNow instance is suspended.", domain.ErrorKindServiceNowInstanceAsleep},
+		{http.StatusConflict, "Unknown Error", domain.ErrorKindUnknown},
+		{http.StatusBadGateway, "ServiceNow instance is hibernating", domain.ErrorKindUnknown},
+		{http.StatusConflict, "The ServiceNow instance is hibernating, retry", domain.ErrorKindUnknown},
 	}
 	for _, tc := range cases {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -51,10 +56,10 @@ func TestServiceNowAsleepKind(t *testing.T) {
 		}))
 		_, _, err := newTestClient(t, server.URL).Networks.List(context.Background())
 		server.Close()
-		if got := IsErrorKind(err, tc.want); !got {
+		if got := ports.IsErrorKind(err, tc.want); !got {
 			t.Errorf("%d %q: kind is not %v: %v", tc.status, tc.message, tc.want, err)
 		}
-		if asleep := errors.Is(err, ErrServiceNowInstanceAsleep); asleep != (tc.want == ErrorKindServiceNowInstanceAsleep) {
+		if asleep := errors.Is(err, domain.ErrServiceNowInstanceAsleep); asleep != (tc.want == domain.ErrorKindServiceNowInstanceAsleep) {
 			t.Errorf("%d %q: ErrServiceNowInstanceAsleep = %v", tc.status, tc.message, asleep)
 		}
 	}
@@ -68,9 +73,9 @@ func TestUnrecognizedDevicesKind(t *testing.T) {
 		_, _ = w.Write([]byte(`{"message":"Unrecognized devices cannot be moved: [r1, r2]"}`))
 	}))
 	defer server.Close()
-	_, err := newTestClient(t, server.URL).Locations.Assign(context.Background(), "n1", AtlasPatch{"r1": "L1", "r2": "L1"})
-	var apiErr *ErrorResponse
-	if !errors.Is(err, ErrUnrecognizedDevices) || !errors.As(err, &apiErr) || len(apiErr.UnrecognizedDevices) != 2 || apiErr.UnrecognizedDevices[1] != "r2" {
+	_, err := newTestClient(t, server.URL).Locations.Assign(context.Background(), "n1", domain.AtlasPatch{"r1": "L1", "r2": "L1"})
+	var apiErr *ports.ErrorResponse
+	if !errors.Is(err, domain.ErrUnrecognizedDevices) || !errors.As(err, &apiErr) || len(apiErr.UnrecognizedDevices) != 2 || apiErr.UnrecognizedDevices[1] != "r2" {
 		t.Fatalf("err = %v, devices = %v", err, apiErr)
 	}
 }

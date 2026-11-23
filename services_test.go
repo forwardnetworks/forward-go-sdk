@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -33,7 +37,7 @@ func TestVersionGet(t *testing.T) {
 func TestNetworksCRUD(t *testing.T) {
 	t.Parallel()
 
-	var patch NetworkUpdate
+	var patch domain.NetworkUpdate
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, pass, ok := r.BasicAuth()
 		if !ok || user != "user" || pass != "pass" {
@@ -77,7 +81,7 @@ func TestNetworksCRUD(t *testing.T) {
 	}
 
 	name := "Renamed"
-	updated, _, err := client.Networks.Update(ctx, "network/2", NetworkUpdate{Name: &name})
+	updated, _, err := client.Networks.Update(ctx, "network/2", domain.NetworkUpdate{Name: &name})
 	if err != nil || updated.Name != name {
 		t.Fatalf("Networks.Update() = %#v, %v", updated, err)
 	}

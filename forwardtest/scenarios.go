@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 // NQE answers POST /api/nqe with rows, paged the way Forward pages: queryOptions.offset and queryOptions.limit select the slice and
@@ -39,17 +39,17 @@ func (s *Server) NQE(snapshotID string, rows []map[string]any) {
 // CheckDiffs answers GET /api/diffs/{a}/{b}/checks for one check type: the NQE type returns PROCESSING rows for the first
 // processingPolls reads (Forward evaluates NQE checks asynchronously and says so), then the final rows. Other types are computed in
 // Forward before it answers, so give processingPolls 0 for them.
-func (s *Server) CheckDiffs(a, b, checkType string, processingPolls int, final []forward.CheckDiffEntry) {
+func (s *Server) CheckDiffs(a, b, checkType string, processingPolls int, final []ports.CheckDiffEntry) {
 	replies := make([]Reply, 0, processingPolls+1)
 	for i := 0; i < processingPolls; i++ {
-		replies = append(replies, JSON(http.StatusOK, []forward.CheckDiffEntry{{DiffType: forward.CheckDiffProcessing}}))
+		replies = append(replies, JSON(http.StatusOK, []ports.CheckDiffEntry{{DiffType: ports.CheckDiffProcessing}}))
 	}
 	replies = append(replies, JSON(http.StatusOK, final))
 	s.HandleQuery(http.MethodGet, "/api/diffs/"+a+"/"+b+"/checks", url.Values{"type": {checkType}}, replies...)
 }
 
 // BGPDiff is one row of the staged-BGP diffs view (BgpAdvertisementDiffInfo). Build it with the BGP* constructors.
-type BGPDiff = forward.BGPAdvertisementDiff
+type BGPDiff = ports.BGPAdvertisementDiff
 
 func rawJSON(v any) json.RawMessage {
 	raw, err := json.Marshal(v)
@@ -60,30 +60,30 @@ func rawJSON(v any) json.RawMessage {
 }
 
 // BGPInjected is a staged advertisement whose key the base snapshot does not have.
-func BGPInjected(added forward.BGPAdvertisement) BGPDiff {
-	return BGPDiff{Change: string(forward.BGPChangeInjected), UpdateAdded: rawJSON(added)}
+func BGPInjected(added ports.BGPAdvertisement) BGPDiff {
+	return BGPDiff{Change: string(ports.BGPChangeInjected), UpdateAdded: rawJSON(added)}
 }
 
 // BGPModified is a staged advertisement that replaces a received one with the same key.
-func BGPModified(original, added forward.BGPAdvertisement) BGPDiff {
-	return BGPDiff{Change: string(forward.BGPChangeModified), Original: rawJSON(original), UpdateAdded: rawJSON(added)}
+func BGPModified(original, added ports.BGPAdvertisement) BGPDiff {
+	return BGPDiff{Change: string(ports.BGPChangeModified), Original: rawJSON(original), UpdateAdded: rawJSON(added)}
 }
 
 // BGPDuplicated is a staged advertisement identical to the received one: it changes nothing.
-func BGPDuplicated(original, added forward.BGPAdvertisement) BGPDiff {
-	return BGPDiff{Change: string(forward.BGPChangeDuplicated), Original: rawJSON(original), UpdateAdded: rawJSON(added)}
+func BGPDuplicated(original, added ports.BGPAdvertisement) BGPDiff {
+	return BGPDiff{Change: string(ports.BGPChangeDuplicated), Original: rawJSON(original), UpdateAdded: rawJSON(added)}
 }
 
 // BGPWithdrawn is a withdrawal that removed a received advertisement.
-func BGPWithdrawn(original forward.BGPAdvertisement) BGPDiff {
-	key := forward.BGPAdvertisementKey{VRF: original.VRF, ExternalPeer: original.ExternalPeer, Prefix: original.Prefix}
-	return BGPDiff{Change: string(forward.BGPChangeWithdrawn), Original: rawJSON(original), UpdateRemoved: rawJSON(key)}
+func BGPWithdrawn(original ports.BGPAdvertisement) BGPDiff {
+	key := ports.BGPAdvertisementKey{VRF: original.VRF, ExternalPeer: original.ExternalPeer, Prefix: original.Prefix}
+	return BGPDiff{Change: string(ports.BGPChangeWithdrawn), Original: rawJSON(original), UpdateRemoved: rawJSON(key)}
 }
 
 // BGPAbsent is a withdrawal of a key the base snapshot does not have. Forward does not refuse it when staged: it shows up only as this
 // row, and the change set ignores the key.
-func BGPAbsent(key forward.BGPAdvertisementKey) BGPDiff {
-	return BGPDiff{Change: string(forward.BGPChangeAbsent), UpdateRemoved: rawJSON(key)}
+func BGPAbsent(key ports.BGPAdvertisementKey) BGPDiff {
+	return BGPDiff{Change: string(ports.BGPChangeAbsent), UpdateRemoved: rawJSON(key)}
 }
 
 // BGPDiffs answers the staged-BGP diffs view (GET .../change-sets/{changeSetID}/draft/devices/{device}/bgp-advertisements?view=diffs)
@@ -113,12 +113,12 @@ func (s *Server) BGPStaging(networkID, changeSetID, device string) {
 // ReceivedBGP answers the received-advertisements read (GET /api/networks/{networkID}/devices/{device}/bgp-advertisements) with
 // the rows for each vrf and prefix: a prefix not in the map answers an empty list, as Forward does for one with no advertisements. The
 // prefix is matched as the client sent it; Forward writes a host route back bare ("10.0.0.2", no /32).
-func (s *Server) ReceivedBGP(networkID, device string, rows map[[2]string][]forward.BGPAdvertisement) {
+func (s *Server) ReceivedBGP(networkID, device string, rows map[[2]string][]ports.BGPAdvertisement) {
 	s.HandleFunc(http.MethodGet, "/api/networks/"+networkID+"/devices/"+device+"/bgp-advertisements", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		found := rows[[2]string{query.Get("vrf"), strings.TrimSpace(query.Get("prefix"))}]
 		if found == nil {
-			found = []forward.BGPAdvertisement{}
+			found = []ports.BGPAdvertisement{}
 		}
 		JSON(http.StatusOK, found).write(w)
 	})

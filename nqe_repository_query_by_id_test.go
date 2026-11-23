@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"errors"
 	"io"
@@ -49,10 +54,10 @@ func TestNQERepositoryGetQueryByID(t *testing.T) {
 		t.Fatalf("GetQueryByID() = %#v", q)
 	}
 
-	if _, _, err := client.NQERepository.GetQueryByID(ctx, "c0ffee", "Q_empty"); !errors.Is(err, ErrNQEEmptySource) {
+	if _, _, err := client.NQERepository.GetQueryByID(ctx, "c0ffee", "Q_empty"); !errors.Is(err, domain.ErrNQEEmptySource) {
 		t.Fatalf("empty source: err = %v, want ErrNQEEmptySource", err)
 	}
-	if _, _, err := client.NQERepository.GetQueryByID(ctx, "c0ffee", "Q_gone"); !IsStatus(err, http.StatusNotFound) {
+	if _, _, err := client.NQERepository.GetQueryByID(ctx, "c0ffee", "Q_gone"); !ports.IsStatus(err, http.StatusNotFound) {
 		t.Fatalf("missing query: err = %v, want a 404", err)
 	}
 	// An id is a path segment: it is escaped, never spliced.

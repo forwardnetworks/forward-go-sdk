@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 func newJumpServersCmd() *cobra.Command {
@@ -46,7 +47,7 @@ func newJumpServersAddCmd() *cobra.Command {
 				fmt.Printf("jump server %s already present: %s\n", args[0], id)
 				return nil
 			}
-			js, _, err := c.JumpServers.CreateWithPassword(ctx, net, forward.JumpServerPasswordRequest{
+			js, _, err := c.JumpServers.CreateWithPassword(ctx, net, ports.JumpServerPasswordRequest{
 				Host: args[0], Port: port, Username: args[2], Password: args[3], SupportsPortForwarding: true,
 			})
 			if err != nil {

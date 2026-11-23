@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	forward "github.com/forwardnetworks/forward-go-sdk"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
 )
 
 func newLocationsCmd() *cobra.Command {
@@ -49,7 +49,7 @@ func newLocationsAddCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("lng: %w", err)
 			}
-			loc, _, err := c.Locations.Create(ctx, net, forward.LocationCreateRequest{
+			loc, _, err := c.Locations.Create(ctx, net, ports.LocationCreateRequest{
 				Name: args[0], Lat: lat, Lng: lng, City: city, Country: country,
 			})
 			if err != nil {

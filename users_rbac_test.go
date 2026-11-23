@@ -1,6 +1,11 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+	"github.com/forwardnetworks/forward-go-sdk/ports"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"errors"
@@ -95,7 +100,7 @@ func TestUsersWrites(t *testing.T) {
 	ctx := context.Background()
 	email, no := "new@example.com", false
 
-	u, _, err := client.Users.Patch(ctx, "12", UserPatch{Email: &email, Enabled: &no})
+	u, _, err := client.Users.Patch(ctx, "12", domain.UserPatch{Email: &email, Enabled: &no})
 	if err != nil || u.Email != "new@example.com" || calls[0].body != `{"email":"new@example.com","enabled":false}` {
 		t.Fatalf("Patch() = %+v, %v; sent %+v", u, err, calls[0])
 	}
@@ -149,11 +154,11 @@ func TestAccessControlNamesRolesAndLabels(t *testing.T) {
 	if names, _, err := client.AccessControl.DeviceAccessLabelNames(ctx); err != nil || names["L1"] != "dc-east" {
 		t.Fatalf("DeviceAccessLabelNames() = %v, %v", names, err)
 	}
-	group, _, err := client.AccessControl.SetGroupNetworkRole(ctx, "G1", "9001", NetworkRoleOperator)
+	group, _, err := client.AccessControl.SetGroupNetworkRole(ctx, "G1", "9001", domain.NetworkRoleOperator)
 	if err != nil || method != http.MethodPost || group.NetworkRoles["9001"] != "OPERATOR" || group.OrgAdmin == nil || *group.OrgAdmin || group.CreatedBy != "mary" {
 		t.Fatalf("SetGroupNetworkRole() = %+v, %v", group, err)
 	}
-	if _, _, err := client.AccessControl.SetGroupNetworkRole(ctx, "G1", "9001", NetworkRole("GOD")); err == nil {
+	if _, _, err := client.AccessControl.SetGroupNetworkRole(ctx, "G1", "9001", domain.NetworkRole("GOD")); err == nil {
 		t.Fatal("an invalid role must be refused locally")
 	}
 	if _, err := client.AccessControl.RemoveLabels(ctx, []string{"G1"}, []string{"L1"}); err != nil || uri != "/api/access-control-groups?action=removeLabels" || body != `{"groupIds":["G1"],"labelIds":["L1"]}` {
@@ -189,15 +194,15 @@ func TestMissingPermission(t *testing.T) {
 		}))
 		_, _, err := newTestClient(t, server.URL).Users.ListWithRoles(context.Background())
 		server.Close()
-		op, denied := MissingPermission(err)
-		uop, unlicensed := UnlicensedOperation(err)
+		op, denied := ports.MissingPermission(err)
+		uop, unlicensed := ports.UnlicensedOperation(err)
 		if denied != tc.denied || unlicensed != tc.unlicensed || (tc.denied && op != tc.op) || (tc.unlicensed && uop != tc.op) {
 			t.Errorf("%q: MissingPermission=%q,%v UnlicensedOperation=%q,%v", tc.message, op, denied, uop, unlicensed)
 		}
-		if (tc.denied || tc.unlicensed) && errors.Is(err, ErrAuthentication) {
+		if (tc.denied || tc.unlicensed) && errors.Is(err, domain.ErrAuthentication) {
 			t.Errorf("%q also reads as an authentication failure", tc.message)
 		}
-		if !IsStatus(err, http.StatusForbidden) {
+		if !ports.IsStatus(err, http.StatusForbidden) {
 			t.Errorf("%q: IsStatus(403) = false", tc.message)
 		}
 	}
@@ -233,8 +238,8 @@ func TestUsersDelete(t *testing.T) {
 		if tc.ok != (err == nil) {
 			t.Errorf("%d: err = %v", tc.status, err)
 		}
-		var apiErr *ErrorResponse
-		if !tc.ok && (!errors.As(err, &apiErr) || !IsStatus(err, tc.status) || apiErr.Message == "") {
+		var apiErr *ports.ErrorResponse
+		if !tc.ok && (!errors.As(err, &apiErr) || !ports.IsStatus(err, tc.status) || apiErr.Message == "") {
 			t.Errorf("%d: refusal must keep its status and message: %v", tc.status, err)
 		}
 	}

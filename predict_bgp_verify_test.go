@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"errors"
 	"net/http"
@@ -24,31 +28,31 @@ func TestVerifyBGPStaging(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	stage := []BGPAdvertisement{{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "203.0.113.0/24"}}
+	stage := []domain.BGPAdvertisement{{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "203.0.113.0/24"}}
 
 	report, _, err := client.Predict.VerifyBGPStaging(context.Background(), "n1", "c1", "edge", stage,
-		[]BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.2", Prefix: "198.51.100.0/24"}})
+		[]domain.BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.2", Prefix: "198.51.100.0/24"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.Staged[0].Change != BGPChangeInjected || report.Withdrawn[0].Change != BGPChangeWithdrawn {
+	if report.Staged[0].Change != domain.BGPChangeInjected || report.Withdrawn[0].Change != domain.BGPChangeWithdrawn {
 		t.Fatalf("report = %+v", report)
 	}
 
 	// A bare address names the same key as its /32 host route.
 	report, _, err = client.Predict.VerifyBGPStaging(context.Background(), "n1", "c1", "edge", nil,
-		[]BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.3", Prefix: "192.0.2.99"}})
-	if !errors.Is(err, ErrBGPKeyMatchedNothing) || !strings.Contains(err.Error(), "192.0.2.3") {
+		[]domain.BGPAdvertisementKey{{VRF: "default", ExternalPeer: "192.0.2.3", Prefix: "192.0.2.99"}})
+	if !errors.Is(err, domain.ErrBGPKeyMatchedNothing) || !strings.Contains(err.Error(), "192.0.2.3") {
 		t.Fatalf("err = %v", err)
 	}
-	if report == nil || !report.Withdrawn[0].Found || report.Withdrawn[0].Change != BGPChangeAbsent {
+	if report == nil || !report.Withdrawn[0].Found || report.Withdrawn[0].Change != domain.BGPChangeAbsent {
 		t.Fatalf("report = %+v", report)
 	}
 
 	// A key with no row at all means the stage is not in the draft.
 	_, _, err = client.Predict.VerifyBGPStaging(context.Background(), "n1", "c1", "edge",
-		[]BGPAdvertisement{{VRF: "default", ExternalPeer: "192.0.2.9", Prefix: "203.0.113.0/24"}}, nil)
-	if !errors.Is(err, ErrBGPKeyMatchedNothing) {
+		[]domain.BGPAdvertisement{{VRF: "default", ExternalPeer: "192.0.2.9", Prefix: "203.0.113.0/24"}}, nil)
+	if !errors.Is(err, domain.ErrBGPKeyMatchedNothing) {
 		t.Fatalf("err = %v", err)
 	}
 
@@ -60,10 +64,10 @@ func TestVerifyBGPStaging(t *testing.T) {
 		]`))
 	}))
 	defer both.Close()
-	key := BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "203.0.113.0/24"}
+	key := domain.BGPAdvertisementKey{VRF: "default", ExternalPeer: "192.0.2.1", Prefix: "203.0.113.0/24"}
 	report, _, err = newTestClient(t, both.URL).Predict.VerifyBGPStaging(context.Background(), "n1", "c1", "edge",
-		[]BGPAdvertisement{{VRF: key.VRF, ExternalPeer: key.ExternalPeer, Prefix: key.Prefix}}, []BGPAdvertisementKey{key})
-	if !errors.Is(err, ErrBGPKeyMatchedNothing) || report.Staged[0].Change != BGPChangeInjected || report.Withdrawn[0].Change != BGPChangeAbsent {
+		[]domain.BGPAdvertisement{{VRF: key.VRF, ExternalPeer: key.ExternalPeer, Prefix: key.Prefix}}, []domain.BGPAdvertisementKey{key})
+	if !errors.Is(err, domain.ErrBGPKeyMatchedNothing) || report.Staged[0].Change != domain.BGPChangeInjected || report.Withdrawn[0].Change != domain.BGPChangeAbsent {
 		t.Fatalf("report = %+v err = %v", report, err)
 	}
 }

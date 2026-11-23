@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -70,7 +74,7 @@ func TestCVEIndexDownloadRefusesANonGzipBody(t *testing.T) {
 	}))
 	defer server.Close()
 	c, _ := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
-	if _, _, err := c.CVEIndex.Download(context.Background()); !errors.Is(err, ErrCVEIndexNotGzip) {
+	if _, _, err := c.CVEIndex.Download(context.Background()); !errors.Is(err, domain.ErrCVEIndexNotGzip) {
 		t.Fatalf("err = %v, want ErrCVEIndexNotGzip", err)
 	}
 }
@@ -84,7 +88,7 @@ func TestCVEIndexDownloadEmpty401IsAuthentication(t *testing.T) {
 	}))
 	defer server.Close()
 	c, _ := NewClient(Config{HTTPClient: privateHTTPClient(), BaseURL: server.URL, Username: "u", Password: "p"})
-	if _, _, err := c.CVEIndex.Download(context.Background()); !errors.Is(err, ErrAuthentication) {
+	if _, _, err := c.CVEIndex.Download(context.Background()); !errors.Is(err, domain.ErrAuthentication) {
 		t.Fatalf("err = %v, want ErrAuthentication", err)
 	}
 }
@@ -130,13 +134,13 @@ func TestCVEIndexMetadataPutAndDelete(t *testing.T) {
 		t.Fatalf("metadata = %#v, want digest abc and Bundled() (never uploaded)", meta)
 	}
 
-	if _, err := c.CVEIndex.Put(ctx, &CVEIndexDownload{Gzip: index, SHA256: "deadbeef"}); err == nil {
+	if _, err := c.CVEIndex.Put(ctx, &domain.CVEIndexDownload{Gzip: index, SHA256: "deadbeef"}); err == nil {
 		t.Fatal("Put accepted a digest that does not match its bytes")
 	}
-	if _, err := c.CVEIndex.Put(ctx, &CVEIndexDownload{Gzip: []byte("not gzip")}); !errors.Is(err, ErrCVEIndexNotGzip) {
+	if _, err := c.CVEIndex.Put(ctx, &domain.CVEIndexDownload{Gzip: []byte("not gzip")}); !errors.Is(err, domain.ErrCVEIndexNotGzip) {
 		t.Fatalf("Put of non-gzip: err = %v, want ErrCVEIndexNotGzip", err)
 	}
-	if _, err := c.CVEIndex.Put(ctx, &CVEIndexDownload{Gzip: index, SHA256: digest}); err != nil {
+	if _, err := c.CVEIndex.Put(ctx, &domain.CVEIndexDownload{Gzip: index, SHA256: digest}); err != nil {
 		t.Fatalf("Put: %v", err)
 	}
 	if putSHA != digest || putCT != "application/gzip" || !bytes.Equal(putBody, index) {

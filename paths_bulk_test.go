@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"encoding/json"
 	"io"
@@ -31,13 +35,13 @@ func TestPathsBulkReturnsOneResultPerQueryInOrder(t *testing.T) {
 	client := newTestClient(t, server.URL)
 
 	proto := 6
-	queries := []PathQuery{
+	queries := []domain.PathQuery{
 		{SrcIP: "10.0.0.1", DstIP: "10.1.0.1", IPProto: &proto, DstPort: "443"},
 		{From: "nope", DstIP: "10.1.0.1"},
 		{SrcIP: "10.1.0.1", DstIP: "10.0.0.1"},
 	}
-	results, _, err := client.Networks.PathsBulk(context.Background(), "N1", queries, PathBulkOptions{
-		SnapshotID: "S1", Intent: "PREFER_VIOLATIONS", MaxReturnPathResults: Ptr(2), MaxOverallSeconds: Ptr(600), IncludeTags: Ptr(true),
+	results, _, err := client.Networks.PathsBulk(context.Background(), "N1", queries, domain.PathBulkOptions{
+		SnapshotID: "S1", Intent: "PREFER_VIOLATIONS", MaxReturnPathResults: domain.Ptr(2), MaxOverallSeconds: domain.Ptr(600), IncludeTags: domain.Ptr(true),
 	})
 	if err != nil || len(results) != 3 {
 		t.Fatalf("%v %+v", err, results)
@@ -81,20 +85,20 @@ func TestPathsBulkRefusesWhatForwardRefuses(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	ctx := context.Background()
-	ok := PathQuery{SrcIP: "10.0.0.1", DstIP: "10.1.0.1"}
+	ok := domain.PathQuery{SrcIP: "10.0.0.1", DstIP: "10.1.0.1"}
 	for name, c := range map[string]struct {
-		queries []PathQuery
-		options PathBulkOptions
+		queries []domain.PathQuery
+		options domain.PathBulkOptions
 	}{
-		"no queries":       {nil, PathBulkOptions{}},
-		"too many queries": {make([]PathQuery, MaxPathBulkQueries+1), PathBulkOptions{}},
-		"no destination":   {[]PathQuery{ok, {SrcIP: "10.0.0.1"}}, PathBulkOptions{}},
-		"no source":        {[]PathQuery{{DstIP: "10.0.0.1"}}, PathBulkOptions{}},
-		"url and domain":   {[]PathQuery{{SrcIP: "a", DstIP: "b", URL: "x", Domain: "y"}}, PathBulkOptions{}},
-		"unknown intent":   {[]PathQuery{ok}, PathBulkOptions{Intent: "PREFER_NOTHING"}},
-		"zero seconds":     {[]PathQuery{ok}, PathBulkOptions{MaxSeconds: Ptr(0)}},
-		"overall too long": {[]PathQuery{ok}, PathBulkOptions{MaxOverallSeconds: Ptr(7201)}},
-		"negative returns": {[]PathQuery{ok}, PathBulkOptions{MaxReturnPathResults: Ptr(-1)}},
+		"no queries":       {nil, domain.PathBulkOptions{}},
+		"too many queries": {make([]domain.PathQuery, domain.MaxPathBulkQueries+1), domain.PathBulkOptions{}},
+		"no destination":   {[]domain.PathQuery{ok, {SrcIP: "10.0.0.1"}}, domain.PathBulkOptions{}},
+		"no source":        {[]domain.PathQuery{{DstIP: "10.0.0.1"}}, domain.PathBulkOptions{}},
+		"url and domain":   {[]domain.PathQuery{{SrcIP: "a", DstIP: "b", URL: "x", Domain: "y"}}, domain.PathBulkOptions{}},
+		"unknown intent":   {[]domain.PathQuery{ok}, domain.PathBulkOptions{Intent: "PREFER_NOTHING"}},
+		"zero seconds":     {[]domain.PathQuery{ok}, domain.PathBulkOptions{MaxSeconds: domain.Ptr(0)}},
+		"overall too long": {[]domain.PathQuery{ok}, domain.PathBulkOptions{MaxOverallSeconds: domain.Ptr(7201)}},
+		"negative returns": {[]domain.PathQuery{ok}, domain.PathBulkOptions{MaxReturnPathResults: domain.Ptr(-1)}},
 	} {
 		if _, _, err := client.Networks.PathsBulk(ctx, "N1", c.queries, c.options); err == nil {
 			t.Errorf("%s must be refused", name)
@@ -106,7 +110,7 @@ func TestPathsBulkRefusesWhatForwardRefuses(t *testing.T) {
 	// A result array of a different length than the queries is not trusted.
 	short := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`[]`)) }))
 	defer short.Close()
-	if _, _, err := newTestClient(t, short.URL).Networks.PathsBulk(ctx, "N1", []PathQuery{ok}, PathBulkOptions{}); err == nil {
+	if _, _, err := newTestClient(t, short.URL).Networks.PathsBulk(ctx, "N1", []domain.PathQuery{ok}, domain.PathBulkOptions{}); err == nil {
 		t.Error("a short answer must be an error")
 	}
 }
@@ -117,14 +121,14 @@ func TestPathsBulkWorstCaseWait(t *testing.T) {
 	t.Parallel()
 
 	for _, c := range []struct {
-		options PathBulkOptions
+		options domain.PathBulkOptions
 		want    time.Duration
 	}{
-		{PathBulkOptions{}, (30+30)*time.Second + 2*time.Minute},
-		{PathBulkOptions{MaxSeconds: Ptr(300)}, (300+300)*time.Second + 2*time.Minute},
-		{PathBulkOptions{MaxSeconds: Ptr(300), MaxOverallSeconds: Ptr(600)}, (600+300)*time.Second + 2*time.Minute},
+		{domain.PathBulkOptions{}, (30+30)*time.Second + 2*time.Minute},
+		{domain.PathBulkOptions{MaxSeconds: domain.Ptr(300)}, (300+300)*time.Second + 2*time.Minute},
+		{domain.PathBulkOptions{MaxSeconds: domain.Ptr(300), MaxOverallSeconds: domain.Ptr(600)}, (600+300)*time.Second + 2*time.Minute},
 	} {
-		if got := c.options.worstCase(); got != c.want {
+		if got := c.options.WorstCase(); got != c.want {
 			t.Errorf("%+v: %s, want %s", c.options, got, c.want)
 		}
 	}

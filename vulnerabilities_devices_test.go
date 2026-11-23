@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -34,7 +38,7 @@ func TestVulnerabilitiesListDevices(t *testing.T) {
 	vulns := newTestClient(t, server.URL).Vulnerabilities
 	ctx := context.Background()
 
-	got, _, err := vulns.ListDevices(ctx, "N1", DeviceVulnerabilityListOptions{})
+	got, _, err := vulns.ListDevices(ctx, "N1", domain.DeviceVulnerabilityListOptions{})
 	if err != nil || uri != "/api/networks/N1/device-vulnerabilities" {
 		t.Fatalf("ListDevices() = %v; sent %s", err, uri)
 	}
@@ -43,7 +47,7 @@ func TestVulnerabilitiesListDevices(t *testing.T) {
 	}
 	fw, core, acc := got.Devices[0], got.Devices[1], got.Devices[2]
 	if fw.Name != "edge-fw1" || fw.LocationID != "sjc" || fw.ManagementIPs[0] != "10.0.0.1" || fw.TotalCVEs() != 5 || fw.CVEsWithExploit() != 1 ||
-		fw.SeverityToCVECount[VulnerabilitySeverityCritical] != 1 || fw.AgeToCVECount[CVEAgeMonth] != 1 || fw.ResultToCVECount[CVEDetectionOSVulnerable] != 3 || fw.Summary != DeviceVulnerable {
+		fw.SeverityToCVECount[domain.VulnerabilitySeverityCritical] != 1 || fw.AgeToCVECount[domain.CVEAgeMonth] != 1 || fw.ResultToCVECount[domain.CVEDetectionOSVulnerable] != 3 || fw.Summary != domain.DeviceVulnerable {
 		t.Fatalf("edge-fw1 = %+v", fw)
 	}
 	if fw.InternetAddressable == nil || !*fw.InternetAddressable || core.InternetAddressable == nil || *core.InternetAddressable {
@@ -72,12 +76,12 @@ func TestVulnerabilitiesListDevicesFilters(t *testing.T) {
 	vulns := newTestClient(t, server.URL).Vulnerabilities
 	ctx := context.Background()
 
-	if _, _, err := vulns.ListDevices(ctx, "N1", DeviceVulnerabilityListOptions{SnapshotID: "77", Severity: VulnerabilitySeverityCritical, Age: CVEAgeMonth, Exploit: Ptr(false)}); err != nil ||
+	if _, _, err := vulns.ListDevices(ctx, "N1", domain.DeviceVulnerabilityListOptions{SnapshotID: "77", Severity: domain.VulnerabilitySeverityCritical, Age: domain.CVEAgeMonth, Exploit: domain.Ptr(false)}); err != nil ||
 		uri != "/api/networks/N1/device-vulnerabilities?age=MONTH&exploit=false&severity=CRITICAL&snapshotId=77" {
 		t.Fatalf("filters: %v %s", err, uri)
 	}
 	uri = ""
-	for _, options := range []DeviceVulnerabilityListOptions{{Severity: "critical"}, {Age: "WEEK"}} {
+	for _, options := range []domain.DeviceVulnerabilityListOptions{{Severity: "critical"}, {Age: "WEEK"}} {
 		if _, _, err := vulns.ListDevices(ctx, "N1", options); err == nil || uri != "" {
 			t.Fatalf("%+v must be refused locally (err=%v, sent %q)", options, err, uri)
 		}

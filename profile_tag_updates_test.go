@@ -1,6 +1,10 @@
 package forward
 
 import (
+	"github.com/forwardnetworks/forward-go-sdk/domain"
+)
+
+import (
 	"context"
 	"io"
 	"net/http"
@@ -23,8 +27,8 @@ func TestEndpointsUpdateProfileBodies(t *testing.T) {
 	endpoints := newTestClient(t, server.URL).Endpoints
 	ctx := context.Background()
 
-	got, _, err := endpoints.UpdateProfile(ctx, "SNMP-4", EndpointProfilePatch{
-		ResponseTimeoutSec: Ptr(20), OIDSets: []string{"SYSTEM"}, CustomOIDs: []CustomOID{{Name: "x", OID: "1.3.6"}},
+	got, _, err := endpoints.UpdateProfile(ctx, "SNMP-4", domain.EndpointProfilePatch{
+		ResponseTimeoutSec: domain.Ptr(20), OIDSets: []string{"SYSTEM"}, CustomOIDs: []domain.CustomOID{{Name: "x", OID: "1.3.6"}},
 		Clear: []string{"nameDetectorOid"},
 	})
 	if err != nil || got.ID != "SNMP-4" || got.UpdatedBy != "mary" || method != http.MethodPatch || uri != "/api/endpoint-profiles/SNMP-4" {
@@ -33,11 +37,11 @@ func TestEndpointsUpdateProfileBodies(t *testing.T) {
 	if body != `{"customOids":[{"name":"x","oid":"1.3.6"}],"nameDetectorOid":null,"oidSets":["SYSTEM"],"responseTimeoutSec":20}` {
 		t.Fatalf("snmp body = %s", body)
 	}
-	if _, _, err := endpoints.UpdateProfile(ctx, "CLI-1", EndpointProfilePatch{CustomCommands: []string{}, Prompt: Ptr("#")}); err != nil ||
+	if _, _, err := endpoints.UpdateProfile(ctx, "CLI-1", domain.EndpointProfilePatch{CustomCommands: []string{}, Prompt: domain.Ptr("#")}); err != nil ||
 		body != `{"customCommands":[],"prompt":"#"}` {
 		t.Fatalf("an empty non-nil list is a real value (empties the list): %v %s", err, body)
 	}
-	if _, _, err := endpoints.UpdateProfile(ctx, "HTTP-2", EndpointProfilePatch{HTTPS: Ptr(false), Headers: map[string]string{"accept": "application/json"}, Endpoints: []HTTPEndpoint{{Name: "s", Path: "/s"}}}); err != nil ||
+	if _, _, err := endpoints.UpdateProfile(ctx, "HTTP-2", domain.EndpointProfilePatch{HTTPS: domain.Ptr(false), Headers: map[string]string{"accept": "application/json"}, Endpoints: []domain.HTTPEndpoint{{Name: "s", Path: "/s"}}}); err != nil ||
 		body != `{"endpoints":[{"name":"s","path":"/s"}],"headers":{"accept":"application/json"},"https":false}` {
 		t.Fatalf("http body: %v %s", err, body)
 	}
@@ -53,19 +57,19 @@ func TestEndpointsUpdateProfileRefusals(t *testing.T) {
 
 	for name, c := range map[string]struct {
 		id    string
-		patch EndpointProfilePatch
+		patch domain.EndpointProfilePatch
 	}{
-		"snmp field on a cli profile":   {"CLI-1", EndpointProfilePatch{DetectorOID: Ptr("1.3")}},
-		"cli field on an http profile":  {"HTTP-1", EndpointProfilePatch{Prompt: Ptr("#")}},
-		"http field on an snmp profile": {"SNMP-1", EndpointProfilePatch{HTTPS: Ptr(true)}},
-		"clearing a foreign field":      {"CLI-1", EndpointProfilePatch{Clear: []string{"oidSets"}}},
-		"clearing https":                {"HTTP-1", EndpointProfilePatch{Clear: []string{"https"}}},
-		"clearing the name":             {"CLI-1", EndpointProfilePatch{Clear: []string{"name"}}},
-		"set and cleared":               {"CLI-1", EndpointProfilePatch{Prompt: Ptr("#"), Clear: []string{"prompt"}}},
-		"empty patch":                   {"CLI-1", EndpointProfilePatch{}},
-		"unknown profile type":          {"FTP-1", EndpointProfilePatch{Name: Ptr("x")}},
-		"no type prefix":                {"7", EndpointProfilePatch{Name: Ptr("x")}},
-		"blank id":                      {" ", EndpointProfilePatch{Name: Ptr("x")}},
+		"snmp field on a cli profile":   {"CLI-1", domain.EndpointProfilePatch{DetectorOID: domain.Ptr("1.3")}},
+		"cli field on an http profile":  {"HTTP-1", domain.EndpointProfilePatch{Prompt: domain.Ptr("#")}},
+		"http field on an snmp profile": {"SNMP-1", domain.EndpointProfilePatch{HTTPS: domain.Ptr(true)}},
+		"clearing a foreign field":      {"CLI-1", domain.EndpointProfilePatch{Clear: []string{"oidSets"}}},
+		"clearing https":                {"HTTP-1", domain.EndpointProfilePatch{Clear: []string{"https"}}},
+		"clearing the name":             {"CLI-1", domain.EndpointProfilePatch{Clear: []string{"name"}}},
+		"set and cleared":               {"CLI-1", domain.EndpointProfilePatch{Prompt: domain.Ptr("#"), Clear: []string{"prompt"}}},
+		"empty patch":                   {"CLI-1", domain.EndpointProfilePatch{}},
+		"unknown profile type":          {"FTP-1", domain.EndpointProfilePatch{Name: domain.Ptr("x")}},
+		"no type prefix":                {"7", domain.EndpointProfilePatch{Name: domain.Ptr("x")}},
+		"blank id":                      {" ", domain.EndpointProfilePatch{Name: domain.Ptr("x")}},
 	} {
 		if _, _, err := endpoints.UpdateProfile(context.Background(), c.id, c.patch); err == nil {
 			t.Errorf("%s must be refused", name)
@@ -99,7 +103,7 @@ func TestDeviceTagsUpdateAndDelete(t *testing.T) {
 	tags := newTestClient(t, server.URL).DeviceTags
 	ctx := context.Background()
 
-	got, _, err := tags.UpdateTag(ctx, "N1", "edge 1", DeviceTagPatch{Name: Ptr("edge-2"), Color: Ptr("#00ff00")})
+	got, _, err := tags.UpdateTag(ctx, "N1", "edge 1", domain.DeviceTagPatch{Name: domain.Ptr("edge-2"), Color: domain.Ptr("#00ff00")})
 	if err != nil || got.Name != "edge-2" || got.Color != "#00ff00" || calls[0] != `PATCH /api/networks/N1/device-tags/edge%201 {"color":"#00ff00","name":"edge-2"}` {
 		t.Fatalf("UpdateTag() = %+v, %v; %q", got, err, calls[0])
 	}
@@ -111,17 +115,23 @@ func TestDeviceTagsUpdateAndDelete(t *testing.T) {
 	}
 	before := len(calls)
 	for name, f := range map[string]func() error{
-		"empty patch": func() error { _, _, err := tags.UpdateTag(ctx, "N1", "t", DeviceTagPatch{}); return err },
+		"empty patch": func() error { _, _, err := tags.UpdateTag(ctx, "N1", "t", domain.DeviceTagPatch{}); return err },
 		"short colour": func() error {
-			_, _, err := tags.UpdateTag(ctx, "N1", "t", DeviceTagPatch{Color: Ptr("#fff")})
+			_, _, err := tags.UpdateTag(ctx, "N1", "t", domain.DeviceTagPatch{Color: domain.Ptr("#fff")})
 			return err
 		},
 		"no hash": func() error {
-			_, _, err := tags.UpdateTag(ctx, "N1", "t", DeviceTagPatch{Color: Ptr("00ff00")})
+			_, _, err := tags.UpdateTag(ctx, "N1", "t", domain.DeviceTagPatch{Color: domain.Ptr("00ff00")})
 			return err
 		},
-		"blank rename": func() error { _, _, err := tags.UpdateTag(ctx, "N1", "t", DeviceTagPatch{Name: Ptr(" ")}); return err },
-		"blank tag":    func() error { _, _, err := tags.UpdateTag(ctx, "N1", " ", DeviceTagPatch{Name: Ptr("x")}); return err },
+		"blank rename": func() error {
+			_, _, err := tags.UpdateTag(ctx, "N1", "t", domain.DeviceTagPatch{Name: domain.Ptr(" ")})
+			return err
+		},
+		"blank tag": func() error {
+			_, _, err := tags.UpdateTag(ctx, "N1", " ", domain.DeviceTagPatch{Name: domain.Ptr("x")})
+			return err
+		},
 		"blank delete": func() error { _, err := tags.DeleteTag(ctx, "N1", ""); return err },
 	} {
 		if err := f(); err == nil {
