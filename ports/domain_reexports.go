@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/forwardnetworks/forward-go-sdk/domain"
 	"time"
 )
@@ -211,3 +212,45 @@ type MerakiTestResult = domain.MerakiTestResult
 type MerakiDiscoveredHost = domain.MerakiDiscoveredHost
 type MerakiDiscovery = domain.MerakiDiscovery
 type MerakiConnectivityTest = domain.MerakiConnectivityTest
+
+// Domain names a consumer's own adapter needs (forward-skills' SDK wrapper and fwdctl asked for these), re-exported so such an
+// adapter imports ports and nothing else, as decision 1 requires of every adapter.
+type NQECommitMessage = domain.NQECommitMessage
+type NQEDiffEntry = domain.NQEDiffEntry
+type DiffFile = domain.DiffFile
+type ACLMatch = domain.ACLMatch
+type ACLDiffEntry = domain.ACLDiffEntry
+type DeviceChanges = domain.DeviceChanges
+type DeviceMetric = domain.DeviceMetric
+type DeviceMetricHistory = domain.DeviceMetricHistory
+type InterfaceMetric = domain.InterfaceMetric
+type InterfaceMetricHistory = domain.InterfaceMetricHistory
+type InterfaceWithDirection = domain.InterfaceWithDirection
+type NetworkPathResult = domain.NetworkPathResult
+type CommandError = domain.CommandError
+type ConnectivityWaitOptions = domain.ConnectivityWaitOptions
+
+const (
+	PropertyFilterOff        = domain.PropertyFilterOff
+	PropertyFilterNondefault = domain.PropertyFilterNondefault
+	PropertyFilterConfigured = domain.PropertyFilterConfigured
+	PropertyFilterOverridden = domain.PropertyFilterOverridden
+
+	ClientPackageHeadlessLinux      = domain.ClientPackageHeadlessLinux
+	ClientPackageLinux              = domain.ClientPackageLinux
+	ClientPackageOSX                = domain.ClientPackageOSX
+	ClientPackageWindowsX64         = domain.ClientPackageWindowsX64
+	ClientPackageHeadlessWindowsX64 = domain.ClientPackageHeadlessWindowsX64
+
+	DefaultCollectorConcurrency = domain.DefaultCollectorConcurrency
+)
+
+var CountableDiffKinds = domain.CountableDiffKinds
+var ErrConnectivityDiffPartial = domain.ErrConnectivityDiffPartial
+
+// PropertyValueString renders a property's raw JSON value as text: booleans as true/false, strings unquoted, numbers verbatim,
+// lists and objects as compact JSON, and JSON null as "" (never "false": "no value" and "false" are different answers).
+func PropertyValueString(raw json.RawMessage) string { return domain.PropertyValueString(raw) }
+
+// IsUnknownOrgProperty reports whether err is the appserver's 400 for an org property name its enum does not define.
+func IsUnknownOrgProperty(err error) bool { return domain.IsUnknownOrgProperty(err) }
