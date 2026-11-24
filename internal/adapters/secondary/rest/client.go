@@ -67,7 +67,8 @@ type Config struct {
 	Retry RetryPolicy
 }
 
-// Client is a Forward Networks REST API client.
+// Client is a Forward Networks REST API client. It is also the session the use cases run on: the network it is bound to and
+// the principal it acts as.
 type Client struct {
 	httpClient     *http.Client
 	baseURL        *url.URL
@@ -713,3 +714,6 @@ func sameOrigin(candidate, origin *url.URL) bool {
 		strings.EqualFold(candidate.Scheme, origin.Scheme) &&
 		strings.EqualFold(candidate.Host, origin.Host)
 }
+
+// The client is the ports.Session its use cases are given; a change to the port that the client no longer meets fails the build here.
+var _ ports.Session = (*Client)(nil)
