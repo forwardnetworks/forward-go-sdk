@@ -84,6 +84,7 @@ type wireRequest struct{ method, path string }
 // the one value its consumer sends. Keyed by symbol, then argument index
 // (index 0 is the context).
 var wireArgOverrides = map[string]map[int]any{
+	"EdgeAssets.AddInferredHosts":                           {3: []int64{101, 102}},
 	"CloudManagedSetups.CreateMeraki":                       {2: domain.NewMerakiSetup{Name: "m1", APIKeyID: "k1", CredentialID: "c1", TestResult: &domain.MerakiTestResult{SavedAt: "2026-01-01T00:00:00Z"}}},
 	"CloudManagedSetups.PatchMeraki":                        {3: domain.MerakiSetupPatch{Collect: domain.Ptr(false)}},
 	"Performance.PatchSettings":                             {2: domain.PerformanceSettingsPatch{Enabled: domain.Ptr(true)}},

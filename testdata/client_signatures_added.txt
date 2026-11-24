@@ -5,3 +5,4 @@ CloudManagedSetups.GetMeraki(context.Context, string, string) (*domain.MerakiSet
 CloudManagedSetups.ListMeraki(context.Context, string) ([]domain.MerakiSetup, *ports.Response, error)
 CloudManagedSetups.PatchMeraki(context.Context, string, string, domain.MerakiSetupPatch) (*domain.MerakiSetup, *ports.Response, error)
 CloudManagedSetups.TestMeraki(context.Context, string, domain.MerakiConnectivityTest) (*ports.Response, error)
+EdgeAssets.AddInferredHosts(context.Context, string, string, []int64) (*ports.Response, error)

@@ -16,7 +16,7 @@ import (
 // with a severity each and optionally narrows the critical assets by location, criticality and subnet; evaluating it against a snapshot
 // starts analysis jobs, and the analysis views read their results. Preview and EXPERIMENTAL: the feature is behind the organization
 // property THREAT_EXPOSURE (default off, not configurable by an org admin), the routes are appserver ThreatExposureController, and
-// they are NOT in the Forward builds this SDK pins, so a deployment without them answers 404 (ErrEndpointNotServed). Reads need
+// they are in the Forward source at both builds this SDK pins, but a deployment that predates them answers 404 (ErrEndpointNotServed). Reads need
 // VIEW_THREAT_EXPOSURE (listing, getting, status and the views are not gated on the property); creating, changing and deleting
 // definitions EDIT_THREAT_EXPOSURE; Evaluate EVALUATE_THREAT_EXPOSURE. These operations need the security licence facet.
 type ThreatExposure service

@@ -19,7 +19,8 @@ import (
 // WHICH BUILDS. Stable b1feb6fe1c34 does not have the routes at all (404 "No endpoint", errors.Is(err, ErrEndpointNotServed); a build
 // without the view=rp-prefix-info mapping answers the plain device instead, which RPDevicePrefixInfo returns as ErrEndpointNotServed too). Primary
 // 5f7e4ec1841 has the routes but the older bodies (routerKey and a full node, like bgp-prefix-*), which these methods do not send; on a
-// build that old use PrefixSearch, PrefixTrace and PrefixDetails. Preview: not in the published spec. Same permission and gates as the
+// build that old use PrefixSearch, PrefixTrace and PrefixDetails. Primary 46993a8f8c9 (1.0.0-261118) and stable 6bc6d4fbb06 (26.11.2-01) read the same
+// bodies these methods send, and the primary no longer serves the bgp-prefix-* routes, so these are the methods to use there. Preview: not in the published spec. Same permission and gates as the
 // bgp-* routes (RP_PREFIX_SEARCH, which only the network role ADMIN holds, PREDICT_MODELING, a snapshot past creation).
 
 // RPPrefixSearch answers "where does this prefix come from and who has it?" for any modelled protocol (POST .../rp-prefix-search). The

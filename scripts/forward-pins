@@ -4,5 +4,7 @@
 # 2026-10-28: moved to the live builds (Skyforge's pins, patch 2026-10-23): primary = 1.0.0-261023 (appserver-pin-5f7e4ec1841),
 # stable = 26.10.1-01 (appserver-pin-b1feb6fe1c3).
 # 2026-10-07: ~/src/fwd was re-cloned as one squashed commit, so the older pinned commits (15398425a69, 67e89c87124) no longer exist.
-primary=5f7e4ec1841
-stable=b1feb6fe1c34
+# 2026-11-23: moved to Skyforge's current pin records (resolved 2026-11-18 and 2026-11-20): primary = 1.0.0-261118 (appserver-pin-46993a8f8c9),
+# stable = 26.11.2-01 (appserver-pin-6bc6d4fbb06). Forward's 1.0.0 line no longer maps bgp-prefix-search/-trace/-details (see routecheck-allow.txt).
+primary=46993a8f8c95f5cd012d09276dd252808150c0dd
+stable=6bc6d4fbb0690bbbaa7ce17e2216885974df7e0f

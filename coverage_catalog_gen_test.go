@@ -934,6 +934,9 @@ var sdkCoverageCatalog = map[string][]CoverageOperation{
 	"Diffs.WaitForSubnetConnectivity": {
 		{Method: "GET", Route: "/api/diffs/{snapshotAId}/{snapshotBId}/subnet-connectivity"},
 	},
+	"EdgeAssets.AddInferredHosts": {
+		{Method: "POST", Route: "/api/networks/{networkId}/inferred-hosts"},
+	},
 	"EdgeAssets.Delete": {
 		{Method: "DELETE", Route: "/api/networks/{networkId}/edge-assets/{assetName}"},
 	},

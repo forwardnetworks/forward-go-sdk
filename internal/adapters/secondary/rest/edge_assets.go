@@ -10,13 +10,11 @@ import (
 	"strings"
 )
 
-// EdgeAssetsService reads and manages a network's edge assets: hosts a user added that are not collected from, whose identifiers
+// EdgeAssets reads and manages a network's edge assets: hosts a user added that are not collected from, whose identifiers
 // (addresses, MAC, cloud host id) are matched to the hosts of later snapshots, and the criticality that marks assets (edge assets and
 // endpoints) as business critical. Threat-exposure analyses pick their critical assets from these. Preview and EXPERIMENTAL: appserver
-// EdgeAssetController, not the published OpenAPI, and NOT in the Forward builds this SDK pins, so a deployment without it answers 404
-// (ErrEndpointNotServed). This service does not create edge assets: Forward adds them from inferred hosts (POST .../inferred-hosts?
-// action=addAsEdgeAsset, MANAGE_EDGE_ASSETS and EDGE_ASSETS_IN_SOURCES), which this SDK does not wrap. The operations here need the
-// security licence facet.
+// EdgeAssetController and DeviceController, not the published OpenAPI; a deployment without them answers 404 (ErrEndpointNotServed).
+// Forward adds edge assets from a snapshot's inferred hosts (AddInferredHosts). The operations here need the security licence facet.
 type EdgeAssets service
 
 func (s *EdgeAssets) path(networkID string, rest ...string) (string, error) {
@@ -33,6 +31,34 @@ func (s *EdgeAssets) do(ctx context.Context, method, path string, body, out any,
 		return s.client.Do(req, nil)
 	}
 	return s.client.doRequired(req, out)
+}
+
+// maxInferredHostsPerCall is Forward's MAX_INFERRED_HOSTS_LIMIT, the most ids one addAsEdgeAsset call may carry.
+const maxInferredHostsPerCall = 1000
+
+// AddInferredHosts adds the snapshot's inferred hosts with the given global host IDs as edge assets; see the port for the
+// permissions, the failure cases and why it is not idempotent.
+func (s *EdgeAssets) AddInferredHosts(ctx context.Context, networkID, snapshotID string, globalHostIDs []int64) (*ports.Response, error) {
+	if err := (*service)(s).failClosed(); err != nil {
+		return nil, err
+	}
+	if snapshotID = strings.TrimSpace(snapshotID); snapshotID == "" {
+		return nil, errors.New("forward: a snapshot ID is required to add inferred hosts as edge assets")
+	}
+	if len(globalHostIDs) == 0 {
+		return nil, errors.New("forward: at least one global host ID is required to add inferred hosts as edge assets")
+	}
+	if len(globalHostIDs) > maxInferredHostsPerCall {
+		return nil, fmt.Errorf("forward: %d global host IDs is more than the %d one call may add", len(globalHostIDs), maxInferredHostsPerCall)
+	}
+	path, err := s.path(networkID, "inferred-hosts?action=addAsEdgeAsset&snapshotId="+url.QueryEscape(snapshotID))
+	if err != nil {
+		return nil, err
+	}
+	body := struct {
+		GlobalHostIDs []int64 `json:"globalHostIds"`
+	}{GlobalHostIDs: globalHostIDs}
+	return s.do(ctx, http.MethodPost, path, body, nil, "EdgeAssets.AddInferredHosts")
 }
 
 func (s *EdgeAssets) assetPath(networkID, assetName string) (string, error) {

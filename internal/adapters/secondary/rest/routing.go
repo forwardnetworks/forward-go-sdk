@@ -19,14 +19,13 @@ import (
 // OPERATOR gets 403), the organization property PREDICT_MODELING, and a snapshot whose processing has reached the creation stage.
 //
 // The routes are the bgp-prefix-* spellings (bgp-prefix-search, -trace, -details, devices/{d}?view=bgp-prefix-info and
-// bgp-installed-prefixes) because both Forward builds this SDK pins serve them. Newer Forward source marks them @Deprecated in
-// favour of rp-prefix-* (and view=rp-prefix-info), which delegate to the same handlers and cover non-BGP protocols in the same way;
-// stable b1feb6fe1c34 does not have the rp-* names, and primary 5f7e4ec1841 has them with the old body shapes, so the methods here use
-// the bgp-* names. RPPrefixSearch, RPPrefixTrace, RPPrefixDetails and RPDevicePrefixInfo (routing_rp.go) are the rp-* routes in master's
-// newer shapes, which also trace OSPF, IS_IS, OMP and CONFIG nodes. Move to them when the pins move. Forward master's bgp-* routes take the
-// NEW bodies too (a protocol on every router and origin, node keys), so the methods here fail on master with a router, origin or node:
-// they are for the pinned builds only. The RP* methods on a pinned primary answer a 400 or 500 (it reads the old bodies), not
-// ErrEndpointNotServed.
+// bgp-installed-prefixes). Forward's stable line (26.11.2-01, 6bc6d4fbb06) still serves them, but its 1.0.0 primary line removed
+// bgp-prefix-search, -trace and -details from 1.0.0-261118 (46993a8f8c9): there PrefixSearch, PrefixTrace and PrefixDetails answer
+// 404 "No endpoint" (ErrEndpointNotServed), and RPPrefixSearch, RPPrefixTrace and RPPrefixDetails (routing_rp.go) are the
+// replacements, which also trace OSPF, IS_IS, OMP and CONFIG nodes. The rp-* request bodies at both pinned builds are the ones
+// those methods send; the older primary 5f7e4ec1841 read older bodies. Forward master's bgp-* routes take the NEW bodies too (a
+// protocol on every router and origin, node keys), so the methods here fail on master with a router, origin or node: they are for
+// the older builds only. Use the RP* methods against a 1.0.0 line.
 type Routing service
 
 // decodeLookup decodes raw into out, or returns the lookup error Forward sent in its place.

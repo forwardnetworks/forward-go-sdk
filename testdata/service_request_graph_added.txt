@@ -5,3 +5,4 @@ CloudManagedSetups.GetMeraki
 CloudManagedSetups.ListMeraki
 CloudManagedSetups.PatchMeraki
 CloudManagedSetups.TestMeraki
+EdgeAssets.AddInferredHosts

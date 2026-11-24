@@ -607,14 +607,13 @@ type NetworkMaps struct {
 // OPERATOR gets 403), the organization property PREDICT_MODELING, and a snapshot whose processing has reached the creation stage.
 //
 // The routes are the bgp-prefix-* spellings (bgp-prefix-search, -trace, -details, devices/{d}?view=bgp-prefix-info and
-// bgp-installed-prefixes) because both Forward builds this SDK pins serve them. Newer Forward source marks them @Deprecated in
-// favour of rp-prefix-* (and view=rp-prefix-info), which delegate to the same handlers and cover non-BGP protocols in the same way;
-// stable b1feb6fe1c34 does not have the rp-* names, and primary 5f7e4ec1841 has them with the old body shapes, so the methods here use
-// the bgp-* names. RPPrefixSearch, RPPrefixTrace, RPPrefixDetails and RPDevicePrefixInfo (routing_rp.go) are the rp-* routes in master's
-// newer shapes, which also trace OSPF, IS_IS, OMP and CONFIG nodes. Move to them when the pins move. Forward master's bgp-* routes take the
-// NEW bodies too (a protocol on every router and origin, node keys), so the methods here fail on master with a router, origin or node:
-// they are for the pinned builds only. The RP* methods on a pinned primary answer a 400 or 500 (it reads the old bodies), not
-// ErrEndpointNotServed.
+// bgp-installed-prefixes). Forward's stable line (26.11.2-01, 6bc6d4fbb06) still serves them, but its 1.0.0 primary line removed
+// bgp-prefix-search, -trace and -details from 1.0.0-261118 (46993a8f8c9): there PrefixSearch, PrefixTrace and PrefixDetails answer
+// 404 "No endpoint" (ErrEndpointNotServed), and RPPrefixSearch, RPPrefixTrace and RPPrefixDetails (routing_rp.go) are the
+// replacements, which also trace OSPF, IS_IS, OMP and CONFIG nodes. The rp-* request bodies at both pinned builds are the ones
+// those methods send; the older primary 5f7e4ec1841 read older bodies. Forward master's bgp-* routes take the NEW bodies too (a
+// protocol on every router and origin, node keys), so the methods here fail on master with a router, origin or node: they are for
+// the older builds only. Use the RP* methods against a 1.0.0 line.
 type Routing struct {
 	ports.Routing
 	session Session
@@ -625,7 +624,7 @@ type Routing struct {
 // with a severity each and optionally narrows the critical assets by location, criticality and subnet; evaluating it against a snapshot
 // starts analysis jobs, and the analysis views read their results. Preview and EXPERIMENTAL: the feature is behind the organization
 // property THREAT_EXPOSURE (default off, not configurable by an org admin), the routes are appserver ThreatExposureController, and
-// they are NOT in the Forward builds this SDK pins, so a deployment without them answers 404 (ErrEndpointNotServed). Reads need
+// they are in the Forward source at both builds this SDK pins, but a deployment that predates them answers 404 (ErrEndpointNotServed). Reads need
 // VIEW_THREAT_EXPOSURE (listing, getting, status and the views are not gated on the property); creating, changing and deleting
 // definitions EDIT_THREAT_EXPOSURE; Evaluate EVALUATE_THREAT_EXPOSURE. These operations need the security licence facet.
 type ThreatExposure struct {
@@ -636,10 +635,8 @@ type ThreatExposure struct {
 // EdgeAssets reads and manages a network's edge assets: hosts a user added that are not collected from, whose identifiers
 // (addresses, MAC, cloud host id) are matched to the hosts of later snapshots, and the criticality that marks assets (edge assets and
 // endpoints) as business critical. Threat-exposure analyses pick their critical assets from these. Preview and EXPERIMENTAL: appserver
-// EdgeAssetController, not the published OpenAPI, and NOT in the Forward builds this SDK pins, so a deployment without it answers 404
-// (ErrEndpointNotServed). This service does not create edge assets: Forward adds them from inferred hosts (POST .../inferred-hosts?
-// action=addAsEdgeAsset, MANAGE_EDGE_ASSETS and EDGE_ASSETS_IN_SOURCES), which this SDK does not wrap. The operations here need the
-// security licence facet.
+// EdgeAssetController and DeviceController, not the published OpenAPI; a deployment without them answers 404 (ErrEndpointNotServed).
+// Forward adds edge assets from a snapshot's inferred hosts (AddInferredHosts). The operations here need the security licence facet.
 type EdgeAssets struct {
 	ports.EdgeAssets
 	session Session

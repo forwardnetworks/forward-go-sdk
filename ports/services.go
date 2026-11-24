@@ -2935,15 +2935,15 @@ type Routing interface {
 	// device, across the snapshot (vendor-balanced and capped at Limit).
 	InstalledPrefixes(ctx context.Context, networkID string, snapshotID string, options RoutingInstalledOptions) (*RoutingInstalledPrefixes, *Response, error)
 
-	// PrefixDetails returns the route attributes and policies at one hop of a trace (POST .../bgp-prefix-details).
+	// PrefixDetails returns the route attributes and policies at one hop of a trace (POST .../bgp-prefix-details). This route is not served on Forward's 1.0.0 line from 1.0.0-261118 (a 404 "No endpoint", ErrEndpointNotServed): that line replaced it with the rp-prefix routes, so use Routing.RPPrefixDetails there. The 26.x stable line still serves it.
 	PrefixDetails(ctx context.Context, networkID string, snapshotID string, request RoutingPrefixDetailsRequest) (*RoutingPrefixDetails, *Response, error)
 
 	// PrefixSearch answers "where does this prefix come from and who has it?" on a snapshot (POST .../bgp-prefix-search). A prefix Forward
-	// has no routing data for gives an empty result, not an error.
+	// has no routing data for gives an empty result, not an error. This route is not served on Forward's 1.0.0 line from 1.0.0-261118 (a 404 "No endpoint", ErrEndpointNotServed): that line replaced it with the rp-prefix routes, so use Routing.RPPrefixSearch there. The 26.x stable line still serves it.
 	PrefixSearch(ctx context.Context, networkID string, snapshotID string, query RoutingPrefixSearch) (*RoutingPrefixSearchResult, *Response, error)
 
 	// PrefixTrace returns the propagation of a prefix from its origin to a router (POST .../bgp-prefix-trace): a list of paths, each a list
-	// of hops from origin to the router. Take a router, origin and outcome from PrefixSearch. A prefix with no routing data gives no paths.
+	// of hops from origin to the router. Take a router, origin and outcome from PrefixSearch. A prefix with no routing data gives no paths. This route is not served on Forward's 1.0.0 line from 1.0.0-261118 (a 404 "No endpoint", ErrEndpointNotServed): that line replaced it with the rp-prefix routes, so use Routing.RPPrefixTrace there. The 26.x stable line still serves it.
 	PrefixTrace(ctx context.Context, networkID string, snapshotID string, request RoutingTraceRequest) ([][]RoutingNode, *Response, error)
 
 	// RPDevicePrefixInfo returns what one device has for a prefix, per VRF and protocol (GET .../devices/{device}?view=rp-prefix-info&prefix=).
@@ -3015,6 +3015,22 @@ type ThreatExposure interface {
 // EdgeAssets is the EdgeAssets API family: what Client.EdgeAssets sends. A method may be added in any release; a type that implements this
 // port to fake it should embed the interface.
 type EdgeAssets interface {
+	// AddInferredHosts adds the snapshot's inferred hosts with the given global host IDs as edge assets (POST
+	// .../inferred-hosts?action=addAsEdgeAsset&snapshotId=<id>, body {"globalHostIds":[...]}; 204 with no body). Preview: Forward's
+	// DeviceController.addAsEdgeAssets, not the published OpenAPI, verified in Forward's source at both pinned builds and not called
+	// against a live Forward. It needs MANAGE_EDGE_ASSETS with the organization property EDGE_ASSETS_IN_SOURCES, and a snapshot that
+	// has reached ProcessingStage.CREATION. A network ID of "" resolves to the client's bound network. It refuses, before sending
+	// anything, an empty snapshot ID, an empty list and more than 1,000 ids (Forward's limit).
+	//
+	// It is not idempotent, and so carries no idempotence assertion: a repeat answers 400 "Edge assets already exist: [names]". Forward
+	// also answers 400 for ids that are not inferred hosts of that snapshot ("Hosts not found: [ids]"), for hosts that share a name
+	// ("Hosts share names: [names]"), for a name that is not a valid asset name ("'name' isn't a valid edge asset name"), and for a name
+	// another collection source or device already uses ("Device name(s) already used: [names]"). A deployment that does not serve the
+	// route answers 404 "No endpoint" (ErrEndpointNotServed), and one that serves the inferred-hosts reads but not this action answers
+	// 400 "Parameter conditions ... not met" (ErrorKindActionNotSupported). Each reaches the caller as the typed ErrorResponse after
+	// exactly one request, even with a retry policy set. It adds; it never deletes.
+	AddInferredHosts(ctx context.Context, networkID string, snapshotID string, globalHostIDs []int64) (*Response, error)
+
 	// Delete removes an edge asset AND its criticality (DELETE .../edge-assets/{name}; 204; MANAGE_EDGE_ASSETS; not gated on the
 	// organization property, so it works after the feature is turned off). It cannot be undone.
 	Delete(ctx context.Context, networkID string, assetName string) (*Response, error)
