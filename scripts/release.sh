@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tag and publish a release: gate, annotated tag, push main and the tag to BOTH remotes, then confirm
+# Tag and publish a release: gate, annotated tag, push main and the tag to the github remote, then confirm
 # the module proxy resolves it. It never commits: write the commit yourself (commit style in CLAUDE.md).
 #
 #   scripts/release.sh vX.Y.Z "tag message"
@@ -13,7 +13,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 tag="${1:-}"
 message="${2:-}"
 module="github.com/forwardnetworks/forward-go-sdk"
-remotes=(origin github)
+remotes=(github)
 
 [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$ ]] || { echo "usage: $0 vX.Y.Z[-rc.N] \"tag message\"" >&2; exit 2; }
 [[ -n "${message}" ]] || { echo "a tag message is required" >&2; exit 2; }
@@ -31,6 +31,11 @@ done
 if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then echo "tag ${tag} already exists locally" >&2; exit 1; fi
 
 scripts/release-check.sh
+
+# A push that would be refused must fail here, before a local tag exists.
+for remote in "${remotes[@]}"; do
+  git push --dry-run "${remote}" main
+done
 
 git tag -a "${tag}" -m "${message}"
 for remote in "${remotes[@]}"; do
